@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # Include hygiene via clang-tidy's misc-include-cleaner: reports (or, with
-# --fix, strips/inserts) unused and missing #includes across src/.
+# --fix, strips/inserts) unused and missing #includes.
 #
-#   tools/include-cleaner.sh          # check; nonzero exit on findings
-#   tools/include-cleaner.sh --fix    # rewrite the files
+#   tools/include-cleaner.sh                    # check all of src/
+#   tools/include-cleaner.sh --fix              # rewrite all of src/
+#   tools/include-cleaner.sh [--fix] FILE...    # limit to specific files
 #
 # Needs build/wasm-debug/compile_commands.json (run ./dev once first).
 # clang-tidy can't ask em++ for its implicit sysroot the way clangd's
@@ -28,6 +29,22 @@ fi
 FIX=()
 if [ "${1:-}" = "--fix" ]; then
   FIX=(--fix --fix-errors)
+  shift
+fi
+
+# Remaining args limit the check; default is everything in src/.
+CC_FILES=()
+H_FILES=()
+if [ "$#" -gt 0 ]; then
+  for f in "$@"; do
+    case "$f" in
+      *.cc) CC_FILES+=("$f") ;;
+      *.h) H_FILES+=("$f") ;;
+    esac
+  done
+else
+  CC_FILES=(src/*.cc)
+  H_FILES=(src/*.h)
 fi
 
 SYS_ARGS=(
@@ -38,12 +55,16 @@ SYS_ARGS=(
   --extra-arg=-isystem --extra-arg="$SYSROOT/include"
 )
 
-"$TIDY" -p build/wasm-debug --quiet ${FIX[@]+"${FIX[@]}"} \
-  "${SYS_ARGS[@]}" \
-  src/*.cc
+if [ "${#CC_FILES[@]}" -gt 0 ]; then
+  "$TIDY" -p build/wasm-debug --quiet ${FIX[@]+"${FIX[@]}"} \
+    "${SYS_ARGS[@]}" \
+    "${CC_FILES[@]}"
+fi
 
-"$TIDY" --quiet ${FIX[@]+"${FIX[@]}"} \
-  "${SYS_ARGS[@]}" \
-  src/*.h -- \
-  -x c++-header -std=c++20 \
-  -isystem "$VCPKG_INC" -isystem "$VCPKG_INC/harfbuzz"
+if [ "${#H_FILES[@]}" -gt 0 ]; then
+  "$TIDY" --quiet ${FIX[@]+"${FIX[@]}"} \
+    "${SYS_ARGS[@]}" \
+    "${H_FILES[@]}" -- \
+    -x c++-header -std=c++20 \
+    -isystem "$VCPKG_INC" -isystem "$VCPKG_INC/harfbuzz"
+fi
