@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>wrdl</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: #17171c; }
+    #canvas { display: block; width: 100vw; height: 100vh; }
+    #status {
+      position: fixed; left: 12px; bottom: 10px;
+      font: 12px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
+      color: #8a8a96; pointer-events: none; white-space: pre;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="canvas"></canvas>
+  <div id="status">loading…</div>
+  <script src="wrdl.js"></script>
+  <script>
+    const status = document.getElementById('status');
+    createWrdlModule({
+      canvas: document.getElementById('canvas'),
+      print: (text) => { console.log(text); status.textContent = text; },
+      printErr: (text) => { console.error(text); },
+    }).then(() => {
+      console.log('wrdl module ready');
+    }).catch((err) => {
+      status.textContent = 'failed to start: ' + err;
+      console.error(err);
+    });
+  </script>
+</body>
+</html>

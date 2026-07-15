@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+# One command: configure (first time), build, and make sure the dev server
+# is running. After this, reload http://localhost:8787/ in the browser.
+#
+#   ./dev            debug build (default)
+#   ./dev release    release build (serves the release dist instead)
+set -euo pipefail
+cd "$(dirname "$0")"
+
+export VCPKG_ROOT="${VCPKG_ROOT:-$HOME/vcpkg}"
+export EMSDK="${EMSDK:-$HOME/emsdk}"
+if [ ! -d "$EMSDK/upstream/emscripten" ]; then
+  echo "error: emscripten not found at \$EMSDK=$EMSDK" >&2
+  echo "install with: git clone https://github.com/emscripten-core/emsdk ~/emsdk && ~/emsdk/emsdk install latest && ~/emsdk/emsdk activate latest" >&2
+  exit 1
+fi
+export PATH="$EMSDK/upstream/emscripten:$PATH"
+
+case "${1:-debug}" in
+  debug)   PRESET=wasm-debug ;;
+  release) PRESET=wasm-release ;;
+  *)       echo "usage: ./dev [debug|release]" >&2; exit 2 ;;
+esac
+
+if [ ! -f "build/$PRESET/build.ninja" ]; then
+  cmake --preset "$PRESET"
+fi
+cmake --build --preset "$PRESET"
+
+PORT=8787
+DIST="$PWD/build/$PRESET/dist"
+
+# (Re)start the server if it isn't running or is serving a different dist.
+if [ -f build/serve.pid ] && kill -0 "$(cat build/serve.pid)" 2>/dev/null; then
+  if [ "$(cat build/serve.dir 2>/dev/null)" != "$DIST" ]; then
+    kill "$(cat build/serve.pid)" 2>/dev/null || true
+    rm -f build/serve.pid
+  fi
+fi
+if [ ! -f build/serve.pid ] || ! kill -0 "$(cat build/serve.pid)" 2>/dev/null; then
+  nohup python3 tools/serve.py "$DIST" "$PORT" > build/serve.log 2>&1 &
+  echo $! > build/serve.pid
+  echo "$DIST" > build/serve.dir
+fi
+
+echo
+echo "wrdl ($PRESET) → http://localhost:$PORT/"

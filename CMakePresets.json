@@ -1,0 +1,38 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": { "major": 3, "minor": 25, "patch": 0 },
+  "configurePresets": [
+    {
+      "name": "wasm-base",
+      "hidden": true,
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+      "cacheVariables": {
+        "CMAKE_EXPORT_COMPILE_COMMANDS": true,
+        "VCPKG_TARGET_TRIPLET": "wasm32-emscripten",
+        "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": "$env{EMSDK}/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake"
+      },
+      "environment": {
+        "VCPKG_ROOT": "$penv{VCPKG_ROOT}",
+        "EMSDK": "$penv{EMSDK}"
+      }
+    },
+    {
+      "name": "wasm-debug",
+      "displayName": "WASM Debug",
+      "inherits": "wasm-base",
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug" }
+    },
+    {
+      "name": "wasm-release",
+      "displayName": "WASM Release",
+      "inherits": "wasm-base",
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "Release" }
+    }
+  ],
+  "buildPresets": [
+    { "name": "wasm-debug", "configurePreset": "wasm-debug" },
+    { "name": "wasm-release", "configurePreset": "wasm-release" }
+  ]
+}

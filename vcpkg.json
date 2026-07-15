@@ -1,0 +1,6 @@
+{
+  "name": "wrdl",
+  "version-string": "0.1.0",
+  "description": "Wordle word clouds, reimplemented in C++ / WebAssembly / WebGL",
+  "dependencies": []
+}

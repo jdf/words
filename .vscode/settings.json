@@ -1,0 +1,11 @@
+{
+  "cmake.useCMakePresets": "always",
+  "cmake.configureOnOpen": false,
+
+  // clangd owns C++ IntelliSense; keep cpptools' engine out of the way.
+  "C_Cpp.intelliSenseEngine": "disabled",
+  "clangd.arguments": [
+    "--compile-commands-dir=${workspaceFolder}/build/wasm-debug",
+    "--query-driver=**/emscripten/em++,**/emscripten/emcc"
+  ]
+}
