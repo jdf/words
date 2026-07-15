@@ -48,11 +48,11 @@ void main() {
 )";
 
 constexpr const char* kTextVS = R"(#version 300 es
-uniform vec2 u_scale;
+uniform mat2 u_mat;
 uniform vec2 u_offset;
 layout(location = 0) in vec2 a_position;
 void main() {
-  gl_Position = vec4(a_position * u_scale + u_offset, 0.0, 1.0);
+  gl_Position = vec4(u_mat * a_position + u_offset, 0.0, 1.0);
 }
 )";
 
@@ -175,7 +175,7 @@ struct State {
   GLuint triangleVao = 0;
 
   GLuint textProgram = 0;
-  GLint scaleLoc = -1;
+  GLint matLoc = -1;
   GLint offsetLoc = -1;
   GLint colorLoc = -1;
 
@@ -360,40 +360,74 @@ void drawTriangle(int width, int height) {
   glDrawArrays(GL_TRIANGLES, 0, 3);
 }
 
-void drawText(int width, int height) {
-  if (g_state.contours.empty()) return;
+// One rendering of the text: width as a fraction of canvas width, center
+// position in NDC, rotation about the text's own center, and a fill color.
+struct Placement {
+  float widthFrac;
+  float x, y;
+  float angleDeg;
+  float r, g, b;
+};
 
-  // Fit the text to 70% of the canvas width, centered, in the upper third.
+constexpr Placement kPlacements[] = {
+    {0.52f, -0.08f, 0.52f, 0.0f, 0.93f, 0.93f, 0.90f},   // big headline
+    {0.30f, 0.42f, -0.35f, 90.0f, 0.36f, 0.72f, 0.86f},  // vertical, cyan
+    {0.34f, -0.42f, -0.28f, 24.0f, 0.96f, 0.65f, 0.14f}, // tilted, orange
+    {0.18f, -0.10f, -0.68f, -12.0f, 0.55f, 0.83f, 0.30f},// small, green
+    {0.12f, 0.30f, 0.02f, -90.0f, 0.80f, 0.45f, 0.78f},  // tiny, plum
+    {0.10f, -0.72f, 0.10f, 45.0f, 0.85f, 0.33f, 0.31f},  // tiny, brick
+};
+
+// Draws one placement with the two-pass stencil fill. Pass 2 zeroes the
+// stencil bits it consumes, so consecutive (even overlapping) placements
+// never see each other's coverage.
+void drawTextPlacement(const Placement& p, int width, int height) {
   double textW = g_state.maxX - g_state.minX;
-  double pxScale = 0.7 * width / textW;
-  float sx = static_cast<float>(pxScale * 2.0 / width);
-  float sy = static_cast<float>(pxScale * 2.0 / height);
-  float cx = static_cast<float>((g_state.minX + g_state.maxX) / 2.0);
-  float cy = static_cast<float>((g_state.minY + g_state.maxY) / 2.0);
+  double cx = (g_state.minX + g_state.maxX) / 2.0;
+  double cy = (g_state.minY + g_state.maxY) / 2.0;
 
-  glUseProgram(g_state.textProgram);
-  glUniform2f(g_state.scaleLoc, sx, sy);
-  glUniform2f(g_state.offsetLoc, -cx * sx, 0.55f - cy * sy);
+  // Font units → pixels, then pixels → NDC (which reintroduces aspect).
+  double pxPerUnit = p.widthFrac * width / textW;
+  double sxNdc = pxPerUnit * 2.0 / width;
+  double syNdc = pxPerUnit * 2.0 / height;
+  double rad = p.angleDeg * M_PI / 180.0;
+  double c = std::cos(rad), s = std::sin(rad);
+  // Column-major mat2: NDC-scale ∘ rotate, applied to (pos - center).
+  const float mat[4] = {
+      static_cast<float>(sxNdc * c), static_cast<float>(syNdc * s),
+      static_cast<float>(-sxNdc * s), static_cast<float>(syNdc * c)};
+  const float ox = static_cast<float>(p.x - (mat[0] * cx + mat[2] * cy));
+  const float oy = static_cast<float>(p.y - (mat[1] * cx + mat[3] * cy));
 
-  glEnable(GL_STENCIL_TEST);
+  glUniformMatrix2fv(g_state.matLoc, 1, GL_FALSE, mat);
+  glUniform2f(g_state.offsetLoc, ox, oy);
 
   // Pass 1: even-odd coverage into the stencil buffer, no color writes.
   glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
   glStencilFunc(GL_ALWAYS, 0, 0xFF);
   glStencilOp(GL_KEEP, GL_KEEP, GL_INVERT);
   glBindVertexArray(g_state.textVao);
-  for (const Contour& c : g_state.contours) {
-    glDrawArrays(GL_TRIANGLE_FAN, c.first, c.count);
+  for (const Contour& c2 : g_state.contours) {
+    glDrawArrays(GL_TRIANGLE_FAN, c2.first, c2.count);
   }
 
-  // Pass 2: paint a cover quad wherever the stencil ended up odd.
+  // Pass 2: paint a cover quad wherever the stencil ended up odd, zeroing
+  // the stencil as we go so the next placement starts clean.
   glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
   glStencilFunc(GL_EQUAL, 1, 0x1);
-  glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
-  glUniform4f(g_state.colorLoc, 0.93f, 0.93f, 0.90f, 1.0f);
+  glStencilOp(GL_KEEP, GL_KEEP, GL_ZERO);
+  glUniform4f(g_state.colorLoc, p.r, p.g, p.b, 1.0f);
   glBindVertexArray(g_state.coverVao);
   glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+}
 
+void drawText(int width, int height) {
+  if (g_state.contours.empty()) return;
+  glUseProgram(g_state.textProgram);
+  glEnable(GL_STENCIL_TEST);
+  for (const Placement& p : kPlacements) {
+    drawTextPlacement(p, width, height);
+  }
   glDisable(GL_STENCIL_TEST);
 }
 
@@ -434,7 +468,7 @@ int main() {
   g_state.aspectLoc = glGetUniformLocation(g_state.triangleProgram, "u_aspect");
 
   g_state.textProgram = linkProgram(kTextVS, kTextFS);
-  g_state.scaleLoc = glGetUniformLocation(g_state.textProgram, "u_scale");
+  g_state.matLoc = glGetUniformLocation(g_state.textProgram, "u_mat");
   g_state.offsetLoc = glGetUniformLocation(g_state.textProgram, "u_offset");
   g_state.colorLoc = glGetUniformLocation(g_state.textProgram, "u_color");
 
