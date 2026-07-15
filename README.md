@@ -78,10 +78,14 @@ Two tiers of golden-image tests:
   presubmit when `src/` or `tests/` changed.
 - **SwANGLE e2e** (`tools/e2e-golden.sh`): renders the real wasm release
   build in headless Chrome on SwiftShader-backed ANGLE — CPU
-  rasterization, byte-deterministic for a fixed Chrome version — at a
+  rasterization, byte-deterministic for a fixed browser version — at a
   frozen scene time (`?t=<seconds>` URL parameter), and byte-compares the
-  screenshot against `tests/goldens/`. `--bless` approves the current
-  rendering; expect to re-bless after Chrome updates.
+  screenshot against `tests/goldens/`. The browser is a pinned
+  [Chrome for Testing](https://googlechromelabs.github.io/chrome-for-testing/)
+  build (version in `tools/chrome-version.txt`, auto-downloaded to
+  `~/.cache/words/chrome` by `tools/get-chrome.sh`), so system browser
+  updates can't shift pixels. `--bless` approves the current rendering;
+  bump the pin and re-bless deliberately.
 
 ## Hygiene
 

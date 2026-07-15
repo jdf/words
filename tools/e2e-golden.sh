@@ -8,12 +8,13 @@
 #   tools/e2e-golden.sh --bless  # approve the current rendering
 #
 # Determinism notes: SwiftShader is CPU rasterization — bit-exact for a
-# fixed Chrome version on a fixed architecture. A Chrome auto-update can
-# legitimately shift pixels; re-bless after verifying visually.
+# fixed Chrome version on a fixed architecture. The browser is a pinned
+# Chrome for Testing build (tools/chrome-version.txt), so system Chrome
+# updates can't shift pixels; bump the pin and re-bless deliberately.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-CHROME="${CHROME:-/Applications/Google Chrome.app/Contents/MacOS/Google Chrome}"
+CHROME="${CHROME:-$(tools/get-chrome.sh)}"
 PORT=8788
 T=2.0
 SIZE=1200,750
