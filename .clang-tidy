@@ -4,7 +4,8 @@ HeaderFilterRegex: 'src/.*'
 CheckOptions:
   # Emscripten/GL headers confuse include-cleaner (symbols resolve through
   # internal paths); don't suggest inserting or removing them.
-  # clipper2/ for the same reason clangd's .clangd exempts it: the public
-  # umbrella header lacks IWYU export pragmas, so symbols are attributed to
-  # internal headers (clipper.core.h etc.).
-  misc-include-cleaner.IgnoreHeaders: 'emscripten/.*;GLES3/.*;GL/.*;clipper2/.*'
+  # Third-party headers, for the same reason clangd's .clangd exempts them:
+  # no IWYU export pragmas, so symbols are attributed to internal headers
+  # rather than the sanctioned entry points (clipper2/clipper.h; ft2build.h
+  # + FT_* macros; hb.h).
+  misc-include-cleaner.IgnoreHeaders: 'emscripten/.*;GLES3/.*;GL/.*;clipper2/.*;freetype/.*;ft2build\.h;hb\.h;hb-.*\.h'

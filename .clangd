@@ -5,8 +5,14 @@ Diagnostics:
   UnusedIncludes: Strict
   MissingIncludes: Strict
   Includes:
-    # Clipper2's public umbrella (clipper2/clipper.h) has no IWYU export
-    # pragmas, so symbols get attributed to its internal headers
-    # (clipper.core.h etc.); exempt the library from provider analysis.
+    # Third-party libraries lack IWYU export pragmas, so include-cleaner
+    # attributes their symbols to internal headers instead of the sanctioned
+    # entry points (clipper2/clipper.h; ft2build.h + FT_* macros; hb.h).
+    # Exempt them from provider analysis; our own headers and the standard
+    # library stay under strict enforcement.
     IgnoreHeader:
       - clipper2/.*
+      - freetype/.*
+      - ft2build\.h
+      - hb\.h
+      - hb-.*\.h
