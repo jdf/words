@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>wrdl</title>
+  <title>words</title>
   <style>
     html, body { margin: 0; height: 100%; background: #17171c; }
     #canvas { display: block; width: 100vw; height: 100vh; }
@@ -17,15 +17,15 @@
 <body>
   <canvas id="canvas"></canvas>
   <div id="status">loading…</div>
-  <script src="wrdl.js"></script>
+  <script src="words.js"></script>
   <script>
     const status = document.getElementById('status');
-    createWrdlModule({
+    createWordsModule({
       canvas: document.getElementById('canvas'),
       print: (text) => { console.log(text); status.textContent = text; },
       printErr: (text) => { console.error(text); },
     }).then(() => {
-      console.log('wrdl module ready');
+      console.log('words module ready');
     }).catch((err) => {
       status.textContent = 'failed to start: ' + err;
       console.error(err);

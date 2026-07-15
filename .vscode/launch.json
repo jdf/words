@@ -2,12 +2,12 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Run wrdl (Chrome)",
+      "name": "Run words (Chrome)",
       "type": "chrome",
       "request": "launch",
       "url": "http://localhost:8787/",
       "webRoot": "${workspaceFolder}",
-      "preLaunchTask": "wrdl: build + serve (debug)"
+      "preLaunchTask": "words: build + serve (debug)"
     }
   ]
 }

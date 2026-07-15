@@ -1,4 +1,4 @@
-# wrdl
+# words
 
 Wordle word clouds, reimplemented in C++ / WebAssembly / WebGL2.
 
@@ -10,7 +10,7 @@ Wordle word clouds, reimplemented in C++ / WebAssembly / WebGL2.
 
 then open / reload <http://localhost:8787/>. That's the whole loop: edit,
 `./dev`, reload. In VS Code, the default build task (⇧⌘B) runs the same
-thing, and the "Run wrdl (Chrome)" launch config builds and opens Chrome
+thing, and the "Run words (Chrome)" launch config builds and opens Chrome
 with the debugger attached.
 
 `./dev release` builds and serves an optimized build instead.

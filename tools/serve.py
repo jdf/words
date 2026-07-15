@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Dev server for wrdl.
+"""Dev server for words.
 
 Plain static file serving plus:
   - Cache-Control: no-store, so a browser reload always gets the fresh build.

@@ -1,4 +1,4 @@
-// wrdl — infrastructure smoke test.
+// words — infrastructure smoke test.
 // Brings up a WebGL2 context, compiles a shader pair, and animates a
 // triangle. Exists to prove the emscripten/CMake/vcpkg/WebGL pipeline
 // end to end; will be replaced by the real renderer.
@@ -124,7 +124,7 @@ int main() {
   }
   emscripten_webgl_make_context_current(ctx);
 
-  std::printf("wrdl up: GL_VERSION = %s\n", glGetString(GL_VERSION));
+  std::printf("words up: GL_VERSION = %s\n", glGetString(GL_VERSION));
 
   g_state.program = linkProgram(kVertexShader, kFragmentShader);
   g_state.angleLoc = glGetUniformLocation(g_state.program, "u_angle");

@@ -44,4 +44,4 @@ if [ ! -f build/serve.pid ] || ! kill -0 "$(cat build/serve.pid)" 2>/dev/null; t
 fi
 
 echo
-echo "wrdl ($PRESET) → http://localhost:$PORT/"
+echo "words ($PRESET) → http://localhost:$PORT/"
