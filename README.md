@@ -43,8 +43,11 @@ updates:
   the hb-gpu-* utilities fail to link on wasm (mixed `-pthread` objects)
   and we only need the library.
 
-The font in `assets/` (Roboto, SIL OFL) is preloaded into the Emscripten
-virtual FS at `/fonts/Roboto.ttf`.
+The font in `assets/` (Typodermic's Sexsmith, CC0 public domain) is
+preloaded into the Emscripten virtual FS at `/fonts/Sexsmith.otf`. All text
+geometry is shaped and extracted in integer font units (HarfBuzz scale
+pinned to upem, `FT_LOAD_NO_SCALE`) and transformed to screen space exactly
+once, at draw time.
 
 ## Layout
 

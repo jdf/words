@@ -35,9 +35,9 @@ target_link_options(words PRIVATE
   -sALLOW_MEMORY_GROWTH=1
   -sMODULARIZE=1
   -sEXPORT_NAME=createWordsModule
-  "SHELL:--preload-file ${CMAKE_SOURCE_DIR}/assets/Roboto.ttf@/fonts/Roboto.ttf"
+  "SHELL:--preload-file ${CMAKE_SOURCE_DIR}/assets/Sexsmith.otf@/fonts/Sexsmith.otf"
 )
-set_property(TARGET words APPEND PROPERTY LINK_DEPENDS ${CMAKE_SOURCE_DIR}/assets/Roboto.ttf)
+set_property(TARGET words APPEND PROPERTY LINK_DEPENDS ${CMAKE_SOURCE_DIR}/assets/Sexsmith.otf)
 
 # Debug builds carry DWARF + source map so Chrome DevTools can show C++ source.
 target_compile_options(words PRIVATE $<$<CONFIG:Debug>:-g>)

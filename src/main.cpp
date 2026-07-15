@@ -11,7 +11,6 @@
 #include FT_FREETYPE_H
 #include FT_OUTLINE_H
 
-#include <hb-ft.h>
 #include <hb.h>
 
 #include <clipper2/clipper.h>
@@ -99,8 +98,10 @@ GLuint linkProgram(const char* vs, const char* fs) {
 
 // ------------------------------------------------------- outline flattening
 
-// Collects one glyph's outline as flattened contours in pixel units, y-up,
-// offset by the pen position. FreeType reports 26.6 fixed-point coordinates.
+// Collects one glyph's outline as flattened contours, y-up, offset by the
+// pen position. Everything stays in integer font units (FT_LOAD_NO_SCALE):
+// shaping, flattening, and booleans all happen in the font's own coordinate
+// space, and one transform maps the result to the screen at draw time.
 struct OutlineSink {
   Clipper2Lib::PathsD contours;
   double penX = 0, penY = 0;
@@ -109,28 +110,29 @@ struct OutlineSink {
   static constexpr int kConicSteps = 8;
   static constexpr int kCubicSteps = 12;
 
-  Clipper2Lib::PointD toPx(const FT_Vector* v) const {
-    return {penX + v->x / 64.0, penY + v->y / 64.0};
+  Clipper2Lib::PointD toUnits(const FT_Vector* v) const {
+    return {penX + static_cast<double>(v->x),
+            penY + static_cast<double>(v->y)};
   }
 
   static int moveTo(const FT_Vector* to, void* user) {
     auto* self = static_cast<OutlineSink*>(user);
     self->contours.emplace_back();
-    self->current = self->toPx(to);
+    self->current = self->toUnits(to);
     self->contours.back().push_back(self->current);
     return 0;
   }
 
   static int lineTo(const FT_Vector* to, void* user) {
     auto* self = static_cast<OutlineSink*>(user);
-    self->current = self->toPx(to);
+    self->current = self->toUnits(to);
     self->contours.back().push_back(self->current);
     return 0;
   }
 
   static int conicTo(const FT_Vector* c, const FT_Vector* to, void* user) {
     auto* self = static_cast<OutlineSink*>(user);
-    auto p0 = self->current, p1 = self->toPx(c), p2 = self->toPx(to);
+    auto p0 = self->current, p1 = self->toUnits(c), p2 = self->toUnits(to);
     for (int i = 1; i <= kConicSteps; ++i) {
       double t = static_cast<double>(i) / kConicSteps, u = 1.0 - t;
       self->contours.back().push_back(
@@ -144,8 +146,8 @@ struct OutlineSink {
   static int cubicTo(const FT_Vector* c1, const FT_Vector* c2,
                      const FT_Vector* to, void* user) {
     auto* self = static_cast<OutlineSink*>(user);
-    auto p0 = self->current, p1 = self->toPx(c1), p2 = self->toPx(c2),
-         p3 = self->toPx(to);
+    auto p0 = self->current, p1 = self->toUnits(c1), p2 = self->toUnits(c2),
+         p3 = self->toUnits(to);
     for (int i = 1; i <= kCubicSteps; ++i) {
       double t = static_cast<double>(i) / kCubicSteps, u = 1.0 - t;
       double a = u * u * u, b = 3 * u * u * t, cc = 3 * u * t * t,
@@ -181,7 +183,7 @@ struct State {
   GLuint coverVao = 0;
   std::vector<Contour> contours;
 
-  // Text bounds in pixel units (y-up, baseline at 0).
+  // Text bounds in font units (y-up, baseline at 0).
   double minX = 0, minY = 0, maxX = 0, maxY = 0;
 
   double startTime = 0.0;
@@ -189,13 +191,19 @@ struct State {
 
 State g_state;
 
-constexpr double kFontPx = 100.0;
+constexpr const char* kFontPath = "/fonts/Sexsmith.otf";
 constexpr const char* kText = "words";
 
 // Shapes kText with HarfBuzz, flattens every glyph outline via FreeType, and
 // merges the lot with Clipper2. The union's output contours are disjoint
 // (holes as separate paths), which is exactly what an even-odd stencil fill
 // wants.
+//
+// Shaping and outline extraction both happen in integer font units — HarfBuzz
+// through its own OpenType functions with the scale pinned to units-per-em,
+// FreeType with FT_LOAD_NO_SCALE — so there is no fixed-point quantization
+// anywhere; the geometry is transformed to screen space exactly once, in the
+// vertex shader.
 Clipper2Lib::PathsD buildTextGeometry() {
   FT_Library library = nullptr;
   if (FT_Init_FreeType(&library) != 0) {
@@ -203,13 +211,22 @@ Clipper2Lib::PathsD buildTextGeometry() {
     return {};
   }
   FT_Face face = nullptr;
-  if (FT_New_Face(library, "/fonts/Roboto.ttf", 0, &face) != 0) {
+  if (FT_New_Face(library, kFontPath, 0, &face) != 0) {
     std::printf("FT_New_Face failed — font missing from virtual FS?\n");
     return {};
   }
-  FT_Set_Pixel_Sizes(face, 0, static_cast<FT_UInt>(kFontPx));
 
-  hb_font_t* hbFont = hb_ft_font_create_referenced(face);
+  hb_blob_t* blob = hb_blob_create_from_file_or_fail(kFontPath);
+  if (!blob) {
+    std::printf("hb_blob_create_from_file_or_fail failed\n");
+    return {};
+  }
+  hb_face_t* hbFace = hb_face_create(blob, 0);
+  hb_blob_destroy(blob);
+  hb_font_t* hbFont = hb_font_create(hbFace);
+  unsigned int upem = hb_face_get_upem(hbFace);
+  hb_font_set_scale(hbFont, static_cast<int>(upem), static_cast<int>(upem));
+
   hb_buffer_t* buffer = hb_buffer_create();
   hb_buffer_add_utf8(buffer, kText, -1, 0, -1);
   hb_buffer_set_direction(buffer, HB_DIRECTION_LTR);
@@ -229,23 +246,26 @@ Clipper2Lib::PathsD buildTextGeometry() {
   funcs.conic_to = OutlineSink::conicTo;
   funcs.cubic_to = OutlineSink::cubicTo;
 
+  // hb positions are integer font units (scale == upem), as are the outline
+  // coordinates under FT_LOAD_NO_SCALE — no /64, nothing to round.
   double penX = 0, penY = 0;
   for (unsigned int i = 0; i < glyphCount; ++i) {
     if (FT_Load_Glyph(face, infos[i].codepoint,
-                      FT_LOAD_NO_BITMAP | FT_LOAD_NO_HINTING) != 0) {
+                      FT_LOAD_NO_SCALE | FT_LOAD_NO_BITMAP) != 0) {
       continue;
     }
-    sink.penX = penX + positions[i].x_offset / 64.0;
-    sink.penY = penY + positions[i].y_offset / 64.0;
+    sink.penX = penX + positions[i].x_offset;
+    sink.penY = penY + positions[i].y_offset;
     FT_Outline_Decompose(&face->glyph->outline, &funcs, &sink);
-    penX += positions[i].x_advance / 64.0;
-    penY += positions[i].y_advance / 64.0;
+    penX += positions[i].x_advance;
+    penY += positions[i].y_advance;
   }
-  std::printf("shaped %u glyphs → %zu raw contours\n", glyphCount,
-              sink.contours.size());
+  std::printf("shaped %u glyphs (upem %u) → %zu raw contours\n", glyphCount,
+              upem, sink.contours.size());
 
   hb_buffer_destroy(buffer);
   hb_font_destroy(hbFont);
+  hb_face_destroy(hbFace);
   FT_Done_Face(face);
   FT_Done_FreeType(library);
 
