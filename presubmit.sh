@@ -4,10 +4,13 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-# Only check src/ files that changed relative to the remote main. (A header
-# change can in principle alter include-cleaner findings in files that
-# include it; run `tools/include-cleaner.sh` with no arguments for the full
-# sweep.)
+# Only check src/ files that changed relative to the remote main. Since
+# every file explicitly includes every name it touches (enforced here), a
+# header's own include changes can't affect findings in unchanged dependents
+# — checking changed files is sound. The one exception is *moving* a
+# declaration between headers, which re-attributes the symbol's provider in
+# unchanged includers; after such a refactor, run `tools/include-cleaner.sh`
+# with no arguments for a full sweep.
 CHANGED=$(jj diff --from 'trunk()' --to @ --summary 2>/dev/null |
   awk '$1 != "D" {print $NF}' | grep -E '^src/.*\.(cc|h)$' || true)
 EXISTING=()
