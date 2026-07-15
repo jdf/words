@@ -181,6 +181,7 @@ struct State {
 
   GLuint textVao = 0;
   GLuint coverVao = 0;
+  GLuint boxVao = 0;
   std::vector<Contour> contours;
 
   // Text bounds in font units (y-up, baseline at 0).
@@ -202,13 +203,34 @@ constexpr const char* kText = "words";
 constexpr double kSceneW = 1600.0;
 constexpr double kSceneH = 1000.0;
 
-// NDC extent of one scene-fraction unit, per axis: (1,1) when the window
-// matches the scene's aspect, smaller on the letterboxed axis otherwise.
-void sceneToNdcScale(int width, int height, double* sx, double* sy) {
-  double s = std::min(width / kSceneW, height / kSceneH);  // px per scene unit
-  *sx = s * kSceneW / width;
-  *sy = s * kSceneH / height;
-}
+// The triangle, in isotropic scene pixels: exactly equilateral, centered on
+// the scene, rotating over time. Kept as data so the CPU-side intersection
+// tests see the same geometry the GPU draws.
+constexpr double kTriR = 310.0;
+constexpr double kTriCos30 = 0.86602540378;
+constexpr double kTriBase[3][2] = {
+    {0.0, kTriR},
+    {-kTriR * kTriCos30, -kTriR * 0.5},
+    {kTriR * kTriCos30, -kTriR * 0.5},
+};
+
+// One placed word, as a rigid body. Scale and rotation are baked into the
+// word-local geometry (the AABB is only valid for one size and angle), and
+// the box lives with the curves in that local frame; position is the one
+// dynamic degree of freedom, translating curves and box together. That's
+// what makes moving a word during layout cheap: the geometry never changes,
+// only the offset.
+struct WordInstance {
+  double k = 1;                    // scene px per font unit (baked)
+  double angleRad = 0;             // rotation (baked)
+  double sceneX = 0, sceneY = 0;   // translation: word center, scene px
+  float r = 1, g = 1, b = 1;
+  Clipper2Lib::PathsD localPaths;  // merged outlines, word-local scene px
+  double minX = 0, minY = 0, maxX = 0, maxY = 0;  // root AABB, word-local
+  bool hit = false;  // triangle currently intersects the translated AABB
+};
+
+std::vector<WordInstance> g_words;
 
 // Shapes kText with HarfBuzz, flattens every glyph outline via FreeType, and
 // merges the lot with Clipper2. The union's output contours are disjoint
@@ -365,10 +387,9 @@ void syncCanvasSize(int* width, int* height) {
   *height = h;
 }
 
-void drawTriangle(int width, int height) {
-  double elapsed = emscripten_get_now() / 1000.0 - g_state.startTime;
+void drawTriangle(int width, int height, double angle) {
   glUseProgram(g_state.triangleProgram);
-  glUniform1f(g_state.angleLoc, static_cast<float>(elapsed * 0.6));
+  glUniform1f(g_state.angleLoc, static_cast<float>(angle));
   // Vertices are scene pixels; rotation happens in that isotropic space,
   // so the NDC mapping here is per-axis but shape-preserving on screen.
   double s = std::min(width / kSceneW, height / kSceneH);
@@ -396,31 +417,99 @@ constexpr Placement kPlacements[] = {
     {0.10f, -0.72f, 0.10f, 45.0f, 0.85f, 0.33f, 0.31f},  // tiny, brick
 };
 
-// Draws one placement with the two-pass stencil fill. Pass 2 zeroes the
-// stencil bits it consumes, so consecutive (even overlapping) placements
-// never see each other's coverage.
-void drawTextPlacement(const Placement& p, int width, int height) {
+// Resolves each Placement into a rigid word: scale and rotation are applied
+// to the font-unit outlines to produce word-local geometry (centered on the
+// word's own origin), and the root AABB is computed from those points — an
+// axis-aligned box only fits rotated text if it's computed after the
+// rotation. Position stays separate as the dynamic translation.
+void buildWordInstances(const Clipper2Lib::PathsD& fontPaths) {
   double textW = g_state.maxX - g_state.minX;
   double cx = (g_state.minX + g_state.maxX) / 2.0;
   double cy = (g_state.minY + g_state.maxY) / 2.0;
 
-  double fracX = 1, fracY = 1;  // NDC per scene-fraction unit
-  sceneToNdcScale(width, height, &fracX, &fracY);
+  g_words.clear();
+  for (const Placement& p : kPlacements) {
+    WordInstance w;
+    w.k = p.widthFrac * kSceneW / textW;
+    w.angleRad = p.angleDeg * M_PI / 180.0;
+    w.sceneX = p.x * kSceneW / 2.0;
+    w.sceneY = p.y * kSceneH / 2.0;
+    w.r = p.r;
+    w.g = p.g;
+    w.b = p.b;
 
-  // Font units → scene pixels → NDC. Sizes and positions are relative to
-  // the fixed-aspect scene, so window shape never changes the layout.
-  double scenePxW = fracX * width;  // scene width in device pixels
-  double pxPerUnit = p.widthFrac * scenePxW / textW;
+    double c = std::cos(w.angleRad), s = std::sin(w.angleRad);
+    bool first = true;
+    for (const auto& path : fontPaths) {
+      Clipper2Lib::PathD out;
+      out.reserve(path.size());
+      for (const auto& q : path) {
+        double x = q.x - cx, y = q.y - cy;
+        double lx = w.k * (c * x - s * y);
+        double ly = w.k * (s * x + c * y);
+        out.push_back({lx, ly});
+        if (first) {
+          w.minX = w.maxX = lx;
+          w.minY = w.maxY = ly;
+          first = false;
+        } else {
+          w.minX = std::min(w.minX, lx);
+          w.maxX = std::max(w.maxX, lx);
+          w.minY = std::min(w.minY, ly);
+          w.maxY = std::max(w.maxY, ly);
+        }
+      }
+      w.localPaths.push_back(std::move(out));
+    }
+    g_words.push_back(std::move(w));
+  }
+}
+
+// Uploads every word's local AABB as a 4-vertex loop in one VBO. The box is
+// drawn with the word's translation applied, so it rides along if the word
+// moves.
+void uploadBoxGeometry() {
+  std::vector<float> data;
+  for (const WordInstance& w : g_words) {
+    const double corners[4][2] = {{w.minX, w.minY},
+                                  {w.maxX, w.minY},
+                                  {w.maxX, w.maxY},
+                                  {w.minX, w.maxY}};
+    for (const auto& corner : corners) {
+      data.push_back(static_cast<float>(corner[0]));
+      data.push_back(static_cast<float>(corner[1]));
+    }
+  }
+  glGenVertexArrays(1, &g_state.boxVao);
+  glBindVertexArray(g_state.boxVao);
+  GLuint vbo = 0;
+  glGenBuffers(1, &vbo);
+  glBindBuffer(GL_ARRAY_BUFFER, vbo);
+  glBufferData(GL_ARRAY_BUFFER, data.size() * sizeof(float), data.data(),
+               GL_STATIC_DRAW);
+  glEnableVertexAttribArray(0);
+  glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, nullptr);
+}
+
+// Draws one word with the two-pass stencil fill. Pass 2 zeroes the
+// stencil bits it consumes, so consecutive (even overlapping) placements
+// never see each other's coverage.
+void drawWord(const WordInstance& w, int width, int height) {
+  double cx = (g_state.minX + g_state.maxX) / 2.0;
+  double cy = (g_state.minY + g_state.maxY) / 2.0;
+
+  // Font units → device pixels → NDC, rotation applied in isotropic space.
+  double s = std::min(width / kSceneW, height / kSceneH);
+  double pxPerUnit = w.k * s;
   double sxNdc = pxPerUnit * 2.0 / width;
   double syNdc = pxPerUnit * 2.0 / height;
-  double rad = p.angleDeg * M_PI / 180.0;
-  double c = std::cos(rad), s = std::sin(rad);
+  double c = std::cos(w.angleRad), sn = std::sin(w.angleRad);
   // Column-major mat2: NDC-scale ∘ rotate, applied to (pos - center).
   const float mat[4] = {
-      static_cast<float>(sxNdc * c), static_cast<float>(syNdc * s),
-      static_cast<float>(-sxNdc * s), static_cast<float>(syNdc * c)};
-  const float px = static_cast<float>(p.x * fracX);
-  const float py = static_cast<float>(p.y * fracY);
+      static_cast<float>(sxNdc * c), static_cast<float>(syNdc * sn),
+      static_cast<float>(-sxNdc * sn), static_cast<float>(syNdc * c)};
+  const float px = static_cast<float>(w.sceneX * s * 2.0 / width);
+  const float py = static_cast<float>(w.sceneY * s * 2.0 / height);
   const float ox = px - static_cast<float>(mat[0] * cx + mat[2] * cy);
   const float oy = py - static_cast<float>(mat[1] * cx + mat[3] * cy);
 
@@ -441,7 +530,7 @@ void drawTextPlacement(const Placement& p, int width, int height) {
   glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
   glStencilFunc(GL_EQUAL, 1, 0x1);
   glStencilOp(GL_KEEP, GL_KEEP, GL_ZERO);
-  glUniform4f(g_state.colorLoc, p.r, p.g, p.b, 1.0f);
+  glUniform4f(g_state.colorLoc, w.r, w.g, w.b, 1.0f);
   glBindVertexArray(g_state.coverVao);
   glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 }
@@ -450,10 +539,50 @@ void drawText(int width, int height) {
   if (g_state.contours.empty()) return;
   glUseProgram(g_state.textProgram);
   glEnable(GL_STENCIL_TEST);
-  for (const Placement& p : kPlacements) {
-    drawTextPlacement(p, width, height);
+  for (const WordInstance& w : g_words) {
+    drawWord(w, width, height);
   }
   glDisable(GL_STENCIL_TEST);
+}
+
+// Draws the translated AABB of every word the triangle currently hits.
+void drawBoxes(int width, int height) {
+  glUseProgram(g_state.textProgram);
+  double s = std::min(width / kSceneW, height / kSceneH);
+  // Scene px → NDC, no rotation: boxes are axis-aligned by construction.
+  const float mat[4] = {static_cast<float>(s * 2.0 / width), 0.0f, 0.0f,
+                        static_cast<float>(s * 2.0 / height)};
+  glUniformMatrix2fv(g_state.matLoc, 1, GL_FALSE, mat);
+  glBindVertexArray(g_state.boxVao);
+  for (size_t i = 0; i < g_words.size(); ++i) {
+    const WordInstance& w = g_words[i];
+    if (!w.hit) continue;
+    glUniform2f(g_state.offsetLoc,
+                static_cast<float>(w.sceneX * s * 2.0 / width),
+                static_cast<float>(w.sceneY * s * 2.0 / height));
+    glUniform4f(g_state.colorLoc, w.r, w.g, w.b, 1.0f);
+    glDrawArrays(GL_LINE_LOOP, static_cast<GLint>(i * 4), 4);
+  }
+}
+
+// The scene-space collision query: triangle polygon vs each word's
+// translated AABB, decided by Clipper2 on the actual geometry.
+void updateIntersections(double triAngle) {
+  double c = std::cos(triAngle), s = std::sin(triAngle);
+  Clipper2Lib::PathsD tri(1);
+  for (const auto& v : kTriBase) {
+    tri[0].push_back({c * v[0] - s * v[1], s * v[0] + c * v[1]});
+  }
+  for (WordInstance& w : g_words) {
+    Clipper2Lib::PathsD box(1);
+    box[0] = {{w.minX + w.sceneX, w.minY + w.sceneY},
+              {w.maxX + w.sceneX, w.minY + w.sceneY},
+              {w.maxX + w.sceneX, w.maxY + w.sceneY},
+              {w.minX + w.sceneX, w.maxY + w.sceneY}};
+    Clipper2Lib::PathsD overlap =
+        Clipper2Lib::Intersect(tri, box, Clipper2Lib::FillRule::NonZero);
+    w.hit = !overlap.empty();
+  }
 }
 
 void frame() {
@@ -465,8 +594,13 @@ void frame() {
   glClearStencil(0);
   glClear(GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
-  drawTriangle(width, height);
+  double elapsed = emscripten_get_now() / 1000.0 - g_state.startTime;
+  double triAngle = elapsed * 0.6;
+  updateIntersections(triAngle);
+
+  drawTriangle(width, height, triAngle);
   drawText(width, height);
+  drawBoxes(width, height);
 }
 
 }  // namespace
@@ -500,14 +634,15 @@ int main() {
   g_state.startTime = emscripten_get_now() / 1000.0;
 
   // Triangle: interleaved position (xy) + color (rgb), one vertex per line.
-  // Positions are scene pixels (isotropic), an exact equilateral triangle
-  // with circumradius 310 centered on the scene: rotation preserves shape.
-  constexpr float kR = 310.0f;
-  constexpr float kCos30 = 0.8660254f;
-  constexpr float vertices[] = {
-      0.0f,         kR,          0.96f, 0.65f, 0.14f,  // top: orange
-      -kR * kCos30, -kR * 0.5f,  0.24f, 0.66f, 0.85f,  // left: cyan
-      kR * kCos30,  -kR * 0.5f,  0.55f, 0.83f, 0.30f,  // right: green
+  // Positions come from kTriBase (isotropic scene pixels) so the GPU draws
+  // exactly the polygon the CPU intersection tests use.
+  const float vertices[] = {
+      static_cast<float>(kTriBase[0][0]), static_cast<float>(kTriBase[0][1]),
+      0.96f, 0.65f, 0.14f,  // top: orange
+      static_cast<float>(kTriBase[1][0]), static_cast<float>(kTriBase[1][1]),
+      0.24f, 0.66f, 0.85f,  // left: cyan
+      static_cast<float>(kTriBase[2][0]), static_cast<float>(kTriBase[2][1]),
+      0.55f, 0.83f, 0.30f,  // right: green
   };
   GLuint vbo = 0;
   glGenVertexArrays(1, &g_state.triangleVao);
@@ -521,7 +656,10 @@ int main() {
   glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float),
                         reinterpret_cast<void*>(2 * sizeof(float)));
 
-  uploadTextGeometry(buildTextGeometry());
+  Clipper2Lib::PathsD merged = buildTextGeometry();
+  uploadTextGeometry(merged);
+  buildWordInstances(merged);
+  uploadBoxGeometry();
   std::printf("words up: GL_VERSION = %s\n", glGetString(GL_VERSION));
 
   emscripten_set_main_loop(frame, 0, /*simulate_infinite_loop=*/false);
