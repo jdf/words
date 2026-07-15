@@ -17,7 +17,7 @@ find_package(Clipper2 CONFIG REQUIRED)
 
 add_executable(words
   src/gl_util.cc
-  src/main.cpp
+  src/main.cc
   src/scene.cc
   src/word.cc
   src/word_renderer.cc

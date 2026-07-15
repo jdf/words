@@ -65,6 +65,20 @@ once, at draw time.
   wasm-threads support).
 - `build/<preset>/dist/` — everything the browser loads.
 
+## Hygiene
+
+`./presubmit.sh` (run automatically by `jj push-main`; skip with
+`SKIP_PRESUBMIT=1`) enforces include hygiene via clang-tidy's
+misc-include-cleaner: unused `#include`s fail the push. Fix a report
+automatically with:
+
+```sh
+tools/include-cleaner.sh --fix
+```
+
+In-editor, `.clangd` enables the same analysis (strict unused/missing
+include diagnostics) with quick-fixes.
+
 ## Debugging
 
 Debug builds emit DWARF and a source map. With Chrome's

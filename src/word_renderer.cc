@@ -1,8 +1,13 @@
 #include "word_renderer.h"
 
 #include <algorithm>
+#include <cstddef>
+#include <utility>
+#include <vector>
 
 #include "gl_util.h"
+#include "scene.h"
+#include "word.h"
 
 namespace words {
 

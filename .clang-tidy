@@ -1,0 +1,7 @@
+Checks: '-*,misc-include-cleaner'
+WarningsAsErrors: 'misc-include-cleaner'
+HeaderFilterRegex: 'src/.*'
+CheckOptions:
+  # Emscripten/GL headers confuse include-cleaner (symbols resolve through
+  # internal paths); don't suggest inserting or removing them.
+  misc-include-cleaner.IgnoreHeaders: 'emscripten/.*;GLES3/.*;GL/.*'

@@ -6,8 +6,10 @@
 #include <emscripten/emscripten.h>
 #include <emscripten/html5.h>
 
-#include <cmath>
+#include <algorithm>
 #include <cstdio>
+#include <numbers>
+#include <utility>
 
 #include "gl_util.h"
 #include "scene.h"
@@ -77,7 +79,7 @@ void buildScene() {
   if (shaped.empty()) return;
   for (const Placement& p : kPlacements) {
     double scale = p.widthFrac * words::Scene::kWidth / shaped.bounds.width();
-    words::Word word(shaped, scale, p.angleDeg * M_PI / 180.0);
+    words::Word word(shaped, scale, p.angleDeg * std::numbers::pi / 180.0);
     word.moveTo(p.x * words::Scene::kWidth / 2.0,
                 p.y * words::Scene::kHeight / 2.0);
     g_app.scene.addWord(std::move(word), p.color);

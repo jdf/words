@@ -1,0 +1,6 @@
+CompileFlags:
+  CompilationDatabase: build/wasm-debug
+
+Diagnostics:
+  UnusedIncludes: Strict
+  MissingIncludes: Strict
