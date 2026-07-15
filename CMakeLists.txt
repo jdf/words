@@ -11,8 +11,17 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+find_package(Freetype REQUIRED)
+find_package(harfbuzz CONFIG REQUIRED)
+find_package(Clipper2 CONFIG REQUIRED)
+
 add_executable(words
   src/main.cpp
+)
+target_link_libraries(words PRIVATE
+  Freetype::Freetype
+  harfbuzz::harfbuzz
+  Clipper2::Clipper2
 )
 
 # Everything the browser loads ends up in ${CMAKE_BINARY_DIR}/dist.
@@ -26,7 +35,9 @@ target_link_options(words PRIVATE
   -sALLOW_MEMORY_GROWTH=1
   -sMODULARIZE=1
   -sEXPORT_NAME=createWordsModule
+  "SHELL:--preload-file ${CMAKE_SOURCE_DIR}/assets/Roboto.ttf@/fonts/Roboto.ttf"
 )
+set_property(TARGET words APPEND PROPERTY LINK_DEPENDS ${CMAKE_SOURCE_DIR}/assets/Roboto.ttf)
 
 # Debug builds carry DWARF + source map so Chrome DevTools can show C++ source.
 target_compile_options(words PRIVATE $<$<CONFIG:Debug>:-g>)

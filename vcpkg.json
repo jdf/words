@@ -2,5 +2,15 @@
   "name": "words",
   "version-string": "0.1.0",
   "description": "Wordle word clouds, reimplemented in C++ / WebAssembly / WebGL",
-  "dependencies": []
+  "dependencies": [
+    {
+      "name": "freetype",
+      "default-features": false
+    },
+    {
+      "name": "harfbuzz",
+      "features": ["freetype"]
+    },
+    "clipper2"
+  ]
 }

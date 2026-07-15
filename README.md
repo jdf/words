@@ -25,6 +25,27 @@ with the debugger attached.
 - **Emscripten** via emsdk, expected at `~/emsdk` (override with `$EMSDK`).
   vcpkg is expected at `~/vcpkg` (override with `$VCPKG_ROOT`).
 
+## Dependencies
+
+FreeType (font loading, glyph outlines), HarfBuzz (shaping/kerning), and
+Clipper2 (polygon booleans), all built for `wasm32-emscripten` by vcpkg.
+Two local workarounds, both of which should be revisited on toolchain
+updates:
+
+- `triplets/` overlays the community triplet so the chainloaded toolchain
+  is `triplets/emscripten-chainload.cmake` (Emscripten's toolchain plus
+  extra compile flags — the stock triplet's direct chainload silently
+  drops `VCPKG_C(XX)_FLAGS`). Currently it defines
+  `HB_NO_PRAGMA_GCC_DIAGNOSTIC_ERROR`, because emsdk's clang 23 fires
+  `-Wunused-template` inside HarfBuzz's headers, which HarfBuzz's own
+  pragmas promote to errors.
+- `ports/harfbuzz` overlays the stock port to pass `-Dutilities=disabled`;
+  the hb-gpu-* utilities fail to link on wasm (mixed `-pthread` objects)
+  and we only need the library.
+
+The font in `assets/` (Roboto, SIL OFL) is preloaded into the Emscripten
+virtual FS at `/fonts/Roboto.ttf`.
+
 ## Layout
 
 - `src/` — C++ sources.
