@@ -369,10 +369,11 @@ void drawTriangle(int width, int height) {
   double elapsed = emscripten_get_now() / 1000.0 - g_state.startTime;
   glUseProgram(g_state.triangleProgram);
   glUniform1f(g_state.angleLoc, static_cast<float>(elapsed * 0.6));
-  double sx = 1, sy = 1;
-  sceneToNdcScale(width, height, &sx, &sy);
-  glUniform2f(g_state.sceneLoc, static_cast<float>(sx),
-              static_cast<float>(sy));
+  // Vertices are scene pixels; rotation happens in that isotropic space,
+  // so the NDC mapping here is per-axis but shape-preserving on screen.
+  double s = std::min(width / kSceneW, height / kSceneH);
+  glUniform2f(g_state.sceneLoc, static_cast<float>(s * 2.0 / width),
+              static_cast<float>(s * 2.0 / height));
   glBindVertexArray(g_state.triangleVao);
   glDrawArrays(GL_TRIANGLES, 0, 3);
 }
@@ -499,10 +500,14 @@ int main() {
   g_state.startTime = emscripten_get_now() / 1000.0;
 
   // Triangle: interleaved position (xy) + color (rgb), one vertex per line.
+  // Positions are scene pixels (isotropic), an exact equilateral triangle
+  // with circumradius 310 centered on the scene: rotation preserves shape.
+  constexpr float kR = 310.0f;
+  constexpr float kCos30 = 0.8660254f;
   constexpr float vertices[] = {
-      0.0f,  0.62f,  0.96f, 0.65f, 0.14f,  // top: orange
-      -0.6f, -0.44f, 0.24f, 0.66f, 0.85f,  // left: cyan
-      0.6f,  -0.44f, 0.55f, 0.83f, 0.30f,  // right: green
+      0.0f,         kR,          0.96f, 0.65f, 0.14f,  // top: orange
+      -kR * kCos30, -kR * 0.5f,  0.24f, 0.66f, 0.85f,  // left: cyan
+      kR * kCos30,  -kR * 0.5f,  0.55f, 0.83f, 0.30f,  // right: green
   };
   GLuint vbo = 0;
   glGenVertexArrays(1, &g_state.triangleVao);
