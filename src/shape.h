@@ -2,6 +2,8 @@
 
 #include <clipper2/clipper.h>
 
+#include <utility>
+
 namespace words {
 
 // A closed polygon prop in the scene: fixed base geometry (centered on its
