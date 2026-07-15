@@ -21,7 +21,15 @@ SIZE=1200,750
 GOLDEN=tests/goldens/e2e-t2.png
 RECEIVED=build/e2e-received.png
 
-./dev release >/dev/null
+# Build the release dist directly (not via ./dev, which would also point
+# the dev server at the release build).
+export VCPKG_ROOT="${VCPKG_ROOT:-$HOME/vcpkg}"
+export EMSDK="${EMSDK:-$HOME/emsdk}"
+export PATH="$EMSDK/upstream/emscripten:$PATH"
+if [ ! -f build/wasm-release/build.ninja ]; then
+  cmake --preset wasm-release >/dev/null
+fi
+cmake --build --preset wasm-release >/dev/null
 
 python3 tools/serve.py "$PWD/build/wasm-release/dist" "$PORT" &
 SERVER_PID=$!

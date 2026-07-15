@@ -25,19 +25,24 @@ else
   tools/include-cleaner.sh "${EXISTING[@]}"
 fi
 
-# Geometry approval tests (fast once the host preset exists; the first run
-# configures it, which builds the native dependencies).
+# Golden tests, gated on anything that can affect geometry or rendering.
 CHANGED_TESTABLE=$(jj diff --from 'trunk()' --to @ --summary 2>/dev/null |
-  awk '$1 != "D" {print $NF}' | grep -cE '^(src|tests)/' || true)
+  awk '$1 != "D" {print $NF}' | grep -cE '^(src|tests|web|assets)/' || true)
 if [ "${CHANGED_TESTABLE:-0}" -gt 0 ]; then
+  # Tier 1: geometry approvals (fast once the host preset exists; the
+  # first run configures it, which builds the native dependencies).
   echo "== geometry approval tests"
   if [ ! -f build/host-test/build.ninja ]; then
     cmake --preset host-test >/dev/null
   fi
   cmake --build --preset host-test >/dev/null
   ctest --preset host-test --output-on-failure 2>&1 | tail -2
+
+  # Tier 2: e2e raster golden via pinned Chrome for Testing + SwiftShader.
+  echo "== e2e image golden"
+  tools/e2e-golden.sh
 else
-  echo "== geometry approval tests: no src/tests changes, skipping"
+  echo "== golden tests: no src/tests/web/assets changes, skipping"
 fi
 
 echo "== presubmit OK"
