@@ -4,3 +4,9 @@ CompileFlags:
 Diagnostics:
   UnusedIncludes: Strict
   MissingIncludes: Strict
+  Includes:
+    # Clipper2's public umbrella (clipper2/clipper.h) has no IWYU export
+    # pragmas, so symbols get attributed to its internal headers
+    # (clipper.core.h etc.); exempt the library from provider analysis.
+    IgnoreHeader:
+      - clipper2/.*
