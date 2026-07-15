@@ -26,14 +26,14 @@ namespace {
 
 constexpr const char* kTriangleVS = R"(#version 300 es
 uniform float u_angle;
-uniform vec2 u_aspect;
+uniform vec2 u_scene;
 layout(location = 0) in vec2 a_position;
 layout(location = 1) in vec3 a_color;
 out vec3 v_color;
 void main() {
   float c = cos(u_angle), s = sin(u_angle);
   vec2 p = mat2(c, s, -s, c) * a_position;
-  gl_Position = vec4(p * u_aspect, 0.0, 1.0);
+  gl_Position = vec4(p * u_scene, 0.0, 1.0);
   v_color = a_color;
 }
 )";
@@ -171,7 +171,7 @@ struct Contour {
 struct State {
   GLuint triangleProgram = 0;
   GLint angleLoc = -1;
-  GLint aspectLoc = -1;
+  GLint sceneLoc = -1;
   GLuint triangleVao = 0;
 
   GLuint textProgram = 0;
@@ -193,6 +193,22 @@ State g_state;
 
 constexpr const char* kFontPath = "/fonts/Sexsmith.otf";
 constexpr const char* kText = "words";
+
+// The scene is a fixed-aspect logical canvas, uniformly scaled and centered
+// into the window (letterboxed when aspects differ), so resizing the window
+// never changes the spatial relationships of what's drawn. Placement
+// coordinates are fractions of the scene box: x,y in [-1,1], sizes as
+// fractions of scene width.
+constexpr double kSceneW = 1600.0;
+constexpr double kSceneH = 1000.0;
+
+// NDC extent of one scene-fraction unit, per axis: (1,1) when the window
+// matches the scene's aspect, smaller on the letterboxed axis otherwise.
+void sceneToNdcScale(int width, int height, double* sx, double* sy) {
+  double s = std::min(width / kSceneW, height / kSceneH);  // px per scene unit
+  *sx = s * kSceneW / width;
+  *sy = s * kSceneH / height;
+}
 
 // Shapes kText with HarfBuzz, flattens every glyph outline via FreeType, and
 // merges the lot with Clipper2. The union's output contours are disjoint
@@ -353,15 +369,16 @@ void drawTriangle(int width, int height) {
   double elapsed = emscripten_get_now() / 1000.0 - g_state.startTime;
   glUseProgram(g_state.triangleProgram);
   glUniform1f(g_state.angleLoc, static_cast<float>(elapsed * 0.6));
-  float aspect = height > 0 ? static_cast<float>(width) / height : 1.0f;
-  glUniform2f(g_state.aspectLoc, aspect > 1.0f ? 1.0f / aspect : 1.0f,
-              aspect > 1.0f ? 1.0f : aspect);
+  double sx = 1, sy = 1;
+  sceneToNdcScale(width, height, &sx, &sy);
+  glUniform2f(g_state.sceneLoc, static_cast<float>(sx),
+              static_cast<float>(sy));
   glBindVertexArray(g_state.triangleVao);
   glDrawArrays(GL_TRIANGLES, 0, 3);
 }
 
-// One rendering of the text: width as a fraction of canvas width, center
-// position in NDC, rotation about the text's own center, and a fill color.
+// One rendering of the text: width as a fraction of scene width, center
+// position in scene fractions [-1,1], rotation about the text's own center, and a fill color.
 struct Placement {
   float widthFrac;
   float x, y;
@@ -386,8 +403,13 @@ void drawTextPlacement(const Placement& p, int width, int height) {
   double cx = (g_state.minX + g_state.maxX) / 2.0;
   double cy = (g_state.minY + g_state.maxY) / 2.0;
 
-  // Font units → pixels, then pixels → NDC (which reintroduces aspect).
-  double pxPerUnit = p.widthFrac * width / textW;
+  double fracX = 1, fracY = 1;  // NDC per scene-fraction unit
+  sceneToNdcScale(width, height, &fracX, &fracY);
+
+  // Font units → scene pixels → NDC. Sizes and positions are relative to
+  // the fixed-aspect scene, so window shape never changes the layout.
+  double scenePxW = fracX * width;  // scene width in device pixels
+  double pxPerUnit = p.widthFrac * scenePxW / textW;
   double sxNdc = pxPerUnit * 2.0 / width;
   double syNdc = pxPerUnit * 2.0 / height;
   double rad = p.angleDeg * M_PI / 180.0;
@@ -396,8 +418,10 @@ void drawTextPlacement(const Placement& p, int width, int height) {
   const float mat[4] = {
       static_cast<float>(sxNdc * c), static_cast<float>(syNdc * s),
       static_cast<float>(-sxNdc * s), static_cast<float>(syNdc * c)};
-  const float ox = static_cast<float>(p.x - (mat[0] * cx + mat[2] * cy));
-  const float oy = static_cast<float>(p.y - (mat[1] * cx + mat[3] * cy));
+  const float px = static_cast<float>(p.x * fracX);
+  const float py = static_cast<float>(p.y * fracY);
+  const float ox = px - static_cast<float>(mat[0] * cx + mat[2] * cy);
+  const float oy = py - static_cast<float>(mat[1] * cx + mat[3] * cy);
 
   glUniformMatrix2fv(g_state.matLoc, 1, GL_FALSE, mat);
   glUniform2f(g_state.offsetLoc, ox, oy);
@@ -465,7 +489,7 @@ int main() {
 
   g_state.triangleProgram = linkProgram(kTriangleVS, kTriangleFS);
   g_state.angleLoc = glGetUniformLocation(g_state.triangleProgram, "u_angle");
-  g_state.aspectLoc = glGetUniformLocation(g_state.triangleProgram, "u_aspect");
+  g_state.sceneLoc = glGetUniformLocation(g_state.triangleProgram, "u_scene");
 
   g_state.textProgram = linkProgram(kTextVS, kTextFS);
   g_state.matLoc = glGetUniformLocation(g_state.textProgram, "u_mat");
