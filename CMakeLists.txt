@@ -19,6 +19,8 @@ add_executable(words
   src/gl_util.cc
   src/main.cc
   src/scene.cc
+  src/shape.cc
+  src/shape_renderer.cc
   src/word.cc
   src/word_renderer.cc
 )

@@ -6,6 +6,8 @@
 
 #include <hb.h>
 
+#include <clipper2/clipper.h>
+
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
