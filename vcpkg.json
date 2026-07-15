@@ -12,5 +12,11 @@
       "features": ["freetype"]
     },
     "clipper2"
-  ]
+  ],
+  "features": {
+    "tests": {
+      "description": "Native host build of the geometry tests",
+      "dependencies": ["catch2", "approval-tests-cpp"]
+    }
+  }
 }

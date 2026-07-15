@@ -65,6 +65,24 @@ once, at draw time.
   wasm-threads support).
 - `build/<preset>/dist/` — everything the browser loads.
 
+## Testing
+
+Two tiers of golden-image tests:
+
+- **Geometry approvals** (`cmake --preset host-test && ctest --preset
+  host-test`): the GL-free world model builds natively and serializes the
+  demo scene to SVG; ApprovalTests compares against
+  `tests/approved_files/*.approved.svg`. The approved files are viewable
+  images — open them in a browser. On a mismatch, inspect the `.received`
+  file and rename it over the `.approved` one to bless. Runs in the
+  presubmit when `src/` or `tests/` changed.
+- **SwANGLE e2e** (`tools/e2e-golden.sh`): renders the real wasm release
+  build in headless Chrome on SwiftShader-backed ANGLE — CPU
+  rasterization, byte-deterministic for a fixed Chrome version — at a
+  frozen scene time (`?t=<seconds>` URL parameter), and byte-compares the
+  screenshot against `tests/goldens/`. `--bless` approves the current
+  rendering; expect to re-bless after Chrome updates.
+
 ## Hygiene
 
 `./presubmit.sh` (run automatically by `jj push-main`; skip with

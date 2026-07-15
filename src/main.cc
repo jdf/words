@@ -1,6 +1,7 @@
-// words — application entry point: WebGL2 context, the demo scene (six
-// renderings of one shaped word plus a rotating triangle exercising the
-// collision machinery), and the main loop.
+// words — application entry point: WebGL2 context, the demo scene, and the
+// main loop. Passing ?t=<seconds> in the URL renders exactly one frame of
+// the scene frozen at that time — the deterministic mode the e2e golden
+// test captures.
 
 #include <emscripten/emscripten.h>
 #include <emscripten/html5.h>
@@ -8,59 +9,34 @@
 #include <GLES3/gl3.h>
 
 #include <cstdio>
-#include <numbers>
-#include <utility>
 #include <vector>
 
+#include "demo_scene.h"
 #include "scene.h"
 #include "shape.h"
 #include "shape_renderer.h"
-#include "word.h"
 #include "word_renderer.h"
 
 namespace {
 
 constexpr const char* kFontPath = "/fonts/Sexsmith.otf";
-constexpr const char* kText = "words";
-constexpr double kTriangleRadius = 310.0;
 
 struct App {
-  words::Scene scene{words::Shape::equilateralTriangle(kTriangleRadius)};
+  words::Scene scene{words::Shape::equilateralTriangle(1.0)};
   words::WordRenderer wordRenderer;
   words::ShapeRenderer shapeRenderer;
   double startTime = 0;
+  double frozenTime = -1;  // >= 0: render one frame at this time, no loop
 };
 
 App* g_app = nullptr;
 
-// One rendering of the text: width as a fraction of scene width, center
-// position in scene fractions [-1,1], rotation, and a fill color.
-struct Placement {
-  float widthFrac;
-  float x, y;
-  float angleDeg;
-  words::Color color;
-};
-
-constexpr Placement kPlacements[] = {
-    {0.52f, -0.08f, 0.52f, 0.0f, {0.93f, 0.93f, 0.90f}},   // big headline
-    {0.30f, 0.42f, -0.35f, 90.0f, {0.36f, 0.72f, 0.86f}},  // vertical, cyan
-    {0.34f, -0.42f, -0.28f, 24.0f, {0.96f, 0.65f, 0.14f}}, // tilted, orange
-    {0.18f, -0.10f, -0.68f, -12.0f, {0.55f, 0.83f, 0.30f}},// small, green
-    {0.12f, 0.30f, 0.02f, -90.0f, {0.80f, 0.45f, 0.78f}},  // tiny, plum
-    {0.10f, -0.72f, 0.10f, 45.0f, {0.85f, 0.33f, 0.31f}},  // tiny, brick
-};
-
-void buildScene(words::Scene& scene) {
-  words::ShapedText shaped = words::shapeText(kFontPath, kText);
-  if (shaped.empty()) return;
-  for (const Placement& p : kPlacements) {
-    double scale = p.widthFrac * words::Scene::kWidth / shaped.bounds.width();
-    words::Word word(shaped, scale, p.angleDeg * std::numbers::pi / 180.0);
-    word.moveTo(p.x * words::Scene::kWidth / 2.0,
-                p.y * words::Scene::kHeight / 2.0);
-    scene.addWord(std::move(word), p.color);
-  }
+// Value of the "t" URL query parameter, or -1 if absent/invalid.
+double frozenTimeFromUrl() {
+  return EM_ASM_DOUBLE({
+    const t = parseFloat(new URLSearchParams(location.search).get('t'));
+    return isNaN(t) ? -1 : t;
+  });
 }
 
 // Keeps the drawing buffer matched to the canvas CSS size × devicePixelRatio.
@@ -84,8 +60,10 @@ void frame() {
   syncCanvasSize(&width, &height);
   glViewport(0, 0, width, height);
 
-  double elapsed = emscripten_get_now() / 1000.0 - g_app->startTime;
-  g_app->scene.update(elapsed);
+  double t = g_app->frozenTime >= 0
+                 ? g_app->frozenTime
+                 : emscripten_get_now() / 1000.0 - g_app->startTime;
+  g_app->scene.update(t);
 
   glClearColor(0.09f, 0.09f, 0.11f, 1.0f);
   glClearStencil(0);
@@ -117,7 +95,7 @@ int main() {
   static App app;
   g_app = &app;
 
-  buildScene(app.scene);
+  app.scene = words::buildDemoScene(kFontPath);
   app.wordRenderer.init(app.scene);
   app.shapeRenderer.init(app.scene.shape(),
                          std::vector<words::Color>{
@@ -126,9 +104,16 @@ int main() {
                              {0.55f, 0.83f, 0.30f},  // right: green
                          });
   app.startTime = emscripten_get_now() / 1000.0;
+  app.frozenTime = frozenTimeFromUrl();
 
   std::printf("words up: GL_VERSION = %s\n", glGetString(GL_VERSION));
 
+  if (app.frozenTime >= 0) {
+    std::printf("frozen frame at t=%.3f\n", app.frozenTime);
+  }
+  // Frozen mode still runs the loop (re-rendering the identical frame):
+  // without preserveDrawingBuffer the canvas is cleared after each
+  // composite, so a draw-once frame would blank on the next repaint.
   emscripten_set_main_loop(frame, 0, /*simulate_infinite_loop=*/false);
   return 0;
 }

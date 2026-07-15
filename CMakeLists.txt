@@ -1,12 +1,6 @@
 cmake_minimum_required(VERSION 3.25)
 project(words LANGUAGES CXX)
 
-if(NOT EMSCRIPTEN)
-  message(FATAL_ERROR "words targets WebAssembly only. Configure with a preset "
-                      "from CMakePresets.json (e.g. `cmake --preset wasm-debug`) "
-                      "or just run `./dev`.")
-endif()
-
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -15,54 +9,88 @@ find_package(Freetype REQUIRED)
 find_package(harfbuzz CONFIG REQUIRED)
 find_package(Clipper2 CONFIG REQUIRED)
 
-add_executable(words
-  src/gl_util.cc
-  src/main.cc
+# The GL-free world model: geometry, shaping, scene. Builds everywhere;
+# the wasm app and the native test binary both link it.
+add_library(words_core STATIC
+  src/demo_scene.cc
   src/scene.cc
   src/shape.cc
-  src/shape_renderer.cc
+  src/svg.cc
   src/word.cc
-  src/word_renderer.cc
 )
-target_link_libraries(words PRIVATE
+target_link_libraries(words_core PUBLIC
   Freetype::Freetype
   harfbuzz::harfbuzz
   Clipper2::Clipper2
 )
+target_include_directories(words_core PUBLIC src)
 
-# Everything the browser loads ends up in ${CMAKE_BINARY_DIR}/dist.
-set(WORDS_DIST_DIR ${CMAKE_BINARY_DIR}/dist)
-set_target_properties(words PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${WORDS_DIST_DIR})
+if(EMSCRIPTEN)
+  add_executable(words
+    src/gl_util.cc
+    src/main.cc
+    src/shape_renderer.cc
+    src/word_renderer.cc
+  )
+  target_link_libraries(words PRIVATE words_core)
 
-target_link_options(words PRIVATE
-  -sENVIRONMENT=web
-  -sMIN_WEBGL_VERSION=2
-  -sMAX_WEBGL_VERSION=2
-  -sALLOW_MEMORY_GROWTH=1
-  -sMODULARIZE=1
-  -sEXPORT_NAME=createWordsModule
-  "SHELL:--preload-file ${CMAKE_SOURCE_DIR}/assets/Sexsmith.otf@/fonts/Sexsmith.otf"
-)
-set_property(TARGET words APPEND PROPERTY LINK_DEPENDS ${CMAKE_SOURCE_DIR}/assets/Sexsmith.otf)
+  # Everything the browser loads ends up in ${CMAKE_BINARY_DIR}/dist.
+  set(WORDS_DIST_DIR ${CMAKE_BINARY_DIR}/dist)
+  set_target_properties(words PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${WORDS_DIST_DIR})
 
-# Debug builds carry DWARF + source map so Chrome DevTools can show C++ source.
-target_compile_options(words PRIVATE $<$<CONFIG:Debug>:-g>)
-target_link_options(words PRIVATE
-  $<$<CONFIG:Debug>:-g>
-  "$<$<CONFIG:Debug>:SHELL:-gsource-map --source-map-base http://localhost:8787/>"
-)
+  target_link_options(words PRIVATE
+    -sENVIRONMENT=web
+    -sMIN_WEBGL_VERSION=2
+    -sMAX_WEBGL_VERSION=2
+    -sALLOW_MEMORY_GROWTH=1
+    -sMODULARIZE=1
+    -sEXPORT_NAME=createWordsModule
+    "SHELL:--preload-file ${CMAKE_SOURCE_DIR}/assets/Sexsmith.otf@/fonts/Sexsmith.otf"
+  )
+  set_property(TARGET words APPEND PROPERTY LINK_DEPENDS ${CMAKE_SOURCE_DIR}/assets/Sexsmith.otf)
 
-# Static web harness: copied into dist/ whenever a file in web/ changes,
-# so a plain `./dev` + browser reload picks up HTML/CSS edits too.
-file(GLOB WORDS_WEB_FILES CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/web/*)
-set(WORDS_WEB_STAMP ${CMAKE_BINARY_DIR}/web-assets.stamp)
-add_custom_command(
-  OUTPUT ${WORDS_WEB_STAMP}
-  COMMAND ${CMAKE_COMMAND} -E make_directory ${WORDS_DIST_DIR}
-  COMMAND ${CMAKE_COMMAND} -E copy_if_different ${WORDS_WEB_FILES} ${WORDS_DIST_DIR}
-  COMMAND ${CMAKE_COMMAND} -E touch ${WORDS_WEB_STAMP}
-  DEPENDS ${WORDS_WEB_FILES}
-  COMMENT "Copying web/ assets to dist/"
-)
-add_custom_target(web_assets ALL DEPENDS ${WORDS_WEB_STAMP})
-add_dependencies(words web_assets)
+  # Debug builds carry DWARF + source map so Chrome DevTools can show C++
+  # source.
+  target_compile_options(words PRIVATE $<$<CONFIG:Debug>:-g>)
+  target_link_options(words PRIVATE
+    $<$<CONFIG:Debug>:-g>
+    "$<$<CONFIG:Debug>:SHELL:-gsource-map --source-map-base http://localhost:8787/>"
+  )
+
+  # Static web harness: copied into dist/ whenever a file in web/ changes,
+  # so a plain `./dev` + browser reload picks up HTML/CSS edits too.
+  file(GLOB WORDS_WEB_FILES CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/web/*)
+  set(WORDS_WEB_STAMP ${CMAKE_BINARY_DIR}/web-assets.stamp)
+  add_custom_command(
+    OUTPUT ${WORDS_WEB_STAMP}
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${WORDS_DIST_DIR}
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${WORDS_WEB_FILES} ${WORDS_DIST_DIR}
+    COMMAND ${CMAKE_COMMAND} -E touch ${WORDS_WEB_STAMP}
+    DEPENDS ${WORDS_WEB_FILES}
+    COMMENT "Copying web/ assets to dist/"
+  )
+  add_custom_target(web_assets ALL DEPENDS ${WORDS_WEB_STAMP})
+  add_dependencies(words web_assets)
+else()
+  # Native host build: geometry tests (Catch2 + ApprovalTests golden files).
+  enable_testing()
+  find_package(Catch2 CONFIG REQUIRED)
+  # approval-tests-cpp is header-only and ships no CMake config; vcpkg puts
+  # ApprovalTests.hpp on the toolchain include path.
+
+  add_executable(words_tests
+    tests/geometry_approval_test.cc
+    tests/test_main.cc
+  )
+  target_link_libraries(words_tests PRIVATE
+    words_core
+    Catch2::Catch2WithMain
+  )
+  target_compile_definitions(words_tests PRIVATE
+    WORDS_ASSETS_DIR="${CMAKE_SOURCE_DIR}/assets"
+  )
+
+  include(CTest)
+  include(Catch)
+  catch_discover_tests(words_tests WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+endif()

@@ -31,10 +31,31 @@
       "displayName": "WASM Release",
       "inherits": "wasm-base",
       "cacheVariables": { "CMAKE_BUILD_TYPE": "Release" }
+    },
+    {
+      "name": "host-test",
+      "displayName": "Host geometry tests",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": true,
+        "VCPKG_MANIFEST_FEATURES": "tests"
+      },
+      "environment": { "VCPKG_ROOT": "$penv{VCPKG_ROOT}" }
     }
   ],
   "buildPresets": [
     { "name": "wasm-debug", "configurePreset": "wasm-debug" },
-    { "name": "wasm-release", "configurePreset": "wasm-release" }
+    { "name": "wasm-release", "configurePreset": "wasm-release" },
+    { "name": "host-test", "configurePreset": "host-test" }
+  ],
+  "testPresets": [
+    {
+      "name": "host-test",
+      "configurePreset": "host-test",
+      "output": { "outputOnFailure": true }
+    }
   ]
 }
