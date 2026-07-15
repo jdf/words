@@ -72,7 +72,7 @@ Two tiers of golden-image tests:
 - **Geometry approvals** (`cmake --preset host-test && ctest --preset
   host-test`): the GL-free world model builds natively and serializes the
   demo scene to SVG; ApprovalTests compares against
-  `tests/approved_files/*.approved.svg`. The approved files are viewable
+  `tests/goldens/*.approved.svg`. The approved files are viewable
   images — open them in a browser. On a mismatch, inspect the `.received`
   file and rename it over the `.approved` one to bless. Runs in the
   presubmit when `src/` or `tests/` changed.

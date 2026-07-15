@@ -1,6 +1,6 @@
 // Golden-file tests over the scene's pure geometry, serialized as SVG.
-// The approved files are viewable images: open tests/approved_files/*.svg
-// in a browser to see exactly what the geometry looks like.
+// The approved files are viewable images: open tests/goldens/*.svg in a
+// browser to see exactly what the geometry looks like.
 
 #include <ApprovalTests.hpp>
 #include <catch2/catch_test_macros.hpp>
@@ -13,7 +13,7 @@ namespace {
 constexpr const char* kFont = WORDS_ASSETS_DIR "/Sexsmith.otf";
 
 auto subdirectory = ApprovalTests::Approvals::useApprovalsSubdirectory(
-    "approved_files");
+    "goldens");
 
 }  // namespace
 
