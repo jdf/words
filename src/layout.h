@@ -20,12 +20,23 @@ struct LayoutDebug {
   std::vector<Clipper2Lib::PointD> trail;
 };
 
+// Initial-placement strategy: where a word starts before the spiral
+// jiggles it. This is what shapes the overall cloud: spiraling from a
+// shared center always yields a disc, while distributing starts along the
+// horizontal center line (the original's default, "Random Center Line")
+// stretches the cloud into the classic wide lens.
+enum class Placement {
+  kCenterLine,  // random x across the width, y jittered near the center line
+  kCenter,      // everything starts at the exact center
+};
+
 struct LayoutParams {
   // Archimedean search spiral: per step, angle advances dTheta and radius
   // grows dRadius — the original's constants, calibrated to its coordinate
   // convention (the heaviest word has a 1000-unit em).
   double dTheta = 0.04;
   double dRadius = 0.7;
+  Placement placement = Placement::kCenterLine;
   HbbParams hbb;
   double quadMinCell = 200.0;
   int quadMaxDepth = 8;

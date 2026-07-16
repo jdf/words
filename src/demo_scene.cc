@@ -75,6 +75,44 @@ Box worldFor(const std::vector<Word>& wordList) {
   return {-width / 2, -height / 2, width / 2, height / 2};
 }
 
+// The original renderer fit its viewport to the laid-out content, not the
+// layout world — initial placements can legitimately fall outside the
+// world (a big word's center-line jitter scales with its own size), and
+// cropping them would be wrong. Recenter everything on the content's
+// bounding box and size the scene to it, plus a little breathing room.
+Scene sceneFitToContent(std::vector<Word>&& laid,
+                        const std::vector<Color>& colors,
+                        LayoutDebug* debug = nullptr) {
+  Box content{0, 0, 0, 0};
+  bool first = true;
+  for (const Word& w : laid) {
+    Box b = w.worldBounds();
+    if (first) {
+      content = b;
+      first = false;
+    } else {
+      content.minX = std::min(content.minX, b.minX);
+      content.minY = std::min(content.minY, b.minY);
+      content.maxX = std::max(content.maxX, b.maxX);
+      content.maxY = std::max(content.maxY, b.maxY);
+    }
+  }
+  double cx = content.centerX();
+  double cy = content.centerY();
+  if (debug) {
+    for (auto& p : debug->trail) {
+      p.x -= cx;
+      p.y -= cy;
+    }
+  }
+  Scene scene(content.width() * 1.04, content.height() * 1.06);
+  for (size_t i = 0; i < laid.size(); ++i) {
+    laid[i].moveBy(-cx, -cy);
+    scene.addWord(std::move(laid[i]), colors[i]);
+  }
+  return scene;
+}
+
 }  // namespace
 
 Scene buildCloudScene(const std::string& fontPath) {
@@ -101,12 +139,7 @@ Scene buildCloudScene(const std::string& fontPath) {
 
   Box world = worldFor(laid);
   layoutWords(laid, world, LayoutParams{});
-
-  Scene scene(world.width(), world.height());
-  for (size_t i = 0; i < laid.size(); ++i) {
-    scene.addWord(std::move(laid[i]), colors[i]);
-  }
-  return scene;
+  return sceneFitToContent(std::move(laid), colors);
 }
 
 Scene buildCloudFromText(const std::string& fontPath,
@@ -141,12 +174,7 @@ Scene buildCloudFromText(const std::string& fontPath,
 
   Box world = worldFor(laid);
   layoutWords(laid, world, LayoutParams{}, debug);
-
-  Scene scene(world.width(), world.height());
-  for (size_t i = 0; i < laid.size(); ++i) {
-    scene.addWord(std::move(laid[i]), colors[i]);
-  }
-  return scene;
+  return sceneFitToContent(std::move(laid), colors, debug);
 }
 
 }  // namespace words
