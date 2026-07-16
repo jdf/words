@@ -25,22 +25,24 @@
       font: 12px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
       color: #b8b8c4;
     }
-    #panel input[type="number"] {
-      width: 5.5em; background: #101014; color: #b8b8c4;
-      border: 1px solid #444; border-radius: 3px; padding: 2px 4px;
-      font: inherit;
+    #panel button {
+      background: #101014; color: #b8b8c4; border: 1px solid #444;
+      border-radius: 3px; padding: 2px 8px; font: inherit;
+      font-size: 14px; cursor: pointer;
     }
+    #panel button:disabled { opacity: 0.35; cursor: default; }
+    #panel button:hover:not(:disabled) { border-color: #666; }
   </style>
 </head>
 <body>
   <canvas id="canvas"></canvas>
   <div id="status">loading…</div>
   <div id="progress"></div>
-  <!-- Dev panel, shown with ?ui in the URL: live layout-seed control. -->
+  <!-- Dev panel, shown with ?ui in the URL: re-layout with undo/redo. -->
   <div id="panel">
-    <label for="seed-slider">seed</label>
-    <input id="seed-slider" type="range" min="1" max="9999" step="1" value="1447">
-    <input id="seed-number" type="number" min="1" value="1447">
+    <button id="relayout" title="Re-layout">🔄</button>
+    <button id="undo" title="Undo (⌘Z)" disabled>↩</button>
+    <button id="redo" title="Redo (⇧⌘Z)" disabled>↪</button>
   </div>
   <script>
     // The page is pure UI: the engine (wasm + WebGL) lives in a worker
@@ -132,28 +134,70 @@
       _wordsLogScene: () => worker.postMessage({ type: 'logScene' }),
     };
 
-    // ?ui shows the dev panel; the seed slider relayouts live (coalesced
-    // while the engine is busy) and mirrors the value into the URL, so
-    // the address bar always names the cloud you're looking at.
+    // The cloud spec and its undo machinery. Every mutation flows through
+    // apply() as an action holding before/after spec snapshots — an object
+    // that knows how to undo (and redo) itself — so any change to the
+    // cloud is reversible. The engine is a deterministic function of the
+    // spec: submitting is just sending the current values, and the URL
+    // mirrors them so the address bar always names the cloud on screen.
+    const spec = { seed: parseInt(params.get('seed'), 10) || 1447 };
+    const undoStack = [];
+    const redoStack = [];
+
+    const submitSpec = () => {
+      const url = new URL(location);
+      url.searchParams.set('seed', spec.seed);
+      history.replaceState(null, '', url);
+      window.words._wordsSetSeed(spec.seed);
+    };
+    const apply = (action) => {
+      undoStack.push(action);
+      redoStack.length = 0;
+      Object.assign(spec, action.after);
+      submitSpec();
+      refreshButtons();
+    };
+    const undo = () => {
+      const action = undoStack.pop();
+      if (!action) return;
+      redoStack.push(action);
+      Object.assign(spec, action.before);
+      submitSpec();
+      refreshButtons();
+    };
+    const redo = () => {
+      const action = redoStack.pop();
+      if (!action) return;
+      undoStack.push(action);
+      Object.assign(spec, action.after);
+      submitSpec();
+      refreshButtons();
+    };
+
+    // ?ui shows the dev panel: 🔄 quietly bumps the seed for a fresh
+    // layout; undo/redo walk the action stacks.
+    const relayoutBtn = document.getElementById('relayout');
+    const undoBtn = document.getElementById('undo');
+    const redoBtn = document.getElementById('redo');
+    const refreshButtons = () => {
+      undoBtn.disabled = undoStack.length === 0;
+      redoBtn.disabled = redoStack.length === 0;
+    };
     if (params.has('ui')) {
-      const panel = document.getElementById('panel');
-      const slider = document.getElementById('seed-slider');
-      const number = document.getElementById('seed-number');
-      panel.style.display = 'flex';
-      const initial = parseInt(params.get('seed'), 10) || 1447;
-      slider.value = number.value = initial;
-      let timer = null;
-      const setSeed = (value) => {
-        const seed = Math.max(1, parseInt(value, 10) || 1447);
-        slider.value = number.value = seed;
-        const url = new URL(location);
-        url.searchParams.set('seed', seed);
-        history.replaceState(null, '', url);
-        clearTimeout(timer);
-        timer = setTimeout(() => window.words._wordsSetSeed(seed), 150);
-      };
-      slider.addEventListener('input', () => setSeed(slider.value));
-      number.addEventListener('input', () => setSeed(number.value));
+      document.getElementById('panel').style.display = 'flex';
+      relayoutBtn.addEventListener('click', () => apply({
+        label: 'Re-layout',
+        before: { ...spec },
+        after: { ...spec, seed: spec.seed + 1 },
+      }));
+      undoBtn.addEventListener('click', undo);
+      redoBtn.addEventListener('click', redo);
+      window.addEventListener('keydown', (e) => {
+        if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') {
+          e.preventDefault();
+          e.shiftKey ? redo() : undo();
+        }
+      });
     }
   </script>
 </body>
