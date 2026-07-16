@@ -70,6 +70,8 @@ struct App {
 
 App* g_app = nullptr;
 uint32_t g_seed = 1447;  // the curated default (see CloudOptions::seed)
+// UI override for the orientation strategy; empty = use the URL parameter.
+std::string g_orientation;
 
 std::string slurp(const char* path) {
   std::ifstream in(path);
@@ -135,7 +137,9 @@ words::Scene buildScene(const std::string& fontPath,
     options.colors = &scheme;
     paletteLabel = palette->displayName;
   }
-  if (auto o = words::findOrientation(urlParam("orientation"))) {
+  std::string orientation =
+      g_orientation.empty() ? urlParam("orientation") : g_orientation;
+  if (auto o = words::findOrientation(orientation)) {
     options.orientation = *o;
   }
   if (auto p = words::findPlacement(urlParam("placement"))) {
@@ -175,11 +179,16 @@ void render() {
 
 }  // namespace
 
-// Relayout with a new seed (the ?ui panel's slider, via the worker shell).
-// Same text, font, and strategies; new randomness.
-extern "C" EMSCRIPTEN_KEEPALIVE void wordsSetSeed(int seed) {
+// Rebuild the cloud from a new spec (the ?ui panel, via the worker shell):
+// seed, orientation slug ("" keeps the URL's), and font path ("" keeps the
+// current font — the worker stages fetched fonts into MEMFS first).
+extern "C" EMSCRIPTEN_KEEPALIVE void wordsRebuild(int seed,
+                                                  const char* orientation,
+                                                  const char* fontPath) {
   if (!g_app) return;
   g_seed = static_cast<uint32_t>(seed);
+  g_orientation = orientation ? orientation : "";
+  if (fontPath && *fontPath) g_app->fontPath = fontPath;
   std::string description;
   g_app->scene = buildScene(g_app->fontPath, &description);
   g_app->wordRenderer.init(g_app->scene);

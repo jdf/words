@@ -13,11 +13,30 @@ const pending = [];  // commands that arrive while the module boots
 
 function handle(msg) {
   switch (msg.type) {
-    case 'setSeed': engine._wordsSetSeed(msg.seed); break;
+    case 'rebuild': rebuild(msg); break;
     case 'resize': engine._wordsResize(msg.width, msg.height); break;
     case 'logScene': engine._wordsLogScene(); break;
     default: console.warn('worker: unknown message', msg);
   }
+}
+
+// Rebuild the cloud from a spec {seed, orientation, font}. Fonts are
+// staged into MEMFS on first use (the page only ever names them); on a
+// failed fetch the engine keeps its current font ("" path).
+async function rebuild(msg) {
+  let path = '/fonts/' + msg.font + '.ttf';
+  if (!engine.FS.analyzePath(path).exists) {
+    try {
+      const r = await fetch('fonts/' + encodeURIComponent(msg.font) + '.ttf');
+      if (!r.ok) throw new Error(r.status);
+      engine.FS.writeFile(path, new Uint8Array(await r.arrayBuffer()));
+    } catch (err) {
+      postMessage({ type: 'printErr', text: 'font ' + msg.font + ': ' + err });
+      path = '';
+    }
+  }
+  engine.ccall('wordsRebuild', null, ['number', 'string', 'string'],
+               [msg.seed, msg.orientation, path]);
 }
 
 function init(msg) {

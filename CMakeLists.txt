@@ -66,7 +66,7 @@ if(EMSCRIPTEN)
     "SHELL:--preload-file ${CMAKE_SOURCE_DIR}/assets/sample-text.txt@/sample-text.txt"
     # FS + run-dependency methods let the page's preRun inject lazily
     # fetched ?corpus=/?font= files into MEMFS before main() runs.
-    "SHELL:-sEXPORTED_RUNTIME_METHODS=stringToNewUTF8,FS,addRunDependency,removeRunDependency"
+    "SHELL:-sEXPORTED_RUNTIME_METHODS=stringToNewUTF8,ccall,FS,addRunDependency,removeRunDependency"
   )
   set_property(TARGET words APPEND PROPERTY LINK_DEPENDS ${CMAKE_SOURCE_DIR}/assets/fonts/sexsmith.ttf)
 
