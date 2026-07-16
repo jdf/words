@@ -30,7 +30,10 @@
       "name": "wasm-release",
       "displayName": "WASM Release",
       "inherits": "wasm-base",
-      "cacheVariables": { "CMAKE_BUILD_TYPE": "Release" }
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "VCPKG_MANIFEST_FEATURES": "bench"
+      }
     },
     {
       "name": "host-test",

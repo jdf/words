@@ -17,6 +17,10 @@
     "tests": {
       "description": "Native host build of the geometry tests",
       "dependencies": ["catch2", "approval-tests-cpp"]
+    },
+    "bench": {
+      "description": "wasm runtime microbenchmarks (run under node)",
+      "dependencies": ["benchmark"]
     }
   }
 }

@@ -175,9 +175,6 @@ ShapedText shapeText(const std::string& fontPath, const std::string& text) {
   result.paths =
       Clipper2Lib::Union(sink.contours, Clipper2Lib::FillRule::NonZero);
   result.bounds = boundsOf(result.paths);
-  std::printf("shaped \"%s\": %u glyphs (upem %u), %zu raw → %zu contours\n",
-              text.c_str(), glyphCount, upem, sink.contours.size(),
-              result.paths.size());
   return result;
 }
 

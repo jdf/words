@@ -87,6 +87,18 @@ Two tiers of golden-image tests:
   updates can't shift pixels. `--bless` approves the current rendering;
   bump the pin and re-bless deliberately.
 
+## Benchmarks
+
+```sh
+tools/bench.sh                                   # all benchmarks
+tools/bench.sh --benchmark_filter=BM_BuildWord   # google-benchmark args pass through
+```
+
+Google Benchmark compiled to wasm and run under node — the same V8 that
+runs the app in Chrome, so these are wasm runtime numbers, not native
+ones. Built only in the `wasm-release` preset (vcpkg feature `bench`);
+sources in `bench/`.
+
 ## Hygiene
 
 `./presubmit.sh` (run automatically by `jj push-main`; skip with

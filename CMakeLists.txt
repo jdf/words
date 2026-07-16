@@ -71,6 +71,21 @@ if(EMSCRIPTEN)
   )
   add_custom_target(web_assets ALL DEPENDS ${WORDS_WEB_STAMP})
   add_dependencies(words web_assets)
+
+  # wasm runtime microbenchmarks: Google Benchmark compiled to wasm, run
+  # under node (same V8 as Chrome, so codegen is representative of the
+  # browser). Release only — benchmarking a debug build measures nothing.
+  if(CMAKE_BUILD_TYPE STREQUAL "Release")
+    find_package(benchmark CONFIG REQUIRED)
+    add_executable(words_bench bench/word_bench.cc)
+    target_link_libraries(words_bench PRIVATE words_core benchmark::benchmark)
+    target_link_options(words_bench PRIVATE
+      -sENVIRONMENT=node
+      -sNODERAWFS=1
+      -sALLOW_MEMORY_GROWTH=1
+      -sEXIT_RUNTIME=1
+    )
+  endif()
 else()
   # Native host build: geometry tests (Catch2 + ApprovalTests golden files).
   enable_testing()
