@@ -1,7 +1,8 @@
-// words — application entry point: WebGL2 context, the demo scene, and the
-// main loop. Passing ?t=<seconds> in the URL renders exactly one frame of
-// the scene frozen at that time — the deterministic mode the e2e golden
-// test captures.
+// words — application entry point: WebGL2 context, the demo scene, and
+// on-demand rendering. Nothing animates, so there is no frame loop at all:
+// the scene draws once at startup and again on window resizes, and the CPU
+// and GPU are otherwise idle. (?t= in the URL is accepted for the e2e
+// screenshot contract, but every frame is a "frozen" frame now.)
 
 #include <emscripten/emscripten.h>
 #include <emscripten/html5.h>
@@ -28,18 +29,9 @@ constexpr const char* kSampleTextPath = "/sample-text.txt";
 struct App {
   words::Scene scene;
   words::WordRenderer wordRenderer;
-  bool frozen = false;  // render once, run no loop (for e2e screenshots)
 };
 
 App* g_app = nullptr;
-
-// Value of the "t" URL query parameter, or -1 if absent/invalid.
-double frozenTimeFromUrl() {
-  return EM_ASM_DOUBLE({
-    const t = parseFloat(new URLSearchParams(location.search).get('t'));
-    return isNaN(t) ? -1 : t;
-  });
-}
 
 // The "text" URL query parameter, or the bundled sample text.
 std::string cloudText() {
@@ -74,7 +66,7 @@ void syncCanvasSize(int* width, int* height) {
   *height = h;
 }
 
-void frame() {
+void render() {
   int width = 0, height = 0;
   syncCanvasSize(&width, &height);
   glViewport(0, 0, width, height);
@@ -86,20 +78,23 @@ void frame() {
   g_app->wordRenderer.draw(g_app->scene, width, height);
 }
 
+EM_BOOL onResize(int /*eventType*/, const EmscriptenUiEvent* /*event*/,
+                 void* /*userData*/) {
+  render();
+  return EM_TRUE;
+}
+
 }  // namespace
 
 int main() {
-  bool frozen = frozenTimeFromUrl() >= 0;
-
   EmscriptenWebGLContextAttributes attrs;
   emscripten_webgl_init_context_attributes(&attrs);
   attrs.majorVersion = 2;
   attrs.minorVersion = 0;
   attrs.antialias = true;
   attrs.stencil = true;
-  // Frozen frames must survive later composites (there is no loop to
-  // repaint them); live rendering keeps the cheaper default.
-  attrs.preserveDrawingBuffer = frozen;
+  // With no frame loop, the drawn frame must survive later composites.
+  attrs.preserveDrawingBuffer = true;
 
   EMSCRIPTEN_WEBGL_CONTEXT_HANDLE ctx =
       emscripten_webgl_create_context("#canvas", &attrs);
@@ -115,20 +110,16 @@ int main() {
 
   app.scene = words::buildCloudFromText(kFontPath, kStopWordsDir, cloudText());
   app.wordRenderer.init(app.scene);
-  app.frozen = frozen;
 
   std::printf("words up: GL_VERSION = %s\n", glGetString(GL_VERSION));
 
-  if (app.frozen) {
-    std::printf("frozen frame\n");
-    // Render exactly twice — the first frame's canvas resize clears the
-    // drawing buffer — and run no loop: preserveDrawingBuffer keeps the
-    // result visible, and headless screenshots don't wait for a loop.
-    frame();
-    frame();
-  } else {
-    // Nothing animates; the loop just tracks canvas resizes.
-    emscripten_set_main_loop(frame, 0, /*simulate_infinite_loop=*/false);
-  }
+  // Draw twice at startup (the first pass resizes the canvas, which clears
+  // the buffer mid-task in some engines), then only on window resizes. The
+  // emscripten runtime stays alive after main returns to service the
+  // callback.
+  render();
+  render();
+  emscripten_set_resize_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, nullptr,
+                                 EM_FALSE, onResize);
   return 0;
 }
