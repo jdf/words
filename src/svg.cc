@@ -73,11 +73,6 @@ std::string toSvg(const Scene& scene) {
   for (const Scene::Entry& e : scene.entries()) {
     svg += "<path fill=\"" + rgb(e.color) + "\" fill-rule=\"evenodd\" d=\"" +
            pathData(e.word.localPaths(), e.word.x(), e.word.y()) + "\"/>\n";
-    Box b = e.word.worldBounds();
-    svg += "<rect fill=\"none\" stroke=\"" + rgb(e.color) +
-           "\" stroke-dasharray=\"8 8\" x=\"" + num(b.minX) + "\" y=\"" +
-           num(b.minY) + "\" width=\"" + num(b.width()) + "\" height=\"" +
-           num(b.height()) + "\"/>\n";
   }
 
   svg += "</g>\n</svg>\n";
