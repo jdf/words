@@ -63,8 +63,11 @@
         }
       }],
     };
-    createWordsModule(moduleConfig).then(() => {
-      console.log('words module ready');
+    createWordsModule(moduleConfig).then((module) => {
+      // The engine's console handle: C++ exports (see main.cc) hang off
+      // this, e.g. words._wordsLogScene() dumps engine state.
+      window.words = module;
+      console.log('words module ready — try words._wordsLogScene()');
     }).catch((err) => {
       status.textContent = 'failed to start: ' + err;
       console.error(err);

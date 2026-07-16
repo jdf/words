@@ -1,7 +1,10 @@
 #include "demo_scene.h"
 
+#include <absl/log/log.h>
+
 #include <algorithm>
 #include <charconv>
+#include <chrono>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
@@ -179,10 +182,20 @@ Scene cloudFromCounts(const std::string& fontPath,
   }
   if (laid.empty()) return Scene();
 
+  auto layoutStart = std::chrono::steady_clock::now();
   Box world = worldFor(laid);
   layoutWords(laid, world, LayoutParams{}, options.debug);
+  auto layoutMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+                      std::chrono::steady_clock::now() - layoutStart)
+                      .count();
+  size_t wordCount = laid.size();
   Scene scene = sceneFitToContent(std::move(laid), colors, options.debug);
   if (options.colors) scene.setBackground(options.colors->palette.background);
+  LOG(INFO) << "cloud: " << wordCount << " words laid out in " << layoutMs
+            << "ms; world " << static_cast<int>(world.width()) << "x"
+            << static_cast<int>(world.height()) << ", scene "
+            << static_cast<int>(scene.width()) << "x"
+            << static_cast<int>(scene.height());
   return scene;
 }
 
@@ -193,7 +206,11 @@ Scene buildCloudFromText(const std::string& fontPath,
                          std::string_view text, const CloudOptions& options) {
   StopWordsSet stopSets(stopWordsDir);
   const StopWords* language = stopSets.guess(text);
-  return cloudFromCounts(fontPath, countWords(text, language), options);
+  std::vector<WordCount> counts = countWords(text, language);
+  LOG(INFO) << "text: " << text.size() << " bytes, language "
+            << (language ? language->name() : "(none)") << ", "
+            << counts.size() << " distinct words after stop-word removal";
+  return cloudFromCounts(fontPath, std::move(counts), options);
 }
 
 Scene buildCloudFromCountsTsv(const std::string& fontPath,

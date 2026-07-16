@@ -20,6 +20,8 @@
 
 #include <GLES3/gl3.h>
 
+#include <absl/log/log.h>
+
 #include <cstdio>
 #include <cstdlib>
 #include <fstream>
@@ -27,7 +29,9 @@
 #include <string>
 #include <vector>
 
+#include "box.h"
 #include "demo_scene.h"
+#include "logging.h"
 #include "orientation.h"
 #include "palette.h"
 #include "scene.h"
@@ -91,6 +95,11 @@ words::Scene buildScene(const std::string& fontPath) {
   if (auto o = words::findOrientation(urlParam("orientation"))) {
     options.orientation = *o;
   }
+  LOG(INFO) << "build: font=" << fontPath
+            << " corpus=" << urlParam("corpus")
+            << " palette=" << urlParam("palette")
+            << " variance=" << urlParam("variance")
+            << " orientation=" << urlParam("orientation");
 
   std::string tsv = slurp(kCorpusTsvPath);
   if (!tsv.empty()) {
@@ -138,7 +147,37 @@ EM_BOOL onResize(int /*eventType*/, const EmscriptenUiEvent* /*event*/,
 
 }  // namespace
 
+// Console-callable engine interrogation (the page exposes the module as
+// window.words): `words._wordsLogScene()` dumps the scene to the console.
+extern "C" EMSCRIPTEN_KEEPALIVE void wordsLogScene() {
+  if (!g_app) {
+    LOG(WARNING) << "no scene yet";
+    return;
+  }
+  const words::Scene& scene = g_app->scene;
+  const words::Color& bg = scene.background();
+  LOG(INFO) << "scene " << static_cast<int>(scene.width()) << "x"
+            << static_cast<int>(scene.height()) << ", "
+            << scene.entries().size() << " words, background rgb(" << bg.r
+            << ", " << bg.g << ", " << bg.b << ")";
+  size_t n = 0;
+  for (const words::Scene::Entry& e : scene.entries()) {
+    if (++n > 10) {
+      LOG(INFO) << "  ... and " << scene.entries().size() - 10 << " more";
+      break;
+    }
+    const words::Box& b = e.word.localBounds();
+    LOG(INFO) << "  \"" << e.word.label() << "\" at ("
+              << static_cast<int>(e.word.x()) << ", "
+              << static_cast<int>(e.word.y()) << "), "
+              << static_cast<int>(b.width()) << "x"
+              << static_cast<int>(b.height());
+  }
+}
+
 int main() {
+  words::initLogging();
+
   EmscriptenWebGLContextAttributes attrs;
   emscripten_webgl_init_context_attributes(&attrs);
   attrs.majorVersion = 2;

@@ -5,6 +5,7 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+find_package(absl CONFIG REQUIRED)
 find_package(Freetype REQUIRED)
 find_package(harfbuzz CONFIG REQUIRED)
 find_package(Clipper2 CONFIG REQUIRED)
@@ -16,6 +17,7 @@ add_library(words_core STATIC
   src/demo_scene.cc
   src/hbb.cc
   src/layout.cc
+  src/logging.cc
   src/orientation.cc
   src/palette.cc
   src/quad_tree.cc
@@ -25,6 +27,11 @@ add_library(words_core STATIC
   src/word.cc
 )
 target_link_libraries(words_core PUBLIC
+  absl::log
+  absl::log_globals
+  absl::log_initialize
+  absl::log_sink
+  absl::log_sink_registry
   Freetype::Freetype
   harfbuzz::harfbuzz
   Clipper2::Clipper2

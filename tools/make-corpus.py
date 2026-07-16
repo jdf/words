@@ -169,7 +169,11 @@ def strip_boilerplate(raw: str) -> tuple[str, str]:
 def clean_body(body: str) -> str:
     """Drops transcriber apparatus that survives inside the book body:
     [Illustration: ...] captions and Distributed Proofreaders credit
-    paragraphs. The words of the book itself are untouched."""
+    paragraphs. Typographic non-breaking spaces (Wikisource sets them
+    after Russian particles) become plain spaces — the word model treats
+    NBSP as a joiner, which would weld phrases like "что вы" into single
+    tokens. The words of the book itself are untouched."""
+    body = body.replace(" ", " ")
     body = re.sub(r"\[Illustration[^\]]*\]", "", body)
     paragraphs = re.split(r"\n\s*\n", body)
     # Anchored tightly: "produced by" appears in Melville's own prose.
@@ -210,7 +214,7 @@ def main() -> int:
         else:
             lang_code, page = book["wikisource"]
             print(f"{slug} ({lang_code}.wikisource)")
-            body = fetch_wikisource(lang_code, page).read_text()
+            body = clean_body(fetch_wikisource(lang_code, page).read_text())
             title = book["title"]
             source = (f"Wikisource "
                       f"(https://{lang_code}.wikisource.org/wiki/"
