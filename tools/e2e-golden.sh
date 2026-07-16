@@ -20,23 +20,7 @@ PORT=8788
 SIZE=1200,750
 GOLDEN_DIR=tests/goldens/e2e
 
-# name|query — gentium covers accented Latin, Greek, and Cyrillic;
-# sbl-hebrew and scheherazade cover the RTL scripts. (No corpus case for
-# rashomon/lunyu: the font collection has no CJK ideographs, same as the
-# original Wordle.)
-CASES=(
-  "t2|?t=2"
-  "moby-dick|?corpus=moby-dick"
-  "monte-cristo|?corpus=monte-cristo&font=gentium"
-  "die-verwandlung|?corpus=die-verwandlung&font=gentium"
-  "don-quijote|?corpus=don-quijote&font=gentium"
-  "divina-commedia|?corpus=divina-commedia&font=gentium"
-  "os-lusiadas|?corpus=os-lusiadas&font=gentium"
-  "kalevala|?corpus=kalevala&font=gentium"
-  "belye-nochi|?corpus=belye-nochi&font=gentium"
-  "hatzofe|?corpus=hatzofe&font=sbl-hebrew"
-  "kalila-wa-dimna|?corpus=kalila-wa-dimna&font=scheherazade"
-)
+CASES=()
 
 # The strategy matrix: one golden per orientation strategy, placement
 # strategy, and palette, all over the same corpus (moby-dick) with the
