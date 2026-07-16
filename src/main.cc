@@ -15,7 +15,7 @@
 //   ?orientation=<name>  horizontal|mostly-horizontal|half-and-half|...
 //                        (see src/orientation.h)
 //   ?placement=<name>    center-line|center
-//   ?seed=<n>            layout randomness (default 1); live-adjustable
+//   ?seed=<n>            layout randomness (default 1447); live-adjustable
 //                        via wordsSetSeed() from the ?ui panel
 
 #include <emscripten/emscripten.h>
@@ -60,7 +60,7 @@ struct App {
 };
 
 App* g_app = nullptr;
-uint32_t g_seed = 1;
+uint32_t g_seed = 1447;  // the curated default (see CloudOptions::seed)
 
 std::string slurp(const char* path) {
   std::ifstream in(path);

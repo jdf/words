@@ -33,8 +33,8 @@
   <!-- Dev panel, shown with ?ui in the URL: live layout-seed control. -->
   <div id="panel">
     <label for="seed-slider">seed</label>
-    <input id="seed-slider" type="range" min="1" max="9999" step="1" value="1">
-    <input id="seed-number" type="number" min="1" value="1">
+    <input id="seed-slider" type="range" min="1" max="9999" step="1" value="1447">
+    <input id="seed-number" type="number" min="1" value="1447">
   </div>
   <script src="words.js"></script>
   <script>
@@ -90,7 +90,7 @@
       const slider = document.getElementById('seed-slider');
       const number = document.getElementById('seed-number');
       panel.style.display = 'flex';
-      const initial = parseInt(params.get('seed'), 10) || 1;
+      const initial = parseInt(params.get('seed'), 10) || 1447;
       slider.value = number.value = initial;
       let timer = null;
       const setSeed = (value) => {

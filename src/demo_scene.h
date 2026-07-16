@@ -27,7 +27,12 @@ struct CloudOptions {
   size_t maxWords = 800;
   Orientation orientation = Orientation::kMostlyHorizontal;
   Placement placement = Placement::kCenterLine;
-  uint32_t seed = 1;  // layout randomness (seeding positions, spirals)
+  // Layout randomness (seeding positions, spirals). 1447 is the curated
+  // default: chosen by eye with the ?ui seed slider for how it spreads
+  // the heaviest words. (Not every seed is equal — a seed whose first
+  // uniform draws cluster near 1.0 pins the biggest words to the right
+  // edge, since word k's starting x is the k-th draw.)
+  uint32_t seed = 1447;
   const ColorScheme* colors = nullptr;  // null = built-in dark scheme
   LayoutDebug* debug = nullptr;
 };
