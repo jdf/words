@@ -2,12 +2,13 @@
 
 Wordle word clouds, reimplemented in C++ / WebAssembly / WebGL2.
 
-[![words demo — shaped text at several sizes and rotations over a WebGL triangle](media/demo.png)](https://jdf.github.io/words/)
+[![words demo — Moby-Dick as a word cloud in the yramirP palette](media/demo.png)](https://jdf.github.io/words/?corpus=moby-dick&palette=yramirp&variance=little&ui)
 
-**[Live demo](https://jdf.github.io/words/)** — a release build deployed to
-GitHub Pages by [CI](.github/workflows/deploy.yml) on every push to `main`.
-(GitHub READMEs can't run WebAssembly, so the image above links to the real
-thing.)
+**[Live demo](https://jdf.github.io/words/?corpus=moby-dick&palette=yramirp&variance=little&ui)**
+— this exact cloud, interactive: 🔄 re-layouts, with undo/redo. A release
+build deployed to GitHub Pages by [CI](.github/workflows/deploy.yml) on
+every push to `main`. (GitHub READMEs can't run WebAssembly, so the image
+above links to the real thing.)
 
 ## Dev loop
 
