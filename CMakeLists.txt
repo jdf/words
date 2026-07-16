@@ -16,6 +16,7 @@ add_library(words_core STATIC
   src/demo_scene.cc
   src/hbb.cc
   src/layout.cc
+  src/palette.cc
   src/quad_tree.cc
   src/shape.cc
   src/svg.cc
@@ -122,6 +123,7 @@ else()
 
   add_executable(words_tests
     tests/geometry_approval_test.cc
+    tests/palette_test.cc
     tests/test_main.cc
     tests/text_test.cc
   )

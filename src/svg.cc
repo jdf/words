@@ -61,11 +61,12 @@ std::string toSvg(const Scene& scene) {
   svg += buf;
   std::snprintf(buf, sizeof buf,
                 "<rect x=\"%d\" y=\"%d\" width=\"%d\" height=\"%d\" "
-                "fill=\"#17171c\"/>\n",
+                "fill=\"%s\"/>\n",
                 static_cast<int>(-scene.width() / 2),
                 static_cast<int>(-scene.height() / 2),
                 static_cast<int>(scene.width()),
-                static_cast<int>(scene.height()));
+                static_cast<int>(scene.height()),
+                rgb(scene.background()).c_str());
   svg += buf;
   // Scene coordinates are y-up; SVG is y-down.
   svg += "<g transform=\"scale(1,-1)\">\n";

@@ -34,9 +34,15 @@ class Scene {
   const std::vector<Entry>& entries() const { return entries_; }
   std::vector<Entry>& entries() { return entries_; }
 
+  // What renderers clear to. The default is the app's original dark gray
+  // (#17171c in 8-bit terms); palettes carry their own backgrounds.
+  const Color& background() const { return background_; }
+  void setBackground(const Color& c) { background_ = c; }
+
  private:
   double width_ = 1600.0;
   double height_ = 1000.0;
+  Color background_{0.09f, 0.09f, 0.11f};
   std::vector<Entry> entries_;
 };
 

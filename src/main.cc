@@ -9,6 +9,9 @@
 //   ?text=<urlencoded>   cloud this text instead of the bundled sample
 //   ?corpus=<slug>       cloud tests/corpus/<slug>.tsv's precomputed counts
 //   ?font=<basename>     use assets/fonts/<basename>.ttf
+//   ?palette=<name>      color with an original Wordle palette ("wordly",
+//                        "heat", ...; see src/palette.cc)
+//   ?variance=<name>     color variance: exact|little|some|lots|wild
 
 #include <emscripten/emscripten.h>
 #include <emscripten/html5.h>
@@ -23,6 +26,7 @@
 #include <vector>
 
 #include "demo_scene.h"
+#include "palette.h"
 #include "scene.h"
 #include "word_renderer.h"
 
@@ -50,26 +54,45 @@ std::string slurp(const char* path) {
   return ss.str();
 }
 
+// A URL query parameter's value, or "" when absent.
+std::string urlParam(const char* name) {
+  char* value = static_cast<char*>(EM_ASM_PTR(
+      {
+        const t = new URLSearchParams(location.search).get(UTF8ToString($0));
+        return t ? stringToNewUTF8(t) : 0;
+      },
+      name));
+  if (!value) return {};
+  std::string result(value);
+  std::free(value);
+  return result;
+}
+
 // The "text" URL query parameter, or the bundled sample text.
 std::string cloudText() {
-  char* fromUrl = static_cast<char*>(EM_ASM_PTR({
-    const t = new URLSearchParams(location.search).get('text');
-    return t ? stringToNewUTF8(t) : 0;
-  }));
-  if (fromUrl) {
-    std::string text(fromUrl);
-    std::free(fromUrl);
-    if (!text.empty()) return text;
-  }
+  std::string text = urlParam("text");
+  if (!text.empty()) return text;
   return slurp(kSampleTextPath);
 }
 
 words::Scene buildScene(const std::string& fontPath) {
+  words::ColorScheme scheme;
+  const words::ColorScheme* colors = nullptr;
+  if (const words::Palette* palette = words::findPalette(urlParam("palette"))) {
+    scheme.palette = *palette;
+    if (auto v = words::findVariance(urlParam("variance"))) {
+      scheme.variance = *v;
+    }
+    colors = &scheme;
+  }
+
   std::string tsv = slurp(kCorpusTsvPath);
   if (!tsv.empty()) {
-    return words::buildCloudFromCountsTsv(fontPath, kStopWordsDir, tsv);
+    return words::buildCloudFromCountsTsv(fontPath, kStopWordsDir, tsv, 800,
+                                          nullptr, colors);
   }
-  return words::buildCloudFromText(fontPath, kStopWordsDir, cloudText());
+  return words::buildCloudFromText(fontPath, kStopWordsDir, cloudText(), 800,
+                                   nullptr, colors);
 }
 
 // Keeps the drawing buffer matched to the canvas CSS size × devicePixelRatio.
@@ -93,7 +116,8 @@ void render() {
   syncCanvasSize(&width, &height);
   glViewport(0, 0, width, height);
 
-  glClearColor(0.09f, 0.09f, 0.11f, 1.0f);
+  const words::Color& bg = g_app->scene.background();
+  glClearColor(bg.r, bg.g, bg.b, 1.0f);
   glClearStencil(0);
   glClear(GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 

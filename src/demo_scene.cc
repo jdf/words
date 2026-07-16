@@ -14,6 +14,7 @@
 
 #include "box.h"
 #include "layout.h"
+#include "palette.h"
 #include "scene.h"
 #include "text.h"
 #include "word.h"
@@ -149,7 +150,7 @@ namespace {
 // sized, oriented, colored, laid-out words.
 Scene cloudFromCounts(const std::string& fontPath,
                       std::vector<WordCount>&& counts, size_t maxWords,
-                      LayoutDebug* debug) {
+                      LayoutDebug* debug, const ColorScheme* scheme) {
   if (counts.empty()) return Scene();
   if (counts.size() > maxWords) counts.resize(maxWords);
 
@@ -169,14 +170,21 @@ Scene cloudFromCounts(const std::string& fontPath,
     double angle =
         unit(rng) < kVerticalFraction ? std::numbers::pi / 2.0 : 0.0;
     laid.emplace_back(shaped, scale, angle);
-    colors.push_back(
-        kPalette[static_cast<size_t>(unit(rng) * std::size(kPalette))]);
+    if (scheme) {
+      colors.push_back(
+          varied(scheme->palette.pick(rng), scheme->variance, rng));
+    } else {
+      colors.push_back(
+          kPalette[static_cast<size_t>(unit(rng) * std::size(kPalette))]);
+    }
   }
   if (laid.empty()) return Scene();
 
   Box world = worldFor(laid);
   layoutWords(laid, world, LayoutParams{}, debug);
-  return sceneFitToContent(std::move(laid), colors, debug);
+  Scene scene = sceneFitToContent(std::move(laid), colors, debug);
+  if (scheme) scene.setBackground(scheme->palette.background);
+  return scene;
 }
 
 }  // namespace
@@ -184,17 +192,17 @@ Scene cloudFromCounts(const std::string& fontPath,
 Scene buildCloudFromText(const std::string& fontPath,
                          const std::string& stopWordsDir,
                          std::string_view text, size_t maxWords,
-                         LayoutDebug* debug) {
+                         LayoutDebug* debug, const ColorScheme* colors) {
   StopWordsSet stopSets(stopWordsDir);
   const StopWords* language = stopSets.guess(text);
   return cloudFromCounts(fontPath, countWords(text, language), maxWords,
-                         debug);
+                         debug, colors);
 }
 
 Scene buildCloudFromCountsTsv(const std::string& fontPath,
                               const std::string& stopWordsDir,
                               std::string_view tsv, size_t maxWords,
-                              LayoutDebug* debug) {
+                              LayoutDebug* debug, const ColorScheme* colors) {
   StopWordsSet stopSets(stopWordsDir);
   const StopWords* language = nullptr;
   std::vector<WordCount> counts;
@@ -225,7 +233,8 @@ Scene buildCloudFromCountsTsv(const std::string& fontPath,
     if (language && language->isStopWord(word)) continue;
     counts.push_back({std::string(word), count});
   }
-  return cloudFromCounts(fontPath, std::move(counts), maxWords, debug);
+  return cloudFromCounts(fontPath, std::move(counts), maxWords, debug,
+                         colors);
 }
 
 }  // namespace words

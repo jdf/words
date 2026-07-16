@@ -36,6 +36,12 @@ CASES=(
   "belye-nochi|?corpus=belye-nochi&font=gentium"
   "hatzofe|?corpus=hatzofe&font=sbl-hebrew"
   "kalila-wa-dimna|?corpus=kalila-wa-dimna&font=scheherazade"
+  # Color verification happens here, through the real GL pipeline: one
+  # chromatic palette (hue variance, white background) and one achromatic
+  # (brightness variance — the hue<0.01 branch), per the original's
+  # PaletteManager/ColorVariance semantics.
+  "wordly|?corpus=moby-dick&palette=wordly&variance=some"
+  "heat-wild|?corpus=moby-dick&palette=heat&variance=wild"
 )
 
 # Build the release dist directly (not via ./dev, which would also point
