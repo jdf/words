@@ -6,7 +6,9 @@
   <title>words</title>
   <style>
     html, body { margin: 0; height: 100%; background: #17171c; }
-    #canvas { display: block; width: 100vw; height: 100vh; }
+    body { display: flex; flex-direction: column; }
+    /* The canvas owns whatever the toolbar doesn't take. */
+    #canvas { display: block; flex: 1; width: 100%; min-height: 0; }
     #status {
       position: fixed; left: 12px; bottom: 10px;
       font: 12px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -17,33 +19,33 @@
       background: #4aa3ff; opacity: 0; transition: opacity 0.2s;
       pointer-events: none;
     }
+    /* Toolbar: in-flow (never overlays the canvas), shown with ?ui. */
     #panel {
-      position: fixed; right: 12px; top: 10px; display: none;
-      align-items: center; gap: 8px; padding: 8px 10px;
-      background: rgba(23, 23, 28, 0.85); border: 1px solid #333;
-      border-radius: 6px;
-      font: 12px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
+      display: none; align-items: center; gap: 10px; padding: 8px 12px;
+      background: #101014; border-bottom: 1px solid #333;
+      font: 14px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
       color: #b8b8c4;
     }
     #panel button {
-      background: #101014; color: #b8b8c4; border: 1px solid #444;
-      border-radius: 3px; padding: 2px 8px; font: inherit;
-      font-size: 14px; cursor: pointer;
+      background: #1c1c22; color: #b8b8c4; border: 1px solid #444;
+      border-radius: 6px; padding: 8px 18px; font: inherit;
+      font-size: 22px; line-height: 1; cursor: pointer;
     }
     #panel button:disabled { opacity: 0.35; cursor: default; }
-    #panel button:hover:not(:disabled) { border-color: #666; }
+    #panel button:hover:not(:disabled) { border-color: #777; background: #26262e; }
   </style>
 </head>
 <body>
-  <canvas id="canvas"></canvas>
-  <div id="status">loading…</div>
-  <div id="progress"></div>
-  <!-- Dev panel, shown with ?ui in the URL: re-layout with undo/redo. -->
+  <!-- Dev toolbar, shown with ?ui in the URL: re-layout with undo/redo.
+       In-flow above the canvas, so it never covers the cloud. -->
   <div id="panel">
     <button id="relayout" title="Re-layout">🔄</button>
     <button id="undo" title="Undo (⌘Z)" disabled>↩</button>
     <button id="redo" title="Redo (⇧⌘Z)" disabled>↪</button>
   </div>
+  <canvas id="canvas"></canvas>
+  <div id="status">loading…</div>
+  <div id="progress"></div>
   <script>
     // The page is pure UI: the engine (wasm + WebGL) lives in a worker
     // with an OffscreenCanvas, so layout never blocks this thread. The
@@ -53,6 +55,12 @@
     const progress = document.getElementById('progress');
     const canvas = document.getElementById('canvas');
     const params = new URLSearchParams(location.search);
+
+    // Show the toolbar before measuring the canvas: it takes layout space,
+    // and the OffscreenCanvas is sized from the measurement below.
+    if (params.has('ui')) {
+      document.getElementById('panel').style.display = 'flex';
+    }
 
     const lazyFiles = [];
     if (params.get('corpus')) {
@@ -184,7 +192,6 @@
       redoBtn.disabled = redoStack.length === 0;
     };
     if (params.has('ui')) {
-      document.getElementById('panel').style.display = 'flex';
       relayoutBtn.addEventListener('click', () => apply({
         label: 'Re-layout',
         before: { ...spec },
