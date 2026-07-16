@@ -10,7 +10,9 @@
 namespace words {
 
 // Spatial index of committed (already-placed) words. Each word is stored at
-// the smallest node whose region wholly contains its root bounds; words
+// the smallest node whose region wholly contains its collision footprint
+// (the swollen HBB root box — indexing by anything tighter lets
+// boundary-straddling swell overlaps slip between disjoint regions); words
 // straddling a split line live at internal nodes. A candidate query checks
 // its home node's entire subtree plus the object lists on the ancestor
 // path — complete, because anything overlapping the candidate either fits

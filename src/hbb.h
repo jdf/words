@@ -59,6 +59,10 @@ class Hbb {
   double swellH() const { return swellH_; }
   double swellV() const { return swellV_; }
 
+  // The root box (swollen — the tree's full collision footprint), in the
+  // owner's local frame.
+  const Box& rootBox() const { return nodes_[0].box; }
+
  private:
   struct Node {
     Box box;

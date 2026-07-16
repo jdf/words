@@ -48,7 +48,7 @@ QuadTree::Node* QuadTree::descend(Node* n, const Box& b,
 }
 
 void QuadTree::add(const Word* word) {
-  descend(&root_, word->worldBounds(), /*createChildren=*/true)
+  descend(&root_, word->collisionBounds(), /*createChildren=*/true)
       ->objects.push_back(word);
 }
 
@@ -59,7 +59,7 @@ const Word* QuadTree::firstIntersecting(const Word& candidate) const {
   std::vector<const Node*> path;
   const Node* n = &root_;
   path.push_back(n);
-  Box b = candidate.worldBounds();
+  Box b = candidate.collisionBounds();
   while (n->depth < maxDepth_ && 2 * n->half > minCellWidth_) {
     int q = quadrantOf(*n, b);
     if (q < 0 || !n->kids[q]) break;

@@ -24,7 +24,7 @@ struct LayoutParams {
   // Archimedean search spiral: per step, angle advances dTheta and radius
   // grows dRadius (both scene px / radians).
   double dTheta = 0.04;
-  double dRadius = 0.7;
+  double dRadius = 0.1;
   HbbParams hbb;
   double quadMinCell = 200.0;
   int quadMaxDepth = 8;

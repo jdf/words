@@ -59,6 +59,15 @@ class Word {
   // The root box in world coordinates (local box translated by position).
   Box worldBounds() const { return localBounds_.translated(x_, y_); }
 
+  // The collision footprint in world coordinates: the HBB's swollen root
+  // box. This is what intersectsWord actually tests against, so spatial
+  // indexes must store and query by it — the swell extends past
+  // worldBounds(), and indexing by the tighter box lets boundary-straddling
+  // overlaps slip between disjoint index regions. Requires a built HBB.
+  Box collisionBounds() const {
+    return hbb_.empty() ? worldBounds() : hbb_.rootBox().translated(x_, y_);
+  }
+
   // True if `poly` (world coordinates) overlaps this word's root box,
   // decided by Clipper2 on the actual geometry.
   bool boxIntersects(const Clipper2Lib::PathsD& poly) const;
