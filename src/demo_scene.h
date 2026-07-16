@@ -20,6 +20,6 @@ Scene buildCloudScene(const std::string& fontPath);
 // out. Deterministic for fixed inputs.
 Scene buildCloudFromText(const std::string& fontPath,
                          const std::string& stopWordsDir,
-                         std::string_view text, size_t maxWords = 80);
+                         std::string_view text, size_t maxWords = 150);
 
 }  // namespace words

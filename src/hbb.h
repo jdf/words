@@ -17,7 +17,7 @@ namespace words {
 // fidelity: leaves bottom out at an absolute display-space size, with a
 // relative cap so enormous words don't subdivide forever.
 struct HbbParams {
-  double leafFloor = 25.0;        // min leaf dimension, scene px
+  double leafFloor = 25.0;        // min leaf dimension, scene units
   double leafFracOfWidth = 0.01;  // ...but never finer than this × width
   double hSwellFactor = 1.8;      // horizontal pad = hSwellFactor·ln(width)
   double vSwellBase = 1.2;        // vertical pad = vSwellBase + ln(height)

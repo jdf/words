@@ -1,12 +1,12 @@
 #include "demo_scene.h"
 
-#include <string_view>
-
-#include <cstdint>
+#include <algorithm>
 #include <cstddef>
+#include <cstdint>
 #include <numbers>
 #include <random>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -48,10 +48,12 @@ constexpr Color kPalette[] = {
     {0.85f, 0.33f, 0.31f},  // brick
 };
 
-// Em height of the heaviest word, scene px; other words scale linearly
-// with weight, floored so the least words stay legible.
-constexpr double kMaxEmPx = 230.0;
-constexpr double kMinEmPx = 24.0;
+// Em height of the heaviest word, in scene units. Other words scale
+// proportionally with weight (size ∝ count, the classic Wordle mapping,
+// which is what lets the long tail go small enough to fill crevices),
+// clamped to a legibility floor.
+constexpr double kMaxEm = 230.0;
+constexpr double kMinEm = 14.0;
 constexpr double kVerticalFraction = 0.25;
 
 }  // namespace
@@ -69,11 +71,10 @@ Scene buildCloudScene(const std::string& fontPath) {
   for (const Entry& e : kVocabulary) {
     ShapedText shaped = shapeText(fontPath, e.text);
     if (shaped.empty()) continue;
-    double emPx =
-        kMinEmPx + (kMaxEmPx - kMinEmPx) * (e.weight / maxWeight);
     // Scale by em size, not by bounding box: a word's importance sets its
     // type size, and ascenders/descenders mustn't shrink it.
-    double scale = emPx / shaped.upem;
+    double em = std::max(kMinEm, kMaxEm * e.weight / maxWeight);
+    double scale = em / shaped.upem;
     double angle =
         unit(rng) < kVerticalFraction ? std::numbers::pi / 2.0 : 0.0;
     laid.emplace_back(shaped, scale, angle);
@@ -112,9 +113,9 @@ Scene buildCloudFromText(const std::string& fontPath,
   for (const WordCount& wc : counts) {
     ShapedText shaped = shapeText(fontPath, wc.display);
     if (shaped.empty()) continue;
-    // Type size linear in frequency, like the original.
-    double emPx = kMinEmPx + (kMaxEmPx - kMinEmPx) * (wc.count / maxCount);
-    double scale = emPx / shaped.upem;
+    // Type size proportional to frequency, like the original.
+    double em = std::max(kMinEm, kMaxEm * wc.count / maxCount);
+    double scale = em / shaped.upem;
     double angle =
         unit(rng) < kVerticalFraction ? std::numbers::pi / 2.0 : 0.0;
     laid.emplace_back(shaped, scale, angle);
