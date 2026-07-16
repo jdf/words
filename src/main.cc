@@ -12,6 +12,8 @@
 //   ?palette=<name>      color with an original Wordle palette ("wordly",
 //                        "heat", ...; see src/palette.cc)
 //   ?variance=<name>     color variance: exact|little|some|lots|wild
+//   ?orientation=<name>  horizontal|mostly-horizontal|half-and-half|...
+//                        (see src/orientation.h)
 
 #include <emscripten/emscripten.h>
 #include <emscripten/html5.h>
@@ -26,6 +28,7 @@
 #include <vector>
 
 #include "demo_scene.h"
+#include "orientation.h"
 #include "palette.h"
 #include "scene.h"
 #include "word_renderer.h"
@@ -76,23 +79,26 @@ std::string cloudText() {
 }
 
 words::Scene buildScene(const std::string& fontPath) {
+  words::CloudOptions options;
   words::ColorScheme scheme;
-  const words::ColorScheme* colors = nullptr;
   if (const words::Palette* palette = words::findPalette(urlParam("palette"))) {
     scheme.palette = *palette;
     if (auto v = words::findVariance(urlParam("variance"))) {
       scheme.variance = *v;
     }
-    colors = &scheme;
+    options.colors = &scheme;
+  }
+  if (auto o = words::findOrientation(urlParam("orientation"))) {
+    options.orientation = *o;
   }
 
   std::string tsv = slurp(kCorpusTsvPath);
   if (!tsv.empty()) {
-    return words::buildCloudFromCountsTsv(fontPath, kStopWordsDir, tsv, 800,
-                                          nullptr, colors);
+    return words::buildCloudFromCountsTsv(fontPath, kStopWordsDir, tsv,
+                                          options);
   }
-  return words::buildCloudFromText(fontPath, kStopWordsDir, cloudText(), 800,
-                                   nullptr, colors);
+  return words::buildCloudFromText(fontPath, kStopWordsDir, cloudText(),
+                                   options);
 }
 
 // Keeps the drawing buffer matched to the canvas CSS size × devicePixelRatio.

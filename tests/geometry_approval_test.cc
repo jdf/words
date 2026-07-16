@@ -74,7 +74,8 @@ TEST_CASE("spiral trail of a placed word") {
   words::LayoutDebug debug;
   debug.traceLabel = "ago";
   words::Scene scene = words::buildCloudFromText(
-      kFont, WORDS_ASSETS_DIR "/stopwords", ss.str(), 150, &debug);
+      kFont, WORDS_ASSETS_DIR "/stopwords", ss.str(),
+      {.maxWords = 150, .debug = &debug});
   REQUIRE_FALSE(debug.trail.empty());
   verifySvg(words::toSvg(scene, debug));
 }
@@ -104,6 +105,28 @@ TEST_CASE("text cloud in coolvetica") {
       "conceived and so dedicated can long endure we are met on a great "
       "battlefield of that war nation nation");
   verifySvg(words::toSvg(scene));
+}
+
+TEST_CASE("any-which-way cloud properties") {
+  // Arbitrary rotations through the whole pipeline: every pairwise HBB
+  // collision here runs at angles the 0/90 clouds never exercise.
+  words::Scene scene = words::buildCloudFromText(
+      kFont, WORDS_ASSETS_DIR "/stopwords",
+      "four score and seven years ago our fathers brought forth on this "
+      "continent a new nation conceived in liberty and dedicated to the "
+      "proposition that all men are created equal now we are engaged in a "
+      "great civil war testing whether that nation or any nation so "
+      "conceived and so dedicated can long endure we are met on a great "
+      "battlefield of that war nation nation",
+      {.orientation = words::Orientation::kAnyWhichWay});
+  const auto& entries = scene.entries();
+  REQUIRE(entries.size() >= 25);
+  for (size_t i = 0; i < entries.size(); ++i) {
+    for (size_t j = i + 1; j < entries.size(); ++j) {
+      INFO("words " << i << " and " << j << " overlap");
+      REQUIRE_FALSE(entries[i].word.intersectsWord(entries[j].word));
+    }
+  }
 }
 
 TEST_CASE("cloud layout properties") {

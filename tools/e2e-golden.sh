@@ -42,6 +42,10 @@ CASES=(
   # PaletteManager/ColorVariance semantics.
   "wordly|?corpus=moby-dick&palette=wordly&variance=some"
   "heat-wild|?corpus=moby-dick&palette=heat&variance=wild"
+  # Arbitrary rotations through the real renderer (OrientationStrategy's
+  # ANY_WHICH_WAY): angled words, angled HBB collisions, angled stencil
+  # fills.
+  "any-which-way|?corpus=moby-dick&orientation=any-which-way"
 )
 
 # Build the release dist directly (not via ./dev, which would also point

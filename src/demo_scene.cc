@@ -14,6 +14,7 @@
 
 #include "box.h"
 #include "layout.h"
+#include "orientation.h"
 #include "palette.h"
 #include "scene.h"
 #include "text.h"
@@ -58,7 +59,6 @@ constexpr Color kPalette[] = {
 // log swells) and spiral constants are calibrated to this scale.
 constexpr double kMaxEm = 1000.0;
 constexpr double kMinEm = 60.0;
-constexpr double kVerticalFraction = 0.25;
 constexpr double kAspect = 1.6;
 
 // The original's world sizing: barely more than the words' total area,
@@ -133,7 +133,7 @@ Scene buildCloudScene(const std::string& fontPath) {
     double em = std::max(kMinEm, kMaxEm * e.weight / maxWeight);
     double scale = em / shaped.upem;
     double angle =
-        unit(rng) < kVerticalFraction ? std::numbers::pi / 2.0 : 0.0;
+        orientationAngle(Orientation::kMostlyHorizontal, e.text, rng);
     laid.emplace_back(shaped, scale, angle);
     colors.push_back(kPalette[static_cast<size_t>(unit(rng) *
                                                   std::size(kPalette))]);
@@ -149,10 +149,10 @@ namespace {
 // The shared tail of every text pipeline: frequency-ranked counts become
 // sized, oriented, colored, laid-out words.
 Scene cloudFromCounts(const std::string& fontPath,
-                      std::vector<WordCount>&& counts, size_t maxWords,
-                      LayoutDebug* debug, const ColorScheme* scheme) {
+                      std::vector<WordCount>&& counts,
+                      const CloudOptions& options) {
   if (counts.empty()) return Scene();
-  if (counts.size() > maxWords) counts.resize(maxWords);
+  if (counts.size() > options.maxWords) counts.resize(options.maxWords);
 
   std::mt19937 rng(20080623);
   std::uniform_real_distribution<double> unit(0.0, 1.0);
@@ -167,12 +167,11 @@ Scene cloudFromCounts(const std::string& fontPath,
     // Type size proportional to frequency, like the original.
     double em = std::max(kMinEm, kMaxEm * wc.count / maxCount);
     double scale = em / shaped.upem;
-    double angle =
-        unit(rng) < kVerticalFraction ? std::numbers::pi / 2.0 : 0.0;
+    double angle = orientationAngle(options.orientation, wc.display, rng);
     laid.emplace_back(shaped, scale, angle);
-    if (scheme) {
-      colors.push_back(
-          varied(scheme->palette.pick(rng), scheme->variance, rng));
+    if (options.colors) {
+      colors.push_back(varied(options.colors->palette.pick(rng),
+                              options.colors->variance, rng));
     } else {
       colors.push_back(
           kPalette[static_cast<size_t>(unit(rng) * std::size(kPalette))]);
@@ -181,9 +180,9 @@ Scene cloudFromCounts(const std::string& fontPath,
   if (laid.empty()) return Scene();
 
   Box world = worldFor(laid);
-  layoutWords(laid, world, LayoutParams{}, debug);
-  Scene scene = sceneFitToContent(std::move(laid), colors, debug);
-  if (scheme) scene.setBackground(scheme->palette.background);
+  layoutWords(laid, world, LayoutParams{}, options.debug);
+  Scene scene = sceneFitToContent(std::move(laid), colors, options.debug);
+  if (options.colors) scene.setBackground(options.colors->palette.background);
   return scene;
 }
 
@@ -191,18 +190,16 @@ Scene cloudFromCounts(const std::string& fontPath,
 
 Scene buildCloudFromText(const std::string& fontPath,
                          const std::string& stopWordsDir,
-                         std::string_view text, size_t maxWords,
-                         LayoutDebug* debug, const ColorScheme* colors) {
+                         std::string_view text, const CloudOptions& options) {
   StopWordsSet stopSets(stopWordsDir);
   const StopWords* language = stopSets.guess(text);
-  return cloudFromCounts(fontPath, countWords(text, language), maxWords,
-                         debug, colors);
+  return cloudFromCounts(fontPath, countWords(text, language), options);
 }
 
 Scene buildCloudFromCountsTsv(const std::string& fontPath,
                               const std::string& stopWordsDir,
-                              std::string_view tsv, size_t maxWords,
-                              LayoutDebug* debug, const ColorScheme* colors) {
+                              std::string_view tsv,
+                              const CloudOptions& options) {
   StopWordsSet stopSets(stopWordsDir);
   const StopWords* language = nullptr;
   std::vector<WordCount> counts;
@@ -233,8 +230,7 @@ Scene buildCloudFromCountsTsv(const std::string& fontPath,
     if (language && language->isStopWord(word)) continue;
     counts.push_back({std::string(word), count});
   }
-  return cloudFromCounts(fontPath, std::move(counts), maxWords, debug,
-                         colors);
+  return cloudFromCounts(fontPath, std::move(counts), options);
 }
 
 }  // namespace words

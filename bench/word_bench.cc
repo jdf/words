@@ -180,7 +180,8 @@ void BM_CloudFromText(benchmark::State& state) {
   std::string text = ss.str();
   for (auto _ : state) {
     words::Scene scene = words::buildCloudFromText(
-        kFont, "assets/stopwords", text, state.range(0));
+        kFont, "assets/stopwords", text,
+        {.maxWords = static_cast<size_t>(state.range(0))});
     benchmark::DoNotOptimize(scene);
   }
 }

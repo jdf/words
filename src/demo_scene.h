@@ -5,6 +5,7 @@
 #include <string_view>
 
 #include "layout.h"
+#include "orientation.h"
 #include "palette.h"
 #include "scene.h"
 
@@ -16,6 +17,15 @@ namespace words {
 struct ColorScheme {
   Palette palette;
   double variance = kDefaultVariance;
+};
+
+// Knobs for the text->cloud pipeline. The defaults are the app's stock
+// look: up to 800 words, one word in four vertical, dark-scheme colors.
+struct CloudOptions {
+  size_t maxWords = 800;
+  Orientation orientation = Orientation::kMostlyHorizontal;
+  const ColorScheme* colors = nullptr;  // null = built-in dark scheme
+  LayoutDebug* debug = nullptr;
 };
 
 // Builds the demo world: a word cloud of project-flavored vocabulary,
@@ -30,9 +40,8 @@ Scene buildCloudScene(const std::string& fontPath);
 // out. Deterministic for fixed inputs.
 Scene buildCloudFromText(const std::string& fontPath,
                          const std::string& stopWordsDir,
-                         std::string_view text, size_t maxWords = 800,
-                         LayoutDebug* debug = nullptr,
-                         const ColorScheme* colors = nullptr);
+                         std::string_view text,
+                         const CloudOptions& options = {});
 
 // The same pipeline entered with precomputed counts: `tsv` is a
 // tests/corpus file (word<TAB>count lines, most frequent first, stop
@@ -40,8 +49,7 @@ Scene buildCloudFromText(const std::string& fontPath,
 // apply). Deterministic for fixed inputs.
 Scene buildCloudFromCountsTsv(const std::string& fontPath,
                               const std::string& stopWordsDir,
-                              std::string_view tsv, size_t maxWords = 800,
-                              LayoutDebug* debug = nullptr,
-                              const ColorScheme* colors = nullptr);
+                              std::string_view tsv,
+                              const CloudOptions& options = {});
 
 }  // namespace words
