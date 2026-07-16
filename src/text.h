@@ -84,8 +84,9 @@ class StopWordsSet {
 };
 
 // Tokenizes `text` and counts every word, optionally skipping the given
-// stop words. The counting key is the folded (lowercased) form; the
-// original casing of the first occurrence is kept as the display form.
+// stop words. The counting key is the folded (lowercased) form; the most
+// frequent casing (ties to the first seen) is kept as the display form,
+// like the original's "Guess Case for Each Word".
 struct WordCount {
   std::string display;
   int count;

@@ -272,16 +272,35 @@ const StopWords* StopWordsSet::guess(std::string_view text) const {
 std::vector<WordCount> countWords(std::string_view text,
                                   const StopWords* reject) {
   Counter counter;
-  std::unordered_map<std::string, std::string> displayForm;
+  // Every distinct casing seen per folded key, with its own count, in
+  // first-seen order. The display form is the most frequent casing, ties
+  // to the earliest — the original's "Guess Case for Each Word" fold, so
+  // "Que" from chapter headings can't outrank the ordinary "que".
+  std::unordered_map<std::string, std::vector<std::pair<std::string, int>>>
+      casings;
   for (const std::string& w : wordsOf(text)) {
     if (reject && reject->isStopWord(w)) continue;
     std::string key = foldForMatch(w);
     counter.note(key);
-    displayForm.emplace(key, w);  // keeps the first-seen casing
+    auto& forms = casings[key];
+    bool seen = false;
+    for (auto& [form, n] : forms) {
+      if (form == w) {
+        ++n;
+        seen = true;
+        break;
+      }
+    }
+    if (!seen) forms.emplace_back(w, 1);
   }
   std::vector<WordCount> result;
   for (auto& [key, count] : counter.byFrequency()) {
-    result.push_back({displayForm[key], count});
+    const auto& forms = casings[key];
+    const std::pair<std::string, int>* best = &forms.front();
+    for (const auto& form : forms) {
+      if (form.second > best->second) best = &form;
+    }
+    result.push_back({best->first, count});
   }
   return result;
 }

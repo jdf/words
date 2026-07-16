@@ -1,6 +1,6 @@
 // word_counts: counts the words of a UTF-8 text file with the app's exact
-// word model (cue.language tokenization, folded keys, first-seen display
-// casing) and writes TSV to stdout — the corpus-building backend for
+// word model (cue.language tokenization, folded keys, majority-casing
+// display forms) and writes TSV to stdout — the corpus-building backend for
 // tools/make-corpus.py. Stop words are NOT removed; the guessed language is
 // reported in the header so consumers can apply the right stop list.
 //

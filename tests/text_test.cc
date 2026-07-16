@@ -107,7 +107,7 @@ TEST_CASE("counting with stop word removal") {
       "Fox runs. FOX!",
       english);
   REQUIRE(counts.size() >= 3);
-  CHECK(counts[0].display == "fox");   // first-seen casing of "fox" is lower
+  CHECK(counts[0].display == "fox");  // fox/Fox/FOX tie; first-seen wins
   CHECK(counts[0].count == 3);
   CHECK(counts[1].display == "dog");
   CHECK(counts[1].count == 2);
@@ -117,6 +117,25 @@ TEST_CASE("counting with stop word removal") {
     CHECK(wc.display != "The");
     CHECK(wc.display != "over");
   }
+}
+
+TEST_CASE("display form uses the majority casing") {
+  // "Guess Case for Each Word": the most frequent casing is the display
+  // form, so a capitalized first occurrence (a title, a sentence start)
+  // can't stick to a word that's ordinarily lowercase — and vice versa.
+  auto counts = words::countWords(
+      "Whale ahoy! The whale, the whale! A whale for every sailor, and "
+      "every sailor a whale. NASA said so; Nasa did not, nasa neither: "
+      "NASA. Ahab spoke.");
+  auto display = [&](const char* folded) -> std::string {
+    for (const auto& wc : counts) {
+      if (words::foldForMatch(wc.display) == folded) return wc.display;
+    }
+    return "(missing)";
+  };
+  CHECK(display("whale") == "whale");  // 4 lower beat 1 capitalized
+  CHECK(display("nasa") == "NASA");    // 2 upper beat Nasa/nasa
+  CHECK(display("ahab") == "Ahab");    // lone casing kept as-is
 }
 
 TEST_CASE("word count report for a multilingual corpus") {

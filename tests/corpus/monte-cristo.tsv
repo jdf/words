@@ -4,16 +4,16 @@
 # language-guess: french
 # tokens: 121580
 # distinct: 12396
-DE	4839
-LE	3196
+de	4839
+le	3196
 et	3195
-La	2960
+la	2960
 à	2726
 que	1963
 il	1739
-Un	1552
+un	1552
 vous	1389
-Les	1356
+les	1356
 en	1282
 qui	1279
 je	1239
@@ -35,7 +35,7 @@ sur	693
 au	680
 avait	600
 qu'il	575
-Comme	574
+comme	574
 sa	565
 cette	561
 plus	559
@@ -47,7 +47,7 @@ si	462
 par	454
 me	415
 est	404
-Mon	404
+mon	404
 ses	398
 nous	393
 c'est	385
@@ -82,11 +82,11 @@ encore	196
 père	193
 y	191
 aux	184
-Non	181
+non	181
 j'ai	176
 elle	176
 été	173
-Puis	168
+puis	168
 fois	167
 peu	166
 Danglars	165
@@ -97,7 +97,7 @@ cet	160
 temps	157
 car	156
 après	156
-C'était	153
+c'était	153
 yeux	153
 dont	148
 ma	147
@@ -136,7 +136,7 @@ eût	112
 aussi	112
 moins	111
 Oh	110
-L'île	109
+l'île	109
 toujours	108
 s'il	108
 vers	106
@@ -164,7 +164,7 @@ coeur	89
 n'est	89
 celui	88
 pendant	88
-Seulement	88
+seulement	88
 voix	88
 capitaine	87
 jamais	87
@@ -177,7 +177,7 @@ pouvait	85
 Ah	85
 s'écria	84
 voir	84
-Cependant	83
+cependant	83
 sont	83
 Marseille	82
 ans	82
@@ -248,7 +248,7 @@ heure	60
 l'homme	59
 francs	59
 mieux	59
-Table	58
+table	58
 tour	58
 eu	58
 cher	58
@@ -261,7 +261,7 @@ l'armateur	56
 bout	56
 te	56
 cent	56
-louis	56
+Louis	56
 peut	56
 cinq	55
 marin	55
@@ -309,7 +309,7 @@ milieu	48
 papier	48
 XVIII	47
 avons	47
-Voici	47
+voici	47
 besoin	47
 Allons	47
 heureux	47
@@ -326,7 +326,7 @@ bord	45
 barque	45
 n'est-ce	45
 regarda	45
-l'anglais	45
+l'Anglais	45
 fou	44
 petite	44
 tandis	44
@@ -343,7 +343,7 @@ nouveau	43
 d'être	43
 prendre	43
 n'en	43
-Allez	43
+allez	43
 joie	43
 reste	43
 n'ai	43
@@ -358,7 +358,7 @@ ont	42
 passé	42
 ministre	42
 Jacopo	42
-MONTE-CRISTO	41
+Monte-Cristo	41
 sourire	41
 savez	41
 j'en	41
@@ -377,8 +377,8 @@ leva	40
 Noirtier	40
 arrivé	39
 lorsque	39
-D'abord	39
-Parce	39
+d'abord	39
+parce	39
 demande	39
 vérité	39
 malheureux	39
@@ -410,7 +410,7 @@ venir	36
 matelots	36
 d'Elbe	36
 j'avais	36
-Bientôt	36
+bientôt	36
 cinquante	36
 Spada	36
 port	35
@@ -452,7 +452,7 @@ procureur	32
 navire	32
 dernier	32
 contraire	32
-C'est-à-dire	32
+c'est-à-dire	32
 j'étais	32
 nos	32
 moitié	32
@@ -467,7 +467,7 @@ a-t-il	31
 faite	31
 suite	31
 raison	31
-voyons	31
+Voyons	31
 l'heure	31
 feu	31
 aussitôt	30
@@ -482,7 +482,7 @@ famille	30
 cas	30
 corps	30
 mot	30
-Lorsqu'il	30
+lorsqu'il	30
 fin	30
 chacun	29
 second	29
@@ -521,7 +521,7 @@ soleil	27
 travers	27
 assis	27
 bouche	27
-Aucun	27
+aucun	27
 aucune	27
 rentra	27
 compagnon	27
@@ -601,7 +601,7 @@ vois	23
 possible	23
 sentit	23
 l'endroit	23
-Inutile	23
+inutile	23
 dès	23
 lèvres	23
 sembla	23
@@ -630,7 +630,7 @@ attendre	21
 paraissait	21
 savait	21
 sourit	21
-Avez-vous	21
+avez-vous	21
 quinze	21
 minutes	21
 retourna	21
@@ -677,7 +677,7 @@ droit	20
 pareille	20
 tuer	20
 crime	20
-midi	20
+Midi	20
 donnait	20
 l'avons	20
 courage	20
@@ -691,7 +691,7 @@ Boville	20
 heureusement	19
 pouvez	19
 veille	19
-Pardon	19
+pardon	19
 demanda-t-il	19
 entré	19
 quelqu'un	19
@@ -743,7 +743,7 @@ compte	18
 duquel	18
 tenir	18
 droite	18
-Bois	18
+bois	18
 adieu	18
 cru	18
 sûr	18
@@ -790,7 +790,7 @@ porte-clefs	17
 prêtre	17
 Thomson	17
 French	17
-COMTE	16
+comte	16
 cap	16
 triste	16
 vague	16
@@ -798,12 +798,12 @@ résolution	16
 danger	16
 cria	16
 longue	16
-L'ordre	16
+l'ordre	16
 d'aller	16
 connais	16
 croyais	16
 répondre	16
-Prenez	16
+prenez	16
 l'oreille	16
 ouvrit	16
 d'autres	16
@@ -892,7 +892,7 @@ trou	15
 grottes	15
 yacht	15
 pont	14
-Garde	14
+garde	14
 ville	14
 noirs	14
 voiles	14
@@ -906,7 +906,7 @@ remis	14
 maréchal	14
 départ	14
 vide	14
-savez-vous	14
+Savez-vous	14
 serai	14
 dois	14
 d'argent	14
@@ -987,13 +987,13 @@ faveur	13
 pleine	13
 pitié	13
 tressaillit	13
-Regarde	13
+regarde	13
 ajouta-t-il	13
 continuait	13
 preuve	13
 sorti	13
 croyez	13
-Français	13
+français	13
 laissant	13
 levant	13
 viens	13
@@ -1013,7 +1013,7 @@ projet	13
 entier	13
 manger	13
 quitté	13
-L'antichambre	13
+l'antichambre	13
 juge	13
 parfois	13
 s'écria-t-il	13
@@ -1081,7 +1081,7 @@ volonté	12
 ouvrir	12
 tourna	12
 salle	12
-C'étaient	12
+c'étaient	12
 seuls	12
 quart	12
 innocent	12
@@ -1115,7 +1115,7 @@ diamants	12
 Tuileries	11
 inquiétude	11
 serez	11
-L'équipage	11
+l'équipage	11
 commencement	11
 croix	11
 d'honneur	11
@@ -1169,7 +1169,7 @@ l'espérance	11
 cacher	11
 promesse	11
 âme	11
-Qu'y	11
+qu'y	11
 situation	11
 porter	11
 attendait	11
@@ -1190,7 +1190,7 @@ reconnu	11
 jure	11
 portant	11
 l'idée	11
-Tantôt	11
+tantôt	11
 l'Italie	11
 haute	11
 elle-même	11
@@ -1214,7 +1214,7 @@ valeur	11
 VI	10
 numéro	10
 italien	10
-L'inconnu	10
+l'inconnu	10
 pilote	10
 partit	10
 quitta	10
@@ -1233,7 +1233,7 @@ enfermé	10
 congé	10
 ensemble	10
 revoir	10
-Seigneur	10
+seigneur	10
 vraiment	10
 retenir	10
 pâlissant	10
@@ -1243,7 +1243,7 @@ basse	10
 noire	10
 prêt	10
 lorsqu'on	10
-Certainement	10
+certainement	10
 ait	10
 l'attendait	10
 village	10
@@ -1368,7 +1368,7 @@ attention	9
 s'asseoir	9
 conduit	9
 laisse	9
-Patience	9
+patience	9
 avais	9
 rendu	9
 apparaître	9
@@ -1628,8 +1628,8 @@ magnifique	8
 myrtes	8
 Beaucaire	8
 hachisch	8
-Complot	7
-L'interrogatoire	7
+complot	7
+l'interrogatoire	7
 savant	7
 Smyrne	7
 entrée	7
@@ -1663,14 +1663,14 @@ quarante	7
 vécu	7
 soixante	7
 écus	7
-Prends	7
+prends	7
 permission	7
 phrase	7
 revenu	7
 quitte	7
 pourrais	7
 bonté	7
-J'espère	7
+j'espère	7
 n'aura	7
 amoureux	7
 peau	7
@@ -1679,7 +1679,7 @@ nue	7
 espagnol	7
 feuille	7
 répondu	7
-Dites-moi	7
+dites-moi	7
 amitié	7
 mérite	7
 croyez-moi	7
@@ -1754,7 +1754,7 @@ dossier	7
 conspiration	7
 savons	7
 liasse	7
-Dix-neuf	7
+dix-neuf	7
 pénétrer	7
 rencontra	7
 surpris	7
@@ -1865,7 +1865,7 @@ diriger	6
 l'entrée	6
 tristesse	6
 chargement	6
-Tombé	6
+tombé	6
 fièvre	6
 Holà	6
 obéit	6
@@ -1910,7 +1910,7 @@ fidèle	6
 salua	6
 important	6
 brun	6
-Certains	6
+certains	6
 entendait	6
 auxquelles	6
 particulière	6
@@ -1946,7 +1946,7 @@ ajouté	6
 tranquillement	6
 poussé	6
 Espagnols	6
-Décidément	6
+décidément	6
 remède	6
 meure	6
 m'y	6
@@ -1971,7 +1971,7 @@ pauvres	6
 l'attention	6
 achevé	6
 frissonner	6
-Appartenant	6
+appartenant	6
 marine	6
 montant	6
 s'arrêtant	6
@@ -1980,7 +1980,7 @@ portes	6
 crédit	6
 maire	6
 viennent	6
-Ça	6
+ça	6
 voeu	6
 bouleversé	6
 méprise	6
@@ -2030,13 +2030,13 @@ résistance	6
 bateau	6
 disait-il	6
 s'aperçut	6
-regardez	6
+Regardez	6
 canon	6
 songea	6
 posé	6
 secoua	6
 nager	6
-génois	6
+Génois	6
 cachots	6
 murmurant	6
 repris	6
@@ -2072,7 +2072,7 @@ morceaux	6
 honneurs	6
 lancé	6
 prudent	6
-Évidemment	6
+évidemment	6
 éclairé	6
 d'écrou	6
 douter	6
@@ -2136,12 +2136,12 @@ statues	6
 peaux	6
 II	5
 Cent-Jours	5
-Éblouissement	5
+éblouissement	5
 l'arrivée	5
 huniers	5
 mouillage	5
 trente-six	5
-Amène	5
+amène	5
 était-il	5
 intérêts	5
 cherchait	5
@@ -2166,7 +2166,7 @@ canot	5
 rames	5
 glissa	5
 dalles	5
-Laissons	5
+laissons	5
 prend	5
 située	5
 obscur	5
@@ -2179,9 +2179,9 @@ déchiré	5
 avenir	5
 pièces	5
 monnaie	5
-Doucement	5
+doucement	5
 cale	5
-Parlons	5
+parlons	5
 répondit-il	5
 as-tu	5
 d'inquiétude	5
@@ -2221,7 +2221,7 @@ semblent	5
 sourcil	5
 briser	5
 berceau	5
-bonjour	5
+Bonjour	5
 genou	5
 offrir	5
 sanglot	5
@@ -2229,7 +2229,7 @@ dise	5
 parlant	5
 commence	5
 taire	5
-Tiens	5
+tiens	5
 raisonnable	5
 menace	5
 mourait	5
@@ -2331,7 +2331,7 @@ salon	5
 prévenus	5
 d'ordinaire	5
 continue	5
-J'allais	5
+j'allais	5
 eux-mêmes	5
 bague	5
 volontés	5
@@ -2414,7 +2414,7 @@ finie	5
 antichambre	5
 canne	5
 d'entrer	5
-l'Empire	5
+l'empire	5
 laissée	5
 l'ont	5
 passées	5
@@ -2439,7 +2439,7 @@ assise	5
 petites	5
 envoya	5
 inspecteur	5
-Sauveur	5
+sauveur	5
 l'enfer	5
 possesseur	5
 l'année	5
@@ -2534,7 +2534,7 @@ aborder	4
 construit	4
 secousse	4
 Pomègue	4
-Néanmoins	4
+néanmoins	4
 s'apprêtait	4
 l'anse	4
 dix-huit	4
@@ -2619,7 +2619,7 @@ cousin	4
 suppose	4
 serons	4
 verrons	4
-Arrivés	4
+arrivés	4
 verres	4
 branches	4
 s'élevait	4
@@ -2686,7 +2686,7 @@ erreur	4
 séparés	4
 avala	4
 vouliez	4
-Trouvez	4
+trouvez	4
 joignant	4
 l'exemple	4
 renversée	4
@@ -2755,7 +2755,7 @@ vivantes	4
 proposa	4
 levèrent	4
 sec	4
-Maudit	4
+maudit	4
 porté	4
 nageant	4
 niveau	4
@@ -2924,7 +2924,7 @@ fonctions	4
 conséquence	4
 surveillance	4
 Piombino	4
-Rassurez-vous	4
+rassurez-vous	4
 envahit	4
 effrayant	4
 jeu	4
@@ -2988,8 +2988,8 @@ plongea	4
 vêtements	4
 unique	4
 apporté	4
-J'irai	4
-Jadis	4
+j'irai	4
+jadis	4
 née	4
 encre	4
 interrogé	4
@@ -3061,7 +3061,7 @@ besoins	4
 relatif	4
 meurt	4
 écrite	4
-Douces	4
+douces	4
 pourrons	4
 détresse	4
 couler	4
@@ -3189,7 +3189,7 @@ causé	3
 arrivent	3
 permettez	3
 raisons	3
-D'excellentes	3
+d'excellentes	3
 déposé	3
 entrouverte	3
 douaniers	3
@@ -3231,7 +3231,7 @@ acheter	3
 d'attendre	3
 voudras	3
 d'excellent	3
-chut	3
+Chut	3
 drap	3
 revers	3
 froideur	3
@@ -3416,7 +3416,7 @@ plaignait	3
 levés	3
 vivait	3
 lac	3
-ç'eût	3
+Ç'eût	3
 sacrifice	3
 hagards	3
 pesant	3
@@ -3602,7 +3602,7 @@ bouchées	3
 animal	3
 sauvage	3
 l'italien	3
-Toscan	3
+toscan	3
 l'espagnol	3
 infranchissable	3
 sachant	3
@@ -3685,7 +3685,7 @@ suffisait	3
 précieusement	3
 importance	3
 Approchez	3
-matériellement	3
+Matériellement	3
 projets	3
 couronne	3
 suggérée	3
@@ -3739,7 +3739,7 @@ doublait	3
 frissonnant	3
 disposé	3
 assurance	3
-clément	3
+Clément	3
 mécontent	3
 temps-là	3
 transporté	3
@@ -3791,7 +3791,7 @@ d'examiner	3
 laissées	3
 n'aurais	3
 millionnaire	3
-Ouvrez	3
+ouvrez	3
 tracé	3
 détaché	3
 lambeaux	3
@@ -4045,7 +4045,7 @@ circulaire	3
 rejoint	3
 nagea	3
 crié	3
-maltais	3
+Maltais	3
 refusait	3
 mêles-tu	3
 observation	3
@@ -4087,7 +4087,7 @@ l'atmosphère	3
 ôta	3
 détail	3
 Toulon	3
-L'éducation	3
+l'éducation	3
 gratification	3
 splendide	3
 aigre	3
@@ -4126,7 +4126,7 @@ correspondants	3
 fîmes	3
 échangea	3
 rentrées	3
-Août	3
+août	3
 l'arme	3
 merveilleuse	3
 préoccupé	3
