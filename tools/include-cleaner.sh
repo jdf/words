@@ -34,22 +34,22 @@ fi
 
 # Remaining args limit the check; default is everything. src/ and bench/
 # translation units resolve through the wasm-debug compile database;
-# tests/ ones through host-test's (skipped, with a warning, if that
-# preset hasn't been configured).
+# tests/ and tools/ ones through host-test's (skipped, with a warning, if
+# that preset hasn't been configured).
 CC_FILES=()
-TEST_CC_FILES=()
+HOST_CC_FILES=()
 H_FILES=()
 if [ "$#" -gt 0 ]; then
   for f in "$@"; do
     case "$f" in
-      tests/*.cc) TEST_CC_FILES+=("$f") ;;
+      tests/*.cc|tools/*.cc) HOST_CC_FILES+=("$f") ;;
       *.cc) CC_FILES+=("$f") ;;
       *.h) H_FILES+=("$f") ;;
     esac
   done
 else
   CC_FILES=(src/*.cc bench/*.cc)
-  TEST_CC_FILES=(tests/*.cc)
+  HOST_CC_FILES=(tests/*.cc tools/*.cc)
   H_FILES=(src/*.h)
 fi
 
@@ -67,14 +67,14 @@ if [ "${#CC_FILES[@]}" -gt 0 ]; then
     "${CC_FILES[@]}"
 fi
 
-if [ "${#TEST_CC_FILES[@]}" -gt 0 ]; then
+if [ "${#HOST_CC_FILES[@]}" -gt 0 ]; then
   if [ -f build/host-test/compile_commands.json ]; then
     # Homebrew clang-tidy doesn't know Apple's default sysroot.
     "$TIDY" -p build/host-test --quiet ${FIX[@]+"${FIX[@]}"} \
       --extra-arg=-isysroot --extra-arg="$(xcrun --show-sdk-path)" \
-      "${TEST_CC_FILES[@]}"
+      "${HOST_CC_FILES[@]}"
   else
-    echo "warning: host-test not configured; skipping include check for: ${TEST_CC_FILES[*]}" >&2
+    echo "warning: host-test not configured; skipping include check for: ${HOST_CC_FILES[*]}" >&2
   fi
 fi
 
