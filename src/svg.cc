@@ -100,14 +100,27 @@ std::string hbbDebugSvg(const Word& word) {
   svg += "<g transform=\"scale(1,-1)\">\n";
   svg += "<path fill=\"#8a8a96\" fill-rule=\"evenodd\" d=\"" +
          pathData(word.localPaths(), 0, 0) + "\"/>\n";
+  // Swollen leaves first (the collision footprint, faint), then the raw
+  // construction boxes (deflated by the swell) as crisp strokes — drawn
+  // separately so padding overlap can't muddle the subdivision structure.
+  double sh = word.hbb().swellH();
+  double sv = word.hbb().swellV();
   word.hbb().visit([&svg](const Box& box, int depth, bool leaf) {
+    (void)depth;
+    if (!leaf) return;
+    svg += "<rect fill=\"rgba(240,80,80,0.10)\" stroke=\"none\" x=\"" +
+           num(box.minX) + "\" y=\"" + num(box.minY) + "\" width=\"" +
+           num(box.width()) + "\" height=\"" + num(box.height()) +
+           "\"/>\n";
+  });
+  word.hbb().visit([&svg, sh, sv](const Box& box, int depth, bool leaf) {
+    Box raw{box.minX + sh, box.minY + sv, box.maxX - sh, box.maxY - sv};
     double strokeWidth = std::max(0.6, 6.0 / (1 << std::min(depth, 3)));
-    svg += std::string("<rect fill=\"") +
-           (leaf ? "rgba(240,80,80,0.08)" : "none") +
-           "\" stroke=\"#f05050\" stroke-width=\"" + num(strokeWidth) +
-           "\" x=\"" + num(box.minX) + "\" y=\"" + num(box.minY) +
-           "\" width=\"" + num(box.width()) + "\" height=\"" +
-           num(box.height()) + "\"/>\n";
+    svg += std::string("<rect fill=\"none\" stroke=\"") +
+           (leaf ? "#f0a050" : "#f05050") + "\" stroke-width=\"" +
+           num(strokeWidth) + "\" x=\"" + num(raw.minX) + "\" y=\"" +
+           num(raw.minY) + "\" width=\"" + num(raw.width()) +
+           "\" height=\"" + num(raw.height()) + "\"/>\n";
   });
   svg += "</g>\n</svg>\n";
   return svg;

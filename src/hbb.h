@@ -50,9 +50,14 @@ class Hbb {
   bool intersects(const Hbb& other, double ax, double ay, double bx,
                   double by) const;
 
-  // Visits every box, root first. `leaf` marks ink leaves.
+  // Visits every box, root first. `leaf` marks ink leaves. Boxes are the
+  // swollen (collision-truth) ones; deflate by swellH()/swellV() to
+  // recover the raw construction boxes.
   void visit(
       const std::function<void(const Box&, int depth, bool leaf)>& fn) const;
+
+  double swellH() const { return swellH_; }
+  double swellV() const { return swellV_; }
 
  private:
   struct Node {
@@ -67,6 +72,7 @@ class Hbb {
                  const std::function<void(const Box&, int, bool)>& fn) const;
 
   std::vector<Node> nodes_;  // nodes_[0] is the root when non-empty
+  double swellH_ = 0, swellV_ = 0;
 };
 
 }  // namespace words

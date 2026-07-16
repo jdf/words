@@ -119,6 +119,8 @@ Hbb::Hbb(const Clipper2Lib::PathsD& paths, const Box& bounds,
   // distance. Also serves as collision slop.
   double h = std::max(0.0, params.hSwellFactor * std::log(bounds.width()));
   double v = std::max(0.0, params.vSwellBase + std::log(bounds.height()));
+  swellH_ = h;
+  swellV_ = v;
   for (Node& n : nodes_) {
     n.box.minX -= h;
     n.box.maxX += h;
