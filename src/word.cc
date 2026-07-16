@@ -136,8 +136,12 @@ ShapedText shapeText(const std::string& fontPath, const std::string& text) {
 
   hb_buffer_t* buffer = hb_buffer_create();
   hb_buffer_add_utf8(buffer, text.c_str(), -1, 0, -1);
-  hb_buffer_set_direction(buffer, HB_DIRECTION_LTR);
-  hb_buffer_set_script(buffer, HB_SCRIPT_LATIN);
+  // Guess script and direction from the content — each word is shaped
+  // alone, so per-word guessing is exact: Arabic gets contextual forms,
+  // Hebrew and Arabic get RTL glyph order. The guess would also pull the
+  // language from the process locale, which is machine-dependent; pin it
+  // for deterministic goldens.
+  hb_buffer_guess_segment_properties(buffer);
   hb_buffer_set_language(buffer, hb_language_from_string("en", -1));
   hb_shape(hbFont, buffer, nullptr, 0);
 

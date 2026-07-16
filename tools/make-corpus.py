@@ -14,6 +14,7 @@ Gutenberg has no holdings (Arabic), Wikisource via the TextExtracts API.
 Usage: tools/make-corpus.py   (builds build/host-test/word_counts if needed)
 """
 
+import html.parser
 import json
 import pathlib
 import re
@@ -40,7 +41,11 @@ BOOKS = [
     {"gutenberg": 1012, "slug": "divina-commedia", "lang": "italian"},
     {"gutenberg": 3333, "slug": "os-lusiadas", "lang": "portuguese"},
     {"gutenberg": 7000, "slug": "kalevala", "lang": "finnish"},
-    {"gutenberg": 30774, "slug": "moskoviya", "lang": "russian"},
+    # Gutenberg's Russian shelf has no literary prose (mostly LibriVox
+    # audio); Dostoevsky comes from Russian Wikisource instead.
+    {"wikisource": ("ru", "Белые ночи (Достоевский)/1988 (СО)"),
+     "slug": "belye-nochi", "lang": "russian",
+     "title": "Белые ночи (Достоевский / White Nights)"},
     {"gutenberg": 45252, "slug": "hatzofe", "lang": "hebrew"},
     # Japanese: unsegmented CJK makes every Japanese "word" a unique
     # clause-run, so the handful of English words in the translator's
@@ -81,6 +86,50 @@ def wikisource_api(lang: str, **params) -> dict:
         return json.load(r)
 
 
+class _HtmlText(html.parser.HTMLParser):
+    """Visible text of rendered wiki HTML, skipping non-content markup
+    (styles, scripts, and Wikisource's ws-noexport/noprint apparatus)."""
+
+    SKIP_TAGS = {"style", "script"}
+    SKIP_CLASSES = ("ws-noexport", "noprint")
+
+    def __init__(self):
+        super().__init__()
+        self.parts: list[str] = []
+        self.skip_depth = 0
+
+    def _skippable(self, tag, attrs) -> bool:
+        classes = dict(attrs).get("class", "")
+        return tag in self.SKIP_TAGS or any(
+            c in classes for c in self.SKIP_CLASSES)
+
+    def handle_starttag(self, tag, attrs):
+        if self.skip_depth or self._skippable(tag, attrs):
+            self.skip_depth += 1
+
+    def handle_endtag(self, tag):
+        self.skip_depth = max(0, self.skip_depth - 1) if self.skip_depth else 0
+
+    def handle_data(self, data):
+        if not self.skip_depth:
+            self.parts.append(data)
+
+
+def wikisource_page_text(lang: str, title: str) -> str:
+    """Plain text of one page: TextExtracts when it works, otherwise the
+    rendered parse (Proofread-extension transclusions are invisible to
+    TextExtracts) with markup stripped."""
+    extract = wikisource_api(lang, prop="extracts", explaintext=1,
+                             titles=title)
+    for p in extract["query"]["pages"].values():
+        if p.get("extract"):
+            return p["extract"]
+    parsed = wikisource_api(lang, action="parse", prop="text", page=title)
+    stripper = _HtmlText()
+    stripper.feed(parsed["parse"]["text"]["*"])
+    return "".join(stripper.parts)
+
+
 def fetch_wikisource(lang: str, page: str) -> pathlib.Path:
     """Concatenated plain text of `page` and all its chapter subpages."""
     cache = CACHE / "wikisource"
@@ -92,12 +141,7 @@ def fetch_wikisource(lang: str, page: str) -> pathlib.Path:
                              aplimit=500, apprefix=f"{page}/")
     titles = [page] + [p["title"] for p in listing["query"]["allpages"]]
     print(f"  fetching {len(titles)} pages from {lang}.wikisource.org")
-    parts = []
-    for title in titles:
-        extract = wikisource_api(lang, prop="extracts", explaintext=1,
-                                 titles=title)
-        for p in extract["query"]["pages"].values():
-            parts.append(p.get("extract", ""))
+    parts = [wikisource_page_text(lang, title) for title in titles]
     path.write_text("\n\n".join(parts))
     return path
 
@@ -119,7 +163,20 @@ def strip_boilerplate(raw: str) -> tuple[str, str]:
             break
     if start is None or end is None:
         raise ValueError("Gutenberg START/END markers not found")
-    return "\n".join(lines[:start]), "\n".join(lines[start + 1 : end])
+    return "\n".join(lines[:start]), clean_body("\n".join(lines[start + 1 : end]))
+
+
+def clean_body(body: str) -> str:
+    """Drops transcriber apparatus that survives inside the book body:
+    [Illustration: ...] captions and Distributed Proofreaders credit
+    paragraphs. The words of the book itself are untouched."""
+    body = re.sub(r"\[Illustration[^\]]*\]", "", body)
+    paragraphs = re.split(r"\n\s*\n", body)
+    # Anchored tightly: "produced by" appears in Melville's own prose.
+    credit = re.compile(r"^\s*Produced by|Distributed Proofread|"
+                        r"Transcriber['’]s Note", re.IGNORECASE)
+    keep = [p for p in paragraphs if not credit.search(p)]
+    return "\n\n".join(keep)
 
 
 def count_words(body: str) -> str:

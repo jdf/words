@@ -22,7 +22,7 @@
 
 namespace {
 
-constexpr const char* kFont = WORDS_ASSETS_DIR "/Sexsmith.otf";
+constexpr const char* kFont = WORDS_ASSETS_DIR "/fonts/sexsmith.ttf";
 
 auto subdirectory = ApprovalTests::Approvals::useApprovalsSubdirectory(
     "goldens/geometry");

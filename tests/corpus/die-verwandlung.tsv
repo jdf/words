@@ -2,8 +2,8 @@
 # source: Project Gutenberg #22367 (https://www.gutenberg.org/ebooks/22367), public domain
 # generator: tools/make-corpus.py (word_counts host tool)
 # language-guess: german
-# tokens: 19191
-# distinct: 3777
+# tokens: 19177
+# distinct: 3763
 die	627
 und	624
 er	444
@@ -1407,20 +1407,6 @@ meinen	2
 günstig	2
 verließen	2
 ausgefragt	2
-Produced	1
-by	1
-Jana	1
-Srna	1
-Alexander	1
-Bauer	1
-and	1
-the	1
-Online	1
-Distributed	1
-Proofreading	1
-Team	1
-at	1
-http://www.pgdp.net	1
 FRANZ	1
 KAFKA	1
 K U R T	1

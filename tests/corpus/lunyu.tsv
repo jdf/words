@@ -2,8 +2,8 @@
 # source: Project Gutenberg #23839 (https://www.gutenberg.org/ebooks/23839), public domain
 # generator: tools/make-corpus.py (word_counts host tool)
 # language-guess: unknown
-# tokens: 4499
-# distinct: 3138
+# tokens: 4495
+# distinct: 3134
 子曰	400
 曰	96
 子貢曰	23
@@ -271,10 +271,6 @@
 少連	2
 君子之道	2
 吾聞諸夫子	2
-Produced	1
-by	1
-Wen	1
-Yen	1
 不患人之不己之	1
 己之	1
 should	1

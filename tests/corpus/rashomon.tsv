@@ -2,8 +2,8 @@
 # source: Project Gutenberg #1982 (https://www.gutenberg.org/ebooks/1982), public domain
 # generator: tools/make-corpus.py (word_counts host tool)
 # language-guess: english
-# tokens: 834
-# distinct: 735
+# tokens: 830
+# distinct: 732
 下人は	20
 そうして	7
 勿論	6
@@ -22,7 +22,6 @@ in	3
 と	3
 饑死	3
 すれば	3
-by	2
 A	2
 from	2
 is	2
@@ -49,10 +48,8 @@ and	2
 暫	2
 全然	2
 殆	2
-Produced	1
-Rick	1
-Davis	1
 RASHOMON	1
+By	1
 AKUTAGAWA	1
 Ryunosuke	1
 note	1

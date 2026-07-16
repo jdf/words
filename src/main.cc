@@ -3,6 +3,12 @@
 // the scene draws once at startup and again on window resizes, and the CPU
 // and GPU are otherwise idle. (?t= in the URL is accepted for the e2e
 // screenshot contract, but every frame is a "frozen" frame now.)
+//
+// URL parameters (?text= is read here; ?corpus= and ?font= are fetched by
+// the page before the runtime starts and appear as MEMFS files):
+//   ?text=<urlencoded>   cloud this text instead of the bundled sample
+//   ?corpus=<slug>       cloud tests/corpus/<slug>.tsv's precomputed counts
+//   ?font=<basename>     use assets/fonts/<basename>.ttf
 
 #include <emscripten/emscripten.h>
 #include <emscripten/html5.h>
@@ -22,9 +28,13 @@
 
 namespace {
 
-constexpr const char* kFontPath = "/fonts/Sexsmith.otf";
+constexpr const char* kFontPath = "/fonts/sexsmith.ttf";
 constexpr const char* kStopWordsDir = "/stopwords";
 constexpr const char* kSampleTextPath = "/sample-text.txt";
+// Written into MEMFS by the page's preRun when ?corpus= or ?font= is in
+// the URL (see web/index.html); absent otherwise.
+constexpr const char* kCorpusTsvPath = "/corpus.tsv";
+constexpr const char* kFontOverridePath = "/font-override.ttf";
 
 struct App {
   words::Scene scene;
@@ -32,6 +42,13 @@ struct App {
 };
 
 App* g_app = nullptr;
+
+std::string slurp(const char* path) {
+  std::ifstream in(path);
+  std::ostringstream ss;
+  ss << in.rdbuf();
+  return ss.str();
+}
 
 // The "text" URL query parameter, or the bundled sample text.
 std::string cloudText() {
@@ -44,10 +61,15 @@ std::string cloudText() {
     std::free(fromUrl);
     if (!text.empty()) return text;
   }
-  std::ifstream in(kSampleTextPath);
-  std::ostringstream ss;
-  ss << in.rdbuf();
-  return ss.str();
+  return slurp(kSampleTextPath);
+}
+
+words::Scene buildScene(const std::string& fontPath) {
+  std::string tsv = slurp(kCorpusTsvPath);
+  if (!tsv.empty()) {
+    return words::buildCloudFromCountsTsv(fontPath, kStopWordsDir, tsv);
+  }
+  return words::buildCloudFromText(fontPath, kStopWordsDir, cloudText());
 }
 
 // Keeps the drawing buffer matched to the canvas CSS size × devicePixelRatio.
@@ -108,7 +130,8 @@ int main() {
   static App app;
   g_app = &app;
 
-  app.scene = words::buildCloudFromText(kFontPath, kStopWordsDir, cloudText());
+  std::ifstream fontOverride(kFontOverridePath);
+  app.scene = buildScene(fontOverride ? kFontOverridePath : kFontPath);
   app.wordRenderer.init(app.scene);
 
   std::printf("words up: GL_VERSION = %s\n", glGetString(GL_VERSION));

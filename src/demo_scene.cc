@@ -1,6 +1,7 @@
 #include "demo_scene.h"
 
 #include <algorithm>
+#include <charconv>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
@@ -142,13 +143,13 @@ Scene buildCloudScene(const std::string& fontPath) {
   return sceneFitToContent(std::move(laid), colors);
 }
 
-Scene buildCloudFromText(const std::string& fontPath,
-                         const std::string& stopWordsDir,
-                         std::string_view text, size_t maxWords,
-                         LayoutDebug* debug) {
-  StopWordsSet stopSets(stopWordsDir);
-  const StopWords* language = stopSets.guess(text);
-  std::vector<WordCount> counts = countWords(text, language);
+namespace {
+
+// The shared tail of every text pipeline: frequency-ranked counts become
+// sized, oriented, colored, laid-out words.
+Scene cloudFromCounts(const std::string& fontPath,
+                      std::vector<WordCount>&& counts, size_t maxWords,
+                      LayoutDebug* debug) {
   if (counts.empty()) return Scene();
   if (counts.size() > maxWords) counts.resize(maxWords);
 
@@ -171,10 +172,60 @@ Scene buildCloudFromText(const std::string& fontPath,
     colors.push_back(
         kPalette[static_cast<size_t>(unit(rng) * std::size(kPalette))]);
   }
+  if (laid.empty()) return Scene();
 
   Box world = worldFor(laid);
   layoutWords(laid, world, LayoutParams{}, debug);
   return sceneFitToContent(std::move(laid), colors, debug);
+}
+
+}  // namespace
+
+Scene buildCloudFromText(const std::string& fontPath,
+                         const std::string& stopWordsDir,
+                         std::string_view text, size_t maxWords,
+                         LayoutDebug* debug) {
+  StopWordsSet stopSets(stopWordsDir);
+  const StopWords* language = stopSets.guess(text);
+  return cloudFromCounts(fontPath, countWords(text, language), maxWords,
+                         debug);
+}
+
+Scene buildCloudFromCountsTsv(const std::string& fontPath,
+                              const std::string& stopWordsDir,
+                              std::string_view tsv, size_t maxWords,
+                              LayoutDebug* debug) {
+  StopWordsSet stopSets(stopWordsDir);
+  const StopWords* language = nullptr;
+  std::vector<WordCount> counts;
+  size_t pos = 0;
+  while (pos < tsv.size()) {
+    size_t eol = tsv.find('\n', pos);
+    std::string_view line = tsv.substr(
+        pos, eol == std::string_view::npos ? std::string_view::npos
+                                           : eol - pos);
+    pos = eol == std::string_view::npos ? tsv.size() : eol + 1;
+    if (line.empty()) continue;
+    if (line.front() == '#') {
+      constexpr std::string_view kGuess = "# language-guess: ";
+      if (line.starts_with(kGuess)) {
+        language = stopSets.find(line.substr(kGuess.size()));
+      }
+      continue;
+    }
+    size_t tab = line.find('\t');
+    if (tab == std::string_view::npos) continue;
+    std::string_view word = line.substr(0, tab);
+    int count = 0;
+    std::from_chars(line.data() + tab + 1, line.data() + line.size(),
+                    count);
+    if (count <= 0) continue;
+    // The corpus keeps stop words; the cloud drops them, like the live
+    // pipeline does after its language guess.
+    if (language && language->isStopWord(word)) continue;
+    counts.push_back({std::string(word), count});
+  }
+  return cloudFromCounts(fontPath, std::move(counts), maxWords, debug);
 }
 
 }  // namespace words

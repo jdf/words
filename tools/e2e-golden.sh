@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
-# End-to-end golden image test: renders the real wasm build in headless
+# End-to-end golden image tests: renders the real wasm build in headless
 # Chrome on SwiftShader-backed ANGLE (the same GL stack Chrome uses for
-# WebGL, minus the GPU) at a frozen scene time, and byte-compares the
-# screenshot against the approved golden.
+# WebGL, minus the GPU) and byte-compares screenshots against the approved
+# goldens — one per corpus book, in a script-appropriate font, plus the
+# default sample-text cloud.
 #
-#   tools/e2e-golden.sh          # verify against tests/goldens/
-#   tools/e2e-golden.sh --bless  # approve the current rendering
+#   tools/e2e-golden.sh          # verify all against tests/goldens/e2e/
+#   tools/e2e-golden.sh --bless  # approve the current renderings
 #
 # Determinism notes: SwiftShader is CPU rasterization — bit-exact for a
 # fixed Chrome version on a fixed architecture. The browser is a pinned
@@ -16,10 +17,26 @@ cd "$(dirname "$0")/.."
 
 CHROME="${CHROME:-$(tools/get-chrome.sh)}"
 PORT=8788
-T=2.0
 SIZE=1200,750
-GOLDEN=tests/goldens/e2e/t2.png
-RECEIVED=build/e2e-received.png
+GOLDEN_DIR=tests/goldens/e2e
+
+# name|query — gentium covers accented Latin, Greek, and Cyrillic;
+# sbl-hebrew and scheherazade cover the RTL scripts. (No corpus case for
+# rashomon/lunyu: the font collection has no CJK ideographs, same as the
+# original Wordle.)
+CASES=(
+  "t2|?t=2"
+  "moby-dick|?corpus=moby-dick"
+  "monte-cristo|?corpus=monte-cristo&font=gentium"
+  "die-verwandlung|?corpus=die-verwandlung&font=gentium"
+  "don-quijote|?corpus=don-quijote&font=gentium"
+  "divina-commedia|?corpus=divina-commedia&font=gentium"
+  "os-lusiadas|?corpus=os-lusiadas&font=gentium"
+  "kalevala|?corpus=kalevala&font=gentium"
+  "belye-nochi|?corpus=belye-nochi&font=gentium"
+  "hatzofe|?corpus=hatzofe&font=sbl-hebrew"
+  "kalila-wa-dimna|?corpus=kalila-wa-dimna&font=scheherazade"
+)
 
 # Build the release dist directly (not via ./dev, which would also point
 # the dev server at the release build).
@@ -36,25 +53,34 @@ SERVER_PID=$!
 trap 'kill $SERVER_PID 2>/dev/null' EXIT
 sleep 0.3
 
-"$CHROME" --headless --disable-gpu --use-angle=swiftshader \
-  --window-size="$SIZE" --hide-scrollbars --virtual-time-budget=8000 \
-  --screenshot="$RECEIVED" "http://localhost:$PORT/?t=$T" 2>/dev/null
+FAILED=0
+for case in "${CASES[@]}"; do
+  NAME="${case%%|*}"
+  QUERY="${case#*|}"
+  GOLDEN="$GOLDEN_DIR/$NAME.png"
+  RECEIVED="build/e2e-received-$NAME.png"
+
+  "$CHROME" --headless --disable-gpu --use-angle=swiftshader \
+    --window-size="$SIZE" --hide-scrollbars --virtual-time-budget=8000 \
+    --screenshot="$RECEIVED" "http://localhost:$PORT/$QUERY" 2>/dev/null
+
+  if [ "${1:-}" = "--bless" ]; then
+    mkdir -p "$GOLDEN_DIR"
+    cp "$RECEIVED" "$GOLDEN"
+    echo "blessed: $GOLDEN ($(wc -c < "$GOLDEN" | tr -d ' ') bytes)"
+  elif [ ! -f "$GOLDEN" ]; then
+    echo "no golden at $GOLDEN — run with --bless after verifying $RECEIVED" >&2
+    FAILED=1
+  elif cmp -s "$GOLDEN" "$RECEIVED"; then
+    echo "e2e golden OK: $NAME"
+  else
+    echo "e2e golden MISMATCH: compare $RECEIVED against $GOLDEN" >&2
+    FAILED=1
+  fi
+done
 
 if [ "${1:-}" = "--bless" ]; then
-  mkdir -p "$(dirname "$GOLDEN")"
-  cp "$RECEIVED" "$GOLDEN"
-  echo "blessed: $GOLDEN ($(wc -c < "$GOLDEN" | tr -d ' ') bytes, chrome $("$CHROME" --version | tr -d '\n'))"
+  echo "blessed with chrome $("$CHROME" --version | tr -d '\n')"
   exit 0
 fi
-
-if [ ! -f "$GOLDEN" ]; then
-  echo "no golden at $GOLDEN — run with --bless after verifying $RECEIVED" >&2
-  exit 1
-fi
-
-if cmp -s "$GOLDEN" "$RECEIVED"; then
-  echo "e2e golden OK"
-else
-  echo "e2e golden MISMATCH: compare $RECEIVED against $GOLDEN" >&2
-  exit 1
-fi
+exit $FAILED

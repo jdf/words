@@ -24,4 +24,13 @@ Scene buildCloudFromText(const std::string& fontPath,
                          std::string_view text, size_t maxWords = 800,
                          LayoutDebug* debug = nullptr);
 
+// The same pipeline entered with precomputed counts: `tsv` is a
+// tests/corpus file (word<TAB>count lines, most frequent first, stop
+// words retained, `# language-guess:` header naming the stop list to
+// apply). Deterministic for fixed inputs.
+Scene buildCloudFromCountsTsv(const std::string& fontPath,
+                              const std::string& stopWordsDir,
+                              std::string_view tsv, size_t maxWords = 800,
+                              LayoutDebug* debug = nullptr);
+
 }  // namespace words

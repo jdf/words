@@ -2,8 +2,8 @@
 # source: Project Gutenberg #7000 (https://www.gutenberg.org/ebooks/7000), public domain
 # generator: tools/make-corpus.py (word_counts host tool)
 # language-guess: finnish
-# tokens: 67604
-# distinct: 20173
+# tokens: 67592
+# distinct: 20167
 on	907
 ei	561
 itse	398
@@ -3242,7 +3242,6 @@ saunoa	4
 Ruma	4
 poiuttansa	4
 tutkijaksi	4
-by	3
 edition	3
 Lönnrot	3
 their	3
@@ -4629,10 +4628,6 @@ kääperöittelevi	3
 poiuttani	3
 omenueni	3
 poikuesi	3
-Produced	2
-Project	2
-Gutenberg	2
-version	2
 Elias	2
 1802	2
 1884	2
@@ -7877,12 +7872,6 @@ tuomariksi	2
 opissa	2
 la'un	2
 laulajoille	2
-an	1
-anonymous	1
-volunteer	1
-HTML	1
-Al	1
-Haines	1
 This	1
 electronic	1
 been	1
@@ -7891,6 +7880,8 @@ verbatim	1
 from	1
 28th	1
 printed	1
+produced	1
+by	1
 Finnish	1
 Literature	1
 Society	1
@@ -7904,6 +7895,8 @@ public	1
 domain	1
 FLF	1
 given	1
+Project	1
+Gutenberg	1
 permission	1
 to	1
 post	1
@@ -7944,6 +7937,7 @@ aineistoa	1
 kertyi	1
 runsaasti	1
 laajemman	1
+version	1
 Eepoksessa	1
 50	1
 runoa	1

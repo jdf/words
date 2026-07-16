@@ -2,8 +2,8 @@
 # source: Project Gutenberg #2701 (https://www.gutenberg.org/ebooks/2701), public domain
 # generator: tools/make-corpus.py (word_counts host tool)
 # language-guess: english
-# tokens: 214383
-# distinct: 18821
+# tokens: 214380
+# distinct: 18820
 the	14532
 of	6601
 and	6433
@@ -917,7 +917,6 @@ secret	23
 hunt	23
 Parsee	23
 aboard	22
-original	22
 country	22
 answered	22
 stove	22
@@ -958,6 +957,7 @@ bound	21
 decks	21
 ain’t	21
 formed	21
+original	21
 sitting	21
 negro	21
 spot	21
@@ -4168,7 +4168,6 @@ Battering-Ram	4
 Bower	4
 Arsacides	4
 Measurement	4
-notes	4
 project	4
 preserving	4
 reminded	4
@@ -5793,6 +5792,7 @@ poke	3
 merged	3
 wintry	3
 cordage	3
+notes	3
 swelling	3
 glades	3
 stormy	3
@@ -9944,7 +9944,6 @@ Befooled	2
 vortex	2
 Herman	1
 Melville	1
-Transcriber’s	1
 etexts	1
 now-defunct	1
 ERIS	1

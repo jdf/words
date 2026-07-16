@@ -49,12 +49,14 @@ if(EMSCRIPTEN)
     -sALLOW_MEMORY_GROWTH=1
     -sMODULARIZE=1
     -sEXPORT_NAME=createWordsModule
-    "SHELL:--preload-file ${CMAKE_SOURCE_DIR}/assets/Sexsmith.otf@/fonts/Sexsmith.otf"
+    "SHELL:--preload-file ${CMAKE_SOURCE_DIR}/assets/fonts/sexsmith.ttf@/fonts/sexsmith.ttf"
     "SHELL:--preload-file ${CMAKE_SOURCE_DIR}/assets/stopwords@/stopwords"
     "SHELL:--preload-file ${CMAKE_SOURCE_DIR}/assets/sample-text.txt@/sample-text.txt"
-    "SHELL:-sEXPORTED_RUNTIME_METHODS=stringToNewUTF8"
+    # FS + run-dependency methods let the page's preRun inject lazily
+    # fetched ?corpus=/?font= files into MEMFS before main() runs.
+    "SHELL:-sEXPORTED_RUNTIME_METHODS=stringToNewUTF8,FS,addRunDependency,removeRunDependency"
   )
-  set_property(TARGET words APPEND PROPERTY LINK_DEPENDS ${CMAKE_SOURCE_DIR}/assets/Sexsmith.otf)
+  set_property(TARGET words APPEND PROPERTY LINK_DEPENDS ${CMAKE_SOURCE_DIR}/assets/fonts/sexsmith.ttf)
 
   # Debug builds carry DWARF + source map so Chrome DevTools can show C++
   # source.
@@ -78,6 +80,24 @@ if(EMSCRIPTEN)
   )
   add_custom_target(web_assets ALL DEPENDS ${WORDS_WEB_STAMP})
   add_dependencies(words web_assets)
+
+  # Lazily fetched resources (?corpus=, ?font=): plain static files next to
+  # the app, not part of the preloaded bundle — the browser only downloads
+  # what a URL actually asks for.
+  file(GLOB WORDS_CORPUS_FILES CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/tests/corpus/*.tsv)
+  file(GLOB WORDS_FONT_FILES CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/assets/fonts/*.ttf)
+  set(WORDS_LAZY_STAMP ${CMAKE_BINARY_DIR}/lazy-assets.stamp)
+  add_custom_command(
+    OUTPUT ${WORDS_LAZY_STAMP}
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${WORDS_DIST_DIR}/corpus ${WORDS_DIST_DIR}/fonts
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${WORDS_CORPUS_FILES} ${WORDS_DIST_DIR}/corpus
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${WORDS_FONT_FILES} ${WORDS_DIST_DIR}/fonts
+    COMMAND ${CMAKE_COMMAND} -E touch ${WORDS_LAZY_STAMP}
+    DEPENDS ${WORDS_CORPUS_FILES} ${WORDS_FONT_FILES}
+    COMMENT "Copying corpus/ and fonts/ to dist/"
+  )
+  add_custom_target(lazy_assets ALL DEPENDS ${WORDS_LAZY_STAMP})
+  add_dependencies(words lazy_assets)
 
   # wasm runtime microbenchmarks: Google Benchmark compiled to wasm, run
   # under node (same V8 as Chrome, so codegen is representative of the

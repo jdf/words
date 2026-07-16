@@ -26,7 +26,7 @@
 
 namespace {
 
-constexpr const char* kFont = "assets/Sexsmith.otf";
+constexpr const char* kFont = "assets/fonts/sexsmith.ttf";
 constexpr const char* kText = "words";
 
 // Font load + HarfBuzz shaping + outline flattening + Clipper2 union:

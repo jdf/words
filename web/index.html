@@ -20,11 +20,50 @@
   <script src="words.js"></script>
   <script>
     const status = document.getElementById('status');
-    createWordsModule({
+    // ?corpus= and ?font= resources are fetched lazily (they aren't in the
+    // preloaded bundle) and written into MEMFS before main() runs; the C++
+    // side just sees the files.
+    const params = new URLSearchParams(location.search);
+    const lazyFiles = [];
+    if (params.get('corpus')) {
+      lazyFiles.push({
+        url: 'corpus/' + encodeURIComponent(params.get('corpus')) + '.tsv',
+        path: '/corpus.tsv',
+      });
+    }
+    if (params.get('font')) {
+      lazyFiles.push({
+        url: 'fonts/' + encodeURIComponent(params.get('font')) + '.ttf',
+        path: '/font-override.ttf',
+      });
+    }
+    // createWordsModule adopts this object as the Module, so the exported
+    // runtime methods (FS, add/removeRunDependency) appear on it by the
+    // time the preRun callback fires.
+    const moduleConfig = {
       canvas: document.getElementById('canvas'),
       print: (text) => { console.log(text); status.textContent = text; },
       printErr: (text) => { console.error(text); },
-    }).then(() => {
+      preRun: [() => {
+        for (const f of lazyFiles) {
+          moduleConfig.addRunDependency(f.url);
+          fetch(f.url)
+            .then((r) => {
+              if (!r.ok) throw new Error(r.status + ' ' + f.url);
+              return r.arrayBuffer();
+            })
+            .then((buf) => {
+              moduleConfig.FS.writeFile(f.path, new Uint8Array(buf));
+              moduleConfig.removeRunDependency(f.url);
+            })
+            .catch((err) => {
+              status.textContent = 'failed to load ' + f.url + ': ' + err;
+              console.error(err);
+            });
+        }
+      }],
+    };
+    createWordsModule(moduleConfig).then(() => {
       console.log('words module ready');
     }).catch((err) => {
       status.textContent = 'failed to start: ' + err;
