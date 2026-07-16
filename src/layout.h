@@ -2,7 +2,9 @@
 
 #include <clipper2/clipper.h>
 
+#include <cstddef>
 #include <cstdint>
+#include <functional>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -48,6 +50,9 @@ struct LayoutParams {
   double quadMinCell = 200.0;
   int quadMaxDepth = 8;
   uint32_t seed = 1;
+  // Called after each word is committed (placed count, total). Layout
+  // blocks its thread; this is how the host hears about progress mid-run.
+  std::function<void(size_t, size_t)> progress;
 };
 
 // Places `wordList` into `bounds`, in the order given (classically most

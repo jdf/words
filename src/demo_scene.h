@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <functional>
 #include <string>
 #include <string_view>
 
@@ -35,6 +36,9 @@ struct CloudOptions {
   uint32_t seed = 1447;
   const ColorScheme* colors = nullptr;  // null = built-in dark scheme
   LayoutDebug* debug = nullptr;
+  // Pipeline progress: phase is "shaping" or "layout"; (done, total)
+  // within the phase. Called from whatever thread runs the pipeline.
+  std::function<void(const char* phase, size_t done, size_t total)> progress;
 };
 
 // Builds the demo world: a word cloud of project-flavored vocabulary,

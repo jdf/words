@@ -1,23 +1,25 @@
 #!/usr/bin/env bash
-# End-to-end golden image tests: renders the real wasm build in headless
-# Chrome on SwiftShader-backed ANGLE (the same GL stack Chrome uses for
-# WebGL, minus the GPU) and byte-compares screenshots against the approved
-# goldens — one per corpus book, in a script-appropriate font, plus the
-# default sample-text cloud.
+# End-to-end golden image tests: renders the real wasm build (engine in a
+# Web Worker, exactly as shipped) in headless Chrome on SwiftShader-backed
+# ANGLE (the same GL stack Chrome uses for WebGL, minus the GPU) and
+# byte-compares screenshots against the approved goldens.
 #
 #   tools/e2e-golden.sh          # verify all against tests/goldens/e2e/
 #   tools/e2e-golden.sh --bless  # approve the current renderings
 #
+# One pinned Chrome for Testing instance (tools/chrome-version.txt) serves
+# every case: tools/e2e-shot.mjs drives it over the DevTools protocol,
+# navigating per case and waiting for the engine's idle flag before each
+# capture — no virtual-time games, no per-case browser startup.
+#
 # Determinism notes: SwiftShader is CPU rasterization — bit-exact for a
-# fixed Chrome version on a fixed architecture. The browser is a pinned
-# Chrome for Testing build (tools/chrome-version.txt), so system Chrome
-# updates can't shift pixels; bump the pin and re-bless deliberately.
+# fixed Chrome version on a fixed architecture; bump the pin and re-bless
+# deliberately.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
 CHROME="${CHROME:-$(tools/get-chrome.sh)}"
 PORT=8788
-SIZE=1200,750
 GOLDEN_DIR=tests/goldens/e2e
 
 CASES=()
@@ -59,21 +61,23 @@ if [ ! -f build/wasm-release/build.ninja ]; then
 fi
 cmake --build --preset wasm-release >/dev/null
 
+if [ ! -d node_modules/puppeteer-core ]; then
+  npm install >/dev/null
+fi
+
 python3 tools/serve.py "$PWD/build/wasm-release/dist" "$PORT" &
 SERVER_PID=$!
 trap 'kill $SERVER_PID 2>/dev/null' EXIT
 sleep 0.3
 
+node tools/e2e-shot.mjs "$CHROME" "http://localhost:$PORT/" build \
+  "${CASES[@]}" >/dev/null
+
 FAILED=0
 for case in "${CASES[@]}"; do
   NAME="${case%%|*}"
-  QUERY="${case#*|}"
   GOLDEN="$GOLDEN_DIR/$NAME.png"
   RECEIVED="build/e2e-received-$NAME.png"
-
-  "$CHROME" --headless --disable-gpu --use-angle=swiftshader \
-    --window-size="$SIZE" --hide-scrollbars --virtual-time-budget=8000 \
-    --screenshot="$RECEIVED" "http://localhost:$PORT/$QUERY" 2>/dev/null
 
   if [ "${1:-}" = "--bless" ]; then
     mkdir -p "$GOLDEN_DIR"

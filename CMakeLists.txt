@@ -52,7 +52,10 @@ if(EMSCRIPTEN)
   set_target_properties(words PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${WORDS_DIST_DIR})
 
   target_link_options(words PRIVATE
-    -sENVIRONMENT=web
+    # The module runs inside web/worker.js with a transferred
+    # OffscreenCanvas; "web" stays for the runtime's feature checks.
+    -sENVIRONMENT=web,worker
+    -sOFFSCREENCANVAS_SUPPORT=1
     -sMIN_WEBGL_VERSION=2
     -sMAX_WEBGL_VERSION=2
     -sALLOW_MEMORY_GROWTH=1

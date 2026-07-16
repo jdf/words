@@ -1,11 +1,17 @@
-// words — application entry point: WebGL2 context, the demo scene, and
-// on-demand rendering. Nothing animates, so there is no frame loop at all:
-// the scene draws once at startup and again on window resizes, and the CPU
-// and GPU are otherwise idle. (?t= in the URL is accepted for the e2e
-// screenshot contract, but every frame is a "frozen" frame now.)
+// words — engine entry point. The module lives in a Web Worker
+// (web/worker.js): the page transfers an OffscreenCanvas and forwards the
+// URL query string, and everything heavy — text analysis, shaping, layout,
+// rendering — happens off the main thread. Nothing animates, so there is
+// no frame loop: the scene draws once at startup and again on resize or
+// relayout commands, and the CPU and GPU are otherwise idle.
+//
+// Host protocol (postMessage, see web/worker.js and web/index.html):
+//   in:  setSeed, resize, logScene — dispatched to the wordsXxx exports
+//   out: progress {phase, done, total} mid-pipeline, idle when drawn,
+//        print/printErr relayed by the worker shell
 //
 // URL parameters (?text= is read here; ?corpus= and ?font= are fetched by
-// the page before the runtime starts and appear as MEMFS files):
+// the worker before the runtime starts and appear as MEMFS files):
 //   ?text=<urlencoded>   cloud this text instead of the bundled sample
 //   ?corpus=<slug>       cloud tests/corpus/<slug>.tsv's precomputed counts
 //   ?font=<basename>     use assets/fonts/<basename>.ttf
@@ -16,10 +22,11 @@
 //                        (see src/orientation.h)
 //   ?placement=<name>    center-line|center
 //   ?seed=<n>            layout randomness (default 1447); live-adjustable
-//                        via wordsSetSeed() from the ?ui panel
+//                        via the ?ui panel
 
+#include <emscripten/em_asm.h>
 #include <emscripten/emscripten.h>
-#include <emscripten/html5.h>
+#include <emscripten/html5_webgl.h>
 
 #include <GLES3/gl3.h>
 
@@ -48,8 +55,8 @@ namespace {
 constexpr const char* kFontPath = "/fonts/sexsmith.ttf";
 constexpr const char* kStopWordsDir = "/stopwords";
 constexpr const char* kSampleTextPath = "/sample-text.txt";
-// Written into MEMFS by the page's preRun when ?corpus= or ?font= is in
-// the URL (see web/index.html); absent otherwise.
+// Written into MEMFS by the worker's preRun when ?corpus= or ?font= is in
+// the URL (see web/worker.js); absent otherwise.
 constexpr const char* kCorpusTsvPath = "/corpus.tsv";
 constexpr const char* kFontOverridePath = "/font-override.ttf";
 
@@ -57,6 +64,8 @@ struct App {
   words::Scene scene;
   words::WordRenderer wordRenderer;
   std::string fontPath;  // resolved at startup, reused on relayout
+  int width = 0;         // drawing-buffer size, device pixels; the page
+  int height = 0;        // pushes changes via the resize message
 };
 
 App* g_app = nullptr;
@@ -69,11 +78,14 @@ std::string slurp(const char* path) {
   return ss.str();
 }
 
-// A URL query parameter's value, or "" when absent.
+// A URL query parameter's value, or "" when absent. Workers see their own
+// script URL in location, so the page forwards its query string and the
+// worker shell parks it on the global scope.
 std::string urlParam(const char* name) {
   char* value = static_cast<char*>(EM_ASM_PTR(
       {
-        const t = new URLSearchParams(location.search).get(UTF8ToString($0));
+        const search = globalThis.__wordsSearch || "";
+        const t = new URLSearchParams(search).get(UTF8ToString($0));
         return t ? stringToNewUTF8(t) : 0;
       },
       name));
@@ -81,6 +93,22 @@ std::string urlParam(const char* name) {
   std::string result(value);
   std::free(value);
   return result;
+}
+
+// Progress and completion events for the page (input gating, progress UI).
+// postMessage from worker code goes to the page; ordering with the print
+// relay is preserved.
+void postProgress(const char* phase, size_t done, size_t total) {
+  EM_ASM(
+      {
+        postMessage(
+            {type : 'progress', phase : UTF8ToString($0), done : $1, total : $2});
+      },
+      phase, static_cast<int>(done), static_cast<int>(total));
+}
+
+void postIdle() {
+  EM_ASM({ postMessage({type : 'idle'}); });
 }
 
 // The "text" URL query parameter, or the bundled sample text.
@@ -91,8 +119,8 @@ std::string cloudText() {
 }
 
 // Builds the scene per URL parameters; `description` receives the
-// human-readable configuration (orientation · placement · palette) that
-// the page shows in its status line.
+// human-readable configuration (orientation · placement · palette · font)
+// that the page shows in its status line.
 words::Scene buildScene(const std::string& fontPath,
                         std::string* description) {
   words::CloudOptions options;
@@ -114,6 +142,7 @@ words::Scene buildScene(const std::string& fontPath,
     options.placement = *p;
   }
   options.seed = g_seed;
+  options.progress = postProgress;
   std::string fontLabel = words::fontFamilyName(fontPath);
   if (fontLabel.empty()) fontLabel = fontPath;
   *description =
@@ -133,45 +162,21 @@ words::Scene buildScene(const std::string& fontPath,
                                    options);
 }
 
-// Keeps the drawing buffer matched to the canvas CSS size × devicePixelRatio.
-void syncCanvasSize(int* width, int* height) {
-  double cssWidth = 0, cssHeight = 0;
-  emscripten_get_element_css_size("#canvas", &cssWidth, &cssHeight);
-  double dpr = emscripten_get_device_pixel_ratio();
-  int w = static_cast<int>(cssWidth * dpr);
-  int h = static_cast<int>(cssHeight * dpr);
-  int currentW = 0, currentH = 0;
-  emscripten_get_canvas_element_size("#canvas", &currentW, &currentH);
-  if (w != currentW || h != currentH) {
-    emscripten_set_canvas_element_size("#canvas", w, h);
-  }
-  *width = w;
-  *height = h;
-}
-
 void render() {
-  int width = 0, height = 0;
-  syncCanvasSize(&width, &height);
-  glViewport(0, 0, width, height);
+  glViewport(0, 0, g_app->width, g_app->height);
 
   const words::Color& bg = g_app->scene.background();
   glClearColor(bg.r, bg.g, bg.b, 1.0f);
   glClearStencil(0);
   glClear(GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
-  g_app->wordRenderer.draw(g_app->scene, width, height);
-}
-
-EM_BOOL onResize(int /*eventType*/, const EmscriptenUiEvent* /*event*/,
-                 void* /*userData*/) {
-  render();
-  return EM_TRUE;
+  g_app->wordRenderer.draw(g_app->scene, g_app->width, g_app->height);
 }
 
 }  // namespace
 
-// Relayout with a new seed — the first live JS->C++ command (wired to the
-// ?ui panel's slider). Same text, font, and strategies; new randomness.
+// Relayout with a new seed (the ?ui panel's slider, via the worker shell).
+// Same text, font, and strategies; new randomness.
 extern "C" EMSCRIPTEN_KEEPALIVE void wordsSetSeed(int seed) {
   if (!g_app) return;
   g_seed = static_cast<uint32_t>(seed);
@@ -180,10 +185,26 @@ extern "C" EMSCRIPTEN_KEEPALIVE void wordsSetSeed(int seed) {
   g_app->wordRenderer.init(g_app->scene);
   render();
   std::printf("%s · seed %u\n", description.c_str(), g_seed);
+  postIdle();
 }
 
-// Console-callable engine interrogation (the page exposes the module as
-// window.words): `words._wordsLogScene()` dumps the scene to the console.
+// The page pushes drawing-buffer size changes (device pixels); no DOM in
+// the worker to observe.
+extern "C" EMSCRIPTEN_KEEPALIVE void wordsResize(int width, int height) {
+  if (!g_app) return;
+  g_app->width = width;
+  g_app->height = height;
+  EM_ASM(
+      {
+        Module.canvas.width = $0;
+        Module.canvas.height = $1;
+      },
+      width, height);
+  render();
+}
+
+// Console-callable engine interrogation (the page's window.words shim
+// forwards to the worker): `words._wordsLogScene()` dumps the scene.
 extern "C" EMSCRIPTEN_KEEPALIVE void wordsLogScene() {
   if (!g_app) {
     LOG(WARNING) << "no scene yet";
@@ -222,6 +243,11 @@ int main() {
   // With no frame loop, the drawn frame must survive later composites.
   attrs.preserveDrawingBuffer = true;
 
+  // Module.canvas is the OffscreenCanvas the page transferred, already at
+  // the right device-pixel size. In a worker there's no DOM to query, so
+  // register it under the "#canvas" selector explicitly (specialHTMLTargets
+  // is the html5 API's documented escape hatch for exactly this).
+  EM_ASM({ specialHTMLTargets["#canvas"] = Module.canvas; });
   EMSCRIPTEN_WEBGL_CONTEXT_HANDLE ctx =
       emscripten_webgl_create_context("#canvas", &attrs);
   if (ctx <= 0) {
@@ -233,6 +259,8 @@ int main() {
 
   static App app;
   g_app = &app;
+  app.width = EM_ASM_INT(return Module.canvas.width);
+  app.height = EM_ASM_INT(return Module.canvas.height);
 
   std::string seedParam = urlParam("seed");
   if (!seedParam.empty()) {
@@ -250,13 +278,8 @@ int main() {
   // configuration, so every golden names what it shows.
   std::printf("%s\n", description.c_str());
 
-  // Draw twice at startup (the first pass resizes the canvas, which clears
-  // the buffer mid-task in some engines), then only on window resizes. The
-  // emscripten runtime stays alive after main returns to service the
-  // callback.
   render();
-  render();
-  emscripten_set_resize_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, nullptr,
-                                 EM_FALSE, onResize);
+  postIdle();
+  // The runtime stays alive after main returns to service commands.
   return 0;
 }

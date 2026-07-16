@@ -69,6 +69,7 @@ void layoutWords(std::vector<Word>& wordList, const Box& bounds,
   });
 
   QuadTree index(bounds, params.quadMinCell, params.quadMaxDepth);
+  size_t committed = 0;
   for (size_t idx : order) {
     Word& w = wordList[idx];
     bool traced = debug && w.label() == debug->traceLabel;
@@ -136,6 +137,7 @@ void layoutWords(std::vector<Word>& wordList, const Box& bounds,
     }
 
     index.add(&w);
+    if (params.progress) params.progress(++committed, order.size());
   }
 }
 

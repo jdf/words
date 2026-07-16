@@ -164,7 +164,11 @@ Scene cloudFromCounts(const std::string& fontPath,
   std::vector<Word> laid;
   std::vector<Color> colors;
   laid.reserve(counts.size());
-  for (const WordCount& wc : counts) {
+  for (size_t i = 0; i < counts.size(); ++i) {
+    const WordCount& wc = counts[i];
+    if (options.progress && i % 32 == 0) {
+      options.progress("shaping", i, counts.size());
+    }
     ShapedText shaped = shapeText(fontPath, wc.display);
     if (shaped.empty()) continue;
     // Type size proportional to frequency, like the original.
@@ -187,6 +191,11 @@ Scene cloudFromCounts(const std::string& fontPath,
   LayoutParams params;
   params.placement = options.placement;
   params.seed = options.seed;
+  if (options.progress) {
+    params.progress = [&options](size_t done, size_t total) {
+      options.progress("layout", done, total);
+    };
+  }
   layoutWords(laid, world, params, options.debug);
   auto layoutMs = std::chrono::duration_cast<std::chrono::milliseconds>(
                       std::chrono::steady_clock::now() - layoutStart)
