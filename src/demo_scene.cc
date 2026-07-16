@@ -1,6 +1,7 @@
 #include "demo_scene.h"
 
 #include <algorithm>
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <numbers>
@@ -48,19 +49,35 @@ constexpr Color kPalette[] = {
     {0.85f, 0.33f, 0.31f},  // brick
 };
 
-// Em height of the heaviest word, in scene units. Other words scale
-// proportionally with weight (size ∝ count, the classic Wordle mapping,
+// The original's coordinate convention: the heaviest word has a 1000-unit
+// em and everything else scales proportionally with weight (size ∝ count,
 // which is what lets the long tail go small enough to fill crevices),
-// clamped to a legibility floor.
-constexpr double kMaxEm = 230.0;
-constexpr double kMinEm = 14.0;
+// clamped to a legibility floor. The HBB constants (leaf floor 25, the
+// log swells) and spiral constants are calibrated to this scale.
+constexpr double kMaxEm = 1000.0;
+constexpr double kMinEm = 60.0;
 constexpr double kVerticalFraction = 0.25;
+constexpr double kAspect = 1.6;
+
+// The original's world sizing: barely more than the words' total area,
+// which is where the packed look comes from — the world is grown to fit
+// the words, not the words shrunk to fit a fixed world.
+Box worldFor(const std::vector<Word>& wordList) {
+  double totalArea = 0, maxW = 0, maxH = 0;
+  for (const Word& w : wordList) {
+    const Box& b = w.localBounds();
+    totalArea += b.width() * b.height();
+    maxW = std::max(maxW, b.width());
+    maxH = std::max(maxH, b.height());
+  }
+  double width = std::max(maxW, std::sqrt(kAspect * totalArea)) * 1.2;
+  double height = std::max(maxH, std::sqrt(totalArea / kAspect)) * 1.5;
+  return {-width / 2, -height / 2, width / 2, height / 2};
+}
 
 }  // namespace
 
 Scene buildCloudScene(const std::string& fontPath) {
-  Scene scene;
-
   std::mt19937 rng(20080623);  // deterministic demo; Wordle's birthday-ish
   std::uniform_real_distribution<double> unit(0.0, 1.0);
 
@@ -82,10 +99,10 @@ Scene buildCloudScene(const std::string& fontPath) {
                                                   std::size(kPalette))]);
   }
 
-  Box world{-Scene::kWidth / 2.0, -Scene::kHeight / 2.0, Scene::kWidth / 2.0,
-            Scene::kHeight / 2.0};
+  Box world = worldFor(laid);
   layoutWords(laid, world, LayoutParams{});
 
+  Scene scene(world.width(), world.height());
   for (size_t i = 0; i < laid.size(); ++i) {
     scene.addWord(std::move(laid[i]), colors[i]);
   }
@@ -96,12 +113,10 @@ Scene buildCloudFromText(const std::string& fontPath,
                          const std::string& stopWordsDir,
                          std::string_view text, size_t maxWords,
                          LayoutDebug* debug) {
-  Scene scene;
-
   StopWordsSet stopSets(stopWordsDir);
   const StopWords* language = stopSets.guess(text);
   std::vector<WordCount> counts = countWords(text, language);
-  if (counts.empty()) return scene;
+  if (counts.empty()) return Scene();
   if (counts.size() > maxWords) counts.resize(maxWords);
 
   std::mt19937 rng(20080623);
@@ -124,10 +139,10 @@ Scene buildCloudFromText(const std::string& fontPath,
         kPalette[static_cast<size_t>(unit(rng) * std::size(kPalette))]);
   }
 
-  Box world{-Scene::kWidth / 2.0, -Scene::kHeight / 2.0, Scene::kWidth / 2.0,
-            Scene::kHeight / 2.0};
+  Box world = worldFor(laid);
   layoutWords(laid, world, LayoutParams{}, debug);
 
+  Scene scene(world.width(), world.height());
   for (size_t i = 0; i < laid.size(); ++i) {
     scene.addWord(std::move(laid[i]), colors[i]);
   }

@@ -92,8 +92,8 @@ TEST_CASE("cloud layout properties") {
   }
 
   // Every word fits inside the scene.
-  words::Box world{-words::Scene::kWidth / 2.0, -words::Scene::kHeight / 2.0,
-                   words::Scene::kWidth / 2.0, words::Scene::kHeight / 2.0};
+  words::Box world{-scene.width() / 2.0, -scene.height() / 2.0,
+                   scene.width() / 2.0, scene.height() / 2.0};
   for (size_t i = 0; i < entries.size(); ++i) {
     INFO("word " << i << " out of bounds");
     REQUIRE(world.contains(entries[i].word.worldBounds()));

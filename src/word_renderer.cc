@@ -102,7 +102,7 @@ void WordRenderer::draw(const Scene& scene, int width, int height) {
   // Scene px → NDC, uniform on screen; rotation/scale are baked into each
   // word's geometry, so the shared matrix is a pure (anisotropic-in-NDC,
   // shape-preserving-on-screen) scale and per-word state is a translation.
-  double s = std::min(width / Scene::kWidth, height / Scene::kHeight);
+  double s = std::min(width / scene.width(), height / scene.height());
   double ndcX = s * 2.0 / width;
   double ndcY = s * 2.0 / height;
   const float mat[4] = {static_cast<float>(ndcX), 0.0f, 0.0f,

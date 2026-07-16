@@ -17,8 +17,11 @@ struct Color {
 // have, so window shape never changes spatial relationships.
 class Scene {
  public:
-  static constexpr double kWidth = 1600.0;
-  static constexpr double kHeight = 1000.0;
+  Scene() = default;
+  Scene(double width, double height) : width_(width), height_(height) {}
+
+  double width() const { return width_; }
+  double height() const { return height_; }
 
   struct Entry {
     Word word;
@@ -32,6 +35,8 @@ class Scene {
   std::vector<Entry>& entries() { return entries_; }
 
  private:
+  double width_ = 1600.0;
+  double height_ = 1000.0;
   std::vector<Entry> entries_;
 };
 

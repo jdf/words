@@ -54,13 +54,19 @@ std::string toSvg(const Scene& scene) {
   std::snprintf(buf, sizeof buf,
                 "<svg xmlns=\"http://www.w3.org/2000/svg\" "
                 "viewBox=\"%d %d %d %d\">\n",
-                static_cast<int>(-Scene::kWidth / 2),
-                static_cast<int>(-Scene::kHeight / 2),
-                static_cast<int>(Scene::kWidth),
-                static_cast<int>(Scene::kHeight));
+                static_cast<int>(-scene.width() / 2),
+                static_cast<int>(-scene.height() / 2),
+                static_cast<int>(scene.width()),
+                static_cast<int>(scene.height()));
   svg += buf;
-  svg += "<rect x=\"-800\" y=\"-500\" width=\"1600\" height=\"1000\" "
-         "fill=\"#17171c\"/>\n";
+  std::snprintf(buf, sizeof buf,
+                "<rect x=\"%d\" y=\"%d\" width=\"%d\" height=\"%d\" "
+                "fill=\"#17171c\"/>\n",
+                static_cast<int>(-scene.width() / 2),
+                static_cast<int>(-scene.height() / 2),
+                static_cast<int>(scene.width()),
+                static_cast<int>(scene.height()));
+  svg += buf;
   // Scene coordinates are y-up; SVG is y-down.
   svg += "<g transform=\"scale(1,-1)\">\n";
 

@@ -7,6 +7,7 @@
 #include <clipper2/clipper.h>
 #include <cstddef>
 
+#include <cmath>
 #include <numbers>
 #include <vector>
 
@@ -57,7 +58,7 @@ void BM_BuildHbb(benchmark::State& state) {
   }
   state.SetItemsProcessed(state.iterations());
 }
-BENCHMARK(BM_BuildHbb)->Arg(60)->Arg(230)->Arg(500)->Unit(
+BENCHMARK(BM_BuildHbb)->Arg(100)->Arg(400)->Arg(1000)->Unit(
     benchmark::kMicrosecond);
 
 // HBB-vs-HBB queries, near-miss (adjacent) and clear-miss (far) cases.
@@ -86,18 +87,25 @@ void BM_Layout(benchmark::State& state) {
   for (int rep = 0; rep < 4; ++rep) {
     for (const char* text : vocab) {
       shaped.push_back(words::shapeText(kFont, text));
-      scales.push_back((24.0 + 206.0 / (1 + shaped.size() % 7)) /
+      // Em sizes spanning the real convention (heaviest word em = 1000).
+      scales.push_back((100.0 + 900.0 / (1 + shaped.size() % 7)) /
                        shaped.back().upem);
     }
   }
-  words::Box world{-800, -500, 800, 500};
   for (auto _ : state) {
     state.PauseTiming();
     std::vector<words::Word> wordList;
+    double totalArea = 0;
     for (size_t i = 0; i < shaped.size(); ++i) {
       wordList.emplace_back(shaped[i], scales[i],
                             i % 4 == 3 ? std::numbers::pi / 2.0 : 0.0);
+      const words::Box& b = wordList.back().localBounds();
+      totalArea += b.width() * b.height();
     }
+    // World sized from content, like the real pipeline.
+    double w = std::sqrt(1.6 * totalArea) * 1.2;
+    double h = std::sqrt(totalArea / 1.6) * 1.5;
+    words::Box world{-w / 2, -h / 2, w / 2, h / 2};
     state.ResumeTiming();
     words::layoutWords(wordList, world);
     benchmark::DoNotOptimize(wordList);

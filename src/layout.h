@@ -22,9 +22,10 @@ struct LayoutDebug {
 
 struct LayoutParams {
   // Archimedean search spiral: per step, angle advances dTheta and radius
-  // grows dRadius (both scene px / radians).
+  // grows dRadius — the original's constants, calibrated to its coordinate
+  // convention (the heaviest word has a 1000-unit em).
   double dTheta = 0.04;
-  double dRadius = 0.1;
+  double dRadius = 0.7;
   HbbParams hbb;
   double quadMinCell = 200.0;
   int quadMaxDepth = 8;
