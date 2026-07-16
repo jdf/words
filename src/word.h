@@ -4,26 +4,10 @@
 
 #include <string>
 
+#include "box.h"
+#include "hbb.h"
+
 namespace words {
-
-// Axis-aligned bounding box.
-struct Box {
-  double minX = 0, minY = 0, maxX = 0, maxY = 0;
-
-  double width() const { return maxX - minX; }
-  double height() const { return maxY - minY; }
-  double centerX() const { return (minX + maxX) / 2.0; }
-  double centerY() const { return (minY + maxY) / 2.0; }
-
-  Box translated(double dx, double dy) const {
-    return {minX + dx, minY + dy, maxX + dx, maxY + dy};
-  }
-
-  // The box as a closed CCW polygon, for boolean ops against other geometry.
-  Clipper2Lib::PathD asPath() const {
-    return {{minX, minY}, {maxX, minY}, {maxX, maxY}, {minX, maxY}};
-  }
-};
 
 // The outline geometry of a shaped piece of text, in integer font units
 // (y-up, baseline at y=0): HarfBuzz-shaped, FreeType-decomposed, flattened,
@@ -32,6 +16,7 @@ struct Box {
 struct ShapedText {
   Clipper2Lib::PathsD paths;
   Box bounds;
+  double upem = 1000.0;  // font units per em
 
   bool empty() const { return paths.empty(); }
 };
@@ -76,12 +61,24 @@ class Word {
   // decided by Clipper2 on the actual geometry.
   bool boxIntersects(const Clipper2Lib::PathsD& poly) const;
 
+  // Builds the hierarchical bounding box over the local geometry. The
+  // expensive part of layout — call once per word before placement.
+  void buildHbb(const HbbParams& params = {});
+  const Hbb& hbb() const { return hbb_; }
+
+  // Word-vs-word collision via the HBBs (both must be built): true iff
+  // padded ink leaves overlap.
+  bool intersectsWord(const Word& other) const {
+    return hbb_.intersects(other.hbb_, x_, y_, other.x_, other.y_);
+  }
+
  private:
   double scale_;
   double angleRad_;
   double x_ = 0, y_ = 0;
   Clipper2Lib::PathsD localPaths_;
   Box localBounds_;
+  Hbb hbb_;
 };
 
 }  // namespace words

@@ -5,6 +5,7 @@
 #include <utility>
 #include <vector>
 
+#include "box.h"
 #include "gl_util.h"
 #include "scene.h"
 #include "word.h"

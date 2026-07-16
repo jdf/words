@@ -2,9 +2,11 @@
 
 #include <clipper2/clipper.h>
 
+#include <algorithm>
 #include <cstdio>
 #include <string>
 
+#include "box.h"
 #include "scene.h"
 #include "shape.h"
 #include "word.h"
@@ -75,6 +77,38 @@ std::string toSvg(const Scene& scene) {
            num(b.width()) + "\" height=\"" + num(b.height()) + "\"/>\n";
   }
 
+  svg += "</g>\n</svg>\n";
+  return svg;
+}
+
+std::string hbbDebugSvg(const Word& word) {
+  const Box& b = word.localBounds();
+  double margin = std::max(b.width(), b.height()) * 0.15;
+  std::string svg;
+  char buf[256];
+  std::snprintf(buf, sizeof buf,
+                "<svg xmlns=\"http://www.w3.org/2000/svg\" "
+                "viewBox=\"%s %s %s %s\">\n",
+                num(b.minX - margin).c_str(), num(-b.maxY - margin).c_str(),
+                num(b.width() + 2 * margin).c_str(),
+                num(b.height() + 2 * margin).c_str());
+  svg += buf;
+  svg += "<rect x=\"" + num(b.minX - margin) + "\" y=\"" +
+         num(-b.maxY - margin) + "\" width=\"" + num(b.width() + 2 * margin) +
+         "\" height=\"" + num(b.height() + 2 * margin) +
+         "\" fill=\"#17171c\"/>\n";
+  svg += "<g transform=\"scale(1,-1)\">\n";
+  svg += "<path fill=\"#8a8a96\" fill-rule=\"evenodd\" d=\"" +
+         pathData(word.localPaths(), 0, 0) + "\"/>\n";
+  word.hbb().visit([&svg](const Box& box, int depth, bool leaf) {
+    double strokeWidth = std::max(0.6, 6.0 / (1 << std::min(depth, 3)));
+    svg += std::string("<rect fill=\"") +
+           (leaf ? "rgba(240,80,80,0.08)" : "none") +
+           "\" stroke=\"#f05050\" stroke-width=\"" + num(strokeWidth) +
+           "\" x=\"" + num(box.minX) + "\" y=\"" + num(box.minY) +
+           "\" width=\"" + num(box.width()) + "\" height=\"" +
+           num(box.height()) + "\"/>\n";
+  });
   svg += "</g>\n</svg>\n";
   return svg;
 }

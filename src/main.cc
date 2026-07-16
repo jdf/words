@@ -76,12 +76,17 @@ void frame() {
 }  // namespace
 
 int main() {
+  double frozenTime = frozenTimeFromUrl();
+
   EmscriptenWebGLContextAttributes attrs;
   emscripten_webgl_init_context_attributes(&attrs);
   attrs.majorVersion = 2;
   attrs.minorVersion = 0;
   attrs.antialias = true;
   attrs.stencil = true;
+  // Frozen frames must survive later composites (there is no loop to
+  // repaint them); live rendering keeps the cheaper default.
+  attrs.preserveDrawingBuffer = frozenTime >= 0;
 
   EMSCRIPTEN_WEBGL_CONTEXT_HANDLE ctx =
       emscripten_webgl_create_context("#canvas", &attrs);
@@ -95,7 +100,7 @@ int main() {
   static App app;
   g_app = &app;
 
-  app.scene = words::buildDemoScene(kFontPath);
+  app.scene = words::buildCloudScene(kFontPath);
   app.wordRenderer.init(app.scene);
   app.shapeRenderer.init(app.scene.shape(),
                          std::vector<words::Color>{
@@ -104,16 +109,20 @@ int main() {
                              {0.55f, 0.83f, 0.30f},  // right: green
                          });
   app.startTime = emscripten_get_now() / 1000.0;
-  app.frozenTime = frozenTimeFromUrl();
+  app.frozenTime = frozenTime;
 
   std::printf("words up: GL_VERSION = %s\n", glGetString(GL_VERSION));
 
   if (app.frozenTime >= 0) {
     std::printf("frozen frame at t=%.3f\n", app.frozenTime);
+    // Render exactly twice — the first frame's canvas resize clears the
+    // drawing buffer — and run no loop: preserveDrawingBuffer keeps the
+    // result visible, and headless screenshots don't wait out an
+    // animation that renders the same pixels forever.
+    frame();
+    frame();
+  } else {
+    emscripten_set_main_loop(frame, 0, /*simulate_infinite_loop=*/false);
   }
-  // Frozen mode still runs the loop (re-rendering the identical frame):
-  // without preserveDrawingBuffer the canvas is cleared after each
-  // composite, so a draw-once frame would blank on the next repaint.
-  emscripten_set_main_loop(frame, 0, /*simulate_infinite_loop=*/false);
   return 0;
 }

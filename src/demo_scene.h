@@ -6,10 +6,10 @@
 
 namespace words {
 
-// Builds the demo world — six renderings of one shaped word at assorted
-// sizes/rotations plus the rotating-triangle prop — from the font at
-// `fontPath`. Shared by the wasm app and the geometry tests so both
-// exercise identical geometry.
-Scene buildDemoScene(const std::string& fontPath);
+// Builds the demo world: a word cloud of project-flavored vocabulary,
+// weighted, colored from a small palette, mixed horizontal/vertical, laid
+// out by the spiral+quadtree engine — plus the rotating-triangle prop that
+// exercises the collision machinery. Deterministic for a fixed font.
+Scene buildCloudScene(const std::string& fontPath);
 
 }  // namespace words

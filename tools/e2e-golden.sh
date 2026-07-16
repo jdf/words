@@ -36,7 +36,7 @@ SERVER_PID=$!
 trap 'kill $SERVER_PID 2>/dev/null' EXIT
 sleep 0.3
 
-"$CHROME" --headless=new --disable-gpu --use-angle=swiftshader \
+"$CHROME" --headless --disable-gpu --use-angle=swiftshader \
   --window-size="$SIZE" --hide-scrollbars --virtual-time-budget=8000 \
   --screenshot="$RECEIVED" "http://localhost:$PORT/?t=$T" 2>/dev/null
 

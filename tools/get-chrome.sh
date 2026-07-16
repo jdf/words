@@ -16,6 +16,11 @@ fi
 if [ -z "$existing" ]; then
   npx -y @puppeteer/browsers install "chrome@$VERSION" --path "$CACHE" >&2
   existing=$(find "$CACHE" -type f -name 'Google Chrome for Testing' -path "*$VERSION*" 2>/dev/null | head -1)
+  # macOS quarantines the download; headless launches then hang forever on
+  # a Gatekeeper prompt nobody can see. Strip it.
+  if [ -n "$existing" ] && command -v xattr >/dev/null; then
+    xattr -dr com.apple.quarantine "${existing%%.app/*}.app" 2>/dev/null || true
+  fi
 fi
 if [ -z "$existing" ]; then
   echo "error: could not install Chrome for Testing $VERSION" >&2

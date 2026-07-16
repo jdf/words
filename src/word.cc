@@ -14,6 +14,9 @@
 #include <string>
 #include <utility>
 
+#include "box.h"
+#include "hbb.h"
+
 namespace words {
 
 namespace {
@@ -170,6 +173,7 @@ ShapedText shapeText(const std::string& fontPath, const std::string& text) {
   FT_Done_FreeType(library);
 
   ShapedText result;
+  result.upem = upem;
   // Union produces disjoint contours (holes as separate paths), which both
   // the even-odd stencil fill and downstream boolean ops rely on.
   result.paths =
@@ -199,6 +203,10 @@ bool Word::boxIntersects(const Clipper2Lib::PathsD& poly) const {
   Clipper2Lib::PathsD box{worldBounds().asPath()};
   return !Clipper2Lib::Intersect(poly, box, Clipper2Lib::FillRule::NonZero)
               .empty();
+}
+
+void Word::buildHbb(const HbbParams& params) {
+  hbb_ = Hbb(localPaths_, localBounds_, params);
 }
 
 }  // namespace words

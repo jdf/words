@@ -13,6 +13,9 @@ find_package(Clipper2 CONFIG REQUIRED)
 # the wasm app and the native test binary both link it.
 add_library(words_core STATIC
   src/demo_scene.cc
+  src/hbb.cc
+  src/layout.cc
+  src/quad_tree.cc
   src/scene.cc
   src/shape.cc
   src/svg.cc
