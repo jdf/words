@@ -11,6 +11,7 @@
 
 #include <fstream>
 #include <sstream>
+#include <string>
 
 #include "box.h"
 #include "demo_scene.h"
@@ -76,6 +77,33 @@ TEST_CASE("spiral trail of a placed word") {
       kFont, WORDS_ASSETS_DIR "/stopwords", ss.str(), 150, &debug);
   REQUIRE_FALSE(debug.trail.empty());
   verifySvg(words::toSvg(scene, debug));
+}
+
+TEST_CASE("original font collection shapes text") {
+  // A few representatives from the original Wordle's font collection:
+  // Typodermic display faces and the wide-coverage OFL faces.
+  for (const char* font : {"coolvetica", "goudy", "gentium", "chunkfive",
+                           "opensansbold"}) {
+    INFO(font);
+    words::ShapedText shaped = words::shapeText(
+        std::string(WORDS_ASSETS_DIR "/fonts/") + font + ".ttf", "Wordle");
+    CHECK_FALSE(shaped.empty());
+    CHECK(shaped.upem > 0);
+    CHECK(shaped.bounds.width() > 0);
+  }
+}
+
+TEST_CASE("text cloud in coolvetica") {
+  words::Scene scene = words::buildCloudFromText(
+      WORDS_ASSETS_DIR "/fonts/coolvetica.ttf",
+      WORDS_ASSETS_DIR "/stopwords",
+      "four score and seven years ago our fathers brought forth on this "
+      "continent a new nation conceived in liberty and dedicated to the "
+      "proposition that all men are created equal now we are engaged in a "
+      "great civil war testing whether that nation or any nation so "
+      "conceived and so dedicated can long endure we are met on a great "
+      "battlefield of that war nation nation");
+  verifySvg(words::toSvg(scene));
 }
 
 TEST_CASE("cloud layout properties") {
