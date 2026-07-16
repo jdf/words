@@ -26,6 +26,10 @@ struct ShapedText {
 // Emscripten, a file in the virtual FS). Returns empty geometry on failure.
 ShapedText shapeText(const std::string& fontPath, const std::string& text);
 
+// The face's family name from the font's own name table ("Grilled
+// Cheese"), or "" if the file can't be opened.
+std::string fontFamilyName(const std::string& fontPath);
+
 // A rigid rendering of a word: scale and rotation are baked into word-local
 // outline geometry centered on the word's own origin, and the root bounding
 // box lives with the curves in that local frame (an axis-aligned box is only

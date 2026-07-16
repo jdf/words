@@ -37,6 +37,7 @@
 #include "orientation.h"
 #include "palette.h"
 #include "scene.h"
+#include "word.h"
 #include "word_renderer.h"
 
 namespace {
@@ -107,10 +108,12 @@ words::Scene buildScene(const std::string& fontPath,
   if (auto p = words::findPlacement(urlParam("placement"))) {
     options.placement = *p;
   }
+  std::string fontLabel = words::fontFamilyName(fontPath);
+  if (fontLabel.empty()) fontLabel = fontPath;
   *description =
       std::string(words::orientationName(options.orientation)) + " · " +
       std::string(words::placementName(options.placement)) + " · " +
-      paletteLabel;
+      paletteLabel + " · " + fontLabel;
   LOG(INFO) << "build: font=" << fontPath
             << " corpus=" << urlParam("corpus") << " config=" << *description
             << " variance=" << urlParam("variance");

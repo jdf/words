@@ -105,6 +105,19 @@ Box boundsOf(const Clipper2Lib::PathsD& paths) {
 
 }  // namespace
 
+std::string fontFamilyName(const std::string& fontPath) {
+  FT_Library library = nullptr;
+  if (FT_Init_FreeType(&library) != 0) return {};
+  FT_Face face = nullptr;
+  std::string name;
+  if (FT_New_Face(library, fontPath.c_str(), 0, &face) == 0) {
+    if (face->family_name) name = face->family_name;
+    FT_Done_Face(face);
+  }
+  FT_Done_FreeType(library);
+  return name;
+}
+
 ShapedText shapeText(const std::string& fontPath, const std::string& text) {
   FT_Library library = nullptr;
   if (FT_Init_FreeType(&library) != 0) {

@@ -42,6 +42,12 @@ PALETTES="bw wb wordly asparagus bluesugar heat ghostly chilled-summer
 for p in $PALETTES; do
   CASES+=("palette-$p|?corpus=moby-dick&palette=$p&placement=center-line&orientation=mostly-horizontal&variance=little")
 done
+# A small font dimension — enough to prove ?font= lazy loading end to end
+# (sexsmith goes through the override path too, not the preloaded copy).
+FONTS="sexsmith grilledcheese boopee"
+for f in $FONTS; do
+  CASES+=("font-$f|?corpus=moby-dick&font=$f&placement=center-line&orientation=mostly-horizontal&palette=yramirp&variance=little")
+done
 
 # Build the release dist directly (not via ./dev, which would also point
 # the dev server at the release build).
