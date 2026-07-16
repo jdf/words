@@ -3,24 +3,32 @@
   "version-string": "0.1.0",
   "description": "Wordle word clouds, reimplemented in C++ / WebAssembly / WebGL",
   "dependencies": [
+    "clipper2",
     {
       "name": "freetype",
       "default-features": false
     },
     {
       "name": "harfbuzz",
-      "features": ["freetype"]
+      "features": [
+        "freetype"
+      ]
     },
-    "clipper2"
+    "utf8proc"
   ],
   "features": {
     "tests": {
       "description": "Native host build of the geometry tests",
-      "dependencies": ["catch2", "approval-tests-cpp"]
+      "dependencies": [
+        "catch2",
+        "approval-tests-cpp"
+      ]
     },
     "bench": {
       "description": "wasm runtime microbenchmarks (run under node)",
-      "dependencies": ["benchmark"]
+      "dependencies": [
+        "benchmark"
+      ]
     }
   }
 }

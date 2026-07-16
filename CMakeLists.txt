@@ -8,6 +8,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 find_package(Freetype REQUIRED)
 find_package(harfbuzz CONFIG REQUIRED)
 find_package(Clipper2 CONFIG REQUIRED)
+find_package(utf8proc CONFIG REQUIRED)
 
 # The GL-free world model: geometry, shaping, scene. Builds everywhere;
 # the wasm app and the native test binary both link it.
@@ -19,12 +20,14 @@ add_library(words_core STATIC
   src/scene.cc
   src/shape.cc
   src/svg.cc
+  src/text.cc
   src/word.cc
 )
 target_link_libraries(words_core PUBLIC
   Freetype::Freetype
   harfbuzz::harfbuzz
   Clipper2::Clipper2
+  utf8proc::utf8proc
 )
 target_include_directories(words_core PUBLIC src)
 
@@ -49,6 +52,7 @@ if(EMSCRIPTEN)
     -sMODULARIZE=1
     -sEXPORT_NAME=createWordsModule
     "SHELL:--preload-file ${CMAKE_SOURCE_DIR}/assets/Sexsmith.otf@/fonts/Sexsmith.otf"
+    "SHELL:--preload-file ${CMAKE_SOURCE_DIR}/assets/stopwords@/stopwords"
   )
   set_property(TARGET words APPEND PROPERTY LINK_DEPENDS ${CMAKE_SOURCE_DIR}/assets/Sexsmith.otf)
 
@@ -99,6 +103,7 @@ else()
   add_executable(words_tests
     tests/geometry_approval_test.cc
     tests/test_main.cc
+    tests/text_test.cc
   )
   target_link_libraries(words_tests PRIVATE
     words_core

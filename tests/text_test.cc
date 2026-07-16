@@ -1,0 +1,150 @@
+// Text analysis: tokenizer semantics (from cue.language), counting,
+// stop words, and language guessing.
+
+#include <ApprovalTests.hpp>
+#include <catch2/catch_test_macros.hpp>
+
+#include <string>
+#include <vector>
+
+#include "text.h"
+
+namespace {
+
+constexpr const char* kStopWordsDir = WORDS_ASSETS_DIR "/stopwords";
+
+const words::StopWordsSet& stopWords() {
+  static words::StopWordsSet set(kStopWordsDir);
+  return set;
+}
+
+std::vector<std::string> tok(const char* text) {
+  return words::wordsOf(text);
+}
+
+}  // namespace
+
+TEST_CASE("tokenizer keeps joined words whole") {
+  CHECK(tok("don't stop believing") ==
+        std::vector<std::string>{"don't", "stop", "believing"});
+  CHECK(tok("the U.S.A. is big.") ==
+        std::vector<std::string>{"the", "U.S.A", "is", "big"});
+  CHECK(tok("e-mail me at 3:30") ==
+        std::vector<std::string>{"e-mail", "me", "at", "3:30"});
+  CHECK(tok("rock--and--roll") ==
+        std::vector<std::string>{"rock--and--roll"});
+}
+
+TEST_CASE("tokenizer drops trailing and leading punctuation") {
+  CHECK(tok("wait... what?!") == std::vector<std::string>{"wait", "what"});
+  CHECK(tok("(parenthetical)") == std::vector<std::string>{"parenthetical"});
+  CHECK(tok("'quoted'") == std::vector<std::string>{"quoted"});
+}
+
+TEST_CASE("tokenizer handles non-Latin scripts") {
+  CHECK(tok("Ελληνικά και λέξεις") ==
+        std::vector<std::string>{"Ελληνικά", "και", "λέξεις"});
+  CHECK(tok("русские слова") ==
+        std::vector<std::string>{"русские", "слова"});
+  CHECK(tok("naïve façade") == std::vector<std::string>{"naïve", "façade"});
+}
+
+TEST_CASE("folding lowercases across scripts and normalizes quotes") {
+  CHECK(words::foldForMatch("DON\xE2\x80\x99T") == "don't");
+  CHECK(words::foldForMatch("Ößen") == "ößen");
+  CHECK(words::foldForMatch("ΛΈΞΕΙΣ") == "λέξεις");
+}
+
+TEST_CASE("counter orders by frequency with stable ties") {
+  words::Counter c;
+  for (const char* w : {"b", "a", "b", "c", "a", "b"}) c.note(w);
+  auto by = c.byFrequency();
+  REQUIRE(by.size() == 3);
+  CHECK(by[0].first == "b");
+  CHECK(by[0].second == 3);
+  CHECK(by[1].first == "a");
+  CHECK(by[2].first == "c");
+  CHECK(c.totalItemCount() == 6);
+}
+
+TEST_CASE("stop words: single characters always match") {
+  const words::StopWords* english = stopWords().find("english");
+  REQUIRE(english != nullptr);
+  CHECK(english->isStopWord("a"));
+  CHECK(english->isStopWord("ß"));  // one code point, several bytes
+  CHECK(english->isStopWord("The"));
+  CHECK(english->isStopWord("don\xE2\x80\x99t"));  // don’t via fold
+  CHECK_FALSE(english->isStopWord("wordle"));
+}
+
+TEST_CASE("language guessing") {
+  REQUIRE(stopWords().languages().size() == 30);
+
+  auto guess = [&](const char* text) {
+    const words::StopWords* g = stopWords().guess(text);
+    return g ? g->name() : std::string("(none)");
+  };
+
+  CHECK(guess("it was the best of times, it was the worst of times, it "
+              "was the age of wisdom, it was the age of foolishness") ==
+        "english");
+  CHECK(guess("Longtemps, je me suis couché de bonne heure. Parfois, à "
+              "peine ma bougie éteinte, mes yeux se fermaient si vite") ==
+        "french");
+  CHECK(guess("En un lugar de la Mancha, de cuyo nombre no quiero "
+              "acordarme, no ha mucho tiempo que vivía un hidalgo") ==
+        "spanish");
+  CHECK(guess("Alle glücklichen Familien gleichen einander, jede "
+              "unglückliche Familie ist auf ihre eigene Weise unglücklich") ==
+        "german");
+  CHECK(guess("qwzx bnmp vrtk") == "(none)");
+}
+
+TEST_CASE("counting with stop word removal") {
+  const words::StopWords* english = stopWords().find("english");
+  auto counts = words::countWords(
+      "The quick brown fox jumps over the lazy dog. The dog sleeps; the "
+      "Fox runs. FOX!",
+      english);
+  REQUIRE(counts.size() >= 3);
+  CHECK(counts[0].display == "fox");   // first-seen casing of "fox" is lower
+  CHECK(counts[0].count == 3);
+  CHECK(counts[1].display == "dog");
+  CHECK(counts[1].count == 2);
+  // "The"/"the"/"over" are gone.
+  for (const auto& wc : counts) {
+    CHECK(wc.display != "the");
+    CHECK(wc.display != "The");
+    CHECK(wc.display != "over");
+  }
+}
+
+TEST_CASE("word count report for a multilingual corpus") {
+  // A viewable golden: guessed language and top words per snippet.
+  const char* snippets[] = {
+      "Call me Ishmael. Some years ago—never mind how long precisely—"
+      "having little or no money in my purse, and nothing particular to "
+      "interest me on shore, I thought I would sail about a little and "
+      "see the watery part of the world.",
+      "Vor einem großen Walde wohnte ein armer Holzhacker mit seiner "
+      "Frau und seinen zwei Kindern; das Bübchen hieß Hänsel und das "
+      "Mädchen Gretel. Er hatte wenig zu beißen und zu brechen.",
+      "Все счастливые семьи похожи друг на друга, каждая несчастливая "
+      "семья несчастлива по-своему. Все смешалось в доме Облонских.",
+  };
+  std::string report;
+  for (const char* text : snippets) {
+    const words::StopWords* lang = stopWords().guess(text);
+    report += "language: ";
+    report += lang ? lang->name() : "(none)";
+    report += "\n";
+    auto counts = words::countWords(text, lang);
+    size_t n = 0;
+    for (const auto& wc : counts) {
+      if (++n > 5) break;
+      report += "  " + wc.display + " x" + std::to_string(wc.count) + "\n";
+    }
+    report += "\n";
+  }
+  ApprovalTests::Approvals::verify(report);
+}

@@ -1,0 +1,4 @@
+The stop-word lists in this directory come from cue.language
+(https://github.com/vcl/cue.language), Copyright 2009 IBM Corp,
+licensed under the Apache License, Version 2.0
+(http://www.apache.org/licenses/LICENSE-2.0).

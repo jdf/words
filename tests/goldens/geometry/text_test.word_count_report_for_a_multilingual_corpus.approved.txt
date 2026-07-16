@@ -1,0 +1,22 @@
+language: english
+  little x2
+  Call x1
+  Ishmael x1
+  years x1
+  ago x1
+
+language: german
+  großen x1
+  Walde x1
+  wohnte x1
+  armer x1
+  Holzhacker x1
+
+language: russian
+  счастливые x1
+  семьи x1
+  похожи x1
+  друг x1
+  друга x1
+
+
