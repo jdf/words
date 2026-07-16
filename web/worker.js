@@ -35,8 +35,9 @@ async function rebuild(msg) {
       path = '';
     }
   }
-  engine.ccall('wordsRebuild', null, ['number', 'string', 'string'],
-               [msg.seed, msg.orientation, path]);
+  engine.ccall('wordsRebuild', null,
+               ['number', 'string', 'string', 'string'],
+               [msg.seed, msg.orientation, msg.palette, path]);
 }
 
 function init(msg) {

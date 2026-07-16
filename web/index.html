@@ -150,6 +150,7 @@
     const spec = {
       seed: parseInt(params.get('seed'), 10) || 1447,
       orientation: params.get('orientation') || 'mostly-horizontal',
+      palette: params.get('palette') || '',  // '' = the built-in dark scheme
       font: params.get('font') || 'sexsmith',
     };
     const undoStack = [];
@@ -160,6 +161,8 @@
       url.searchParams.set('seed', spec.seed);
       url.searchParams.set('orientation', spec.orientation);
       url.searchParams.set('font', spec.font);
+      spec.palette ? url.searchParams.set('palette', spec.palette)
+                   : url.searchParams.delete('palette');
       history.replaceState(null, '', url);
       busy ? pendingSpec = { ...spec } : sendSpec({ ...spec });
     };
@@ -202,6 +205,10 @@
     // English, so any of them can render the cloud.
     const scrambleOrientations =
         ['mostly-horizontal', 'horizontal', 'any-which-way'];
+    const scramblePalettes = [
+      'bw', 'wb', 'wordly', 'asparagus', 'bluesugar', 'heat', 'ghostly',
+      'chilled-summer', 'blue-meets-orange', 'yramirp',
+    ];
     const scrambleFonts = [
       'primerprintmedium', 'grilledcheese', 'owned', 'teen', 'berylium',
       'telephoto', 'coolvetica', 'gnuolane', 'steelfish', 'kenyan', 'king',
@@ -219,6 +226,7 @@
           ...spec,
           seed: spec.seed + 1,
           orientation: pick(scrambleOrientations),
+          palette: pick(scramblePalettes),
           font: pick(scrambleFonts),
         },
       }));

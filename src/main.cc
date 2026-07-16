@@ -36,6 +36,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <fstream>
+#include <optional>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -72,6 +73,9 @@ App* g_app = nullptr;
 uint32_t g_seed = 1447;  // the curated default (see CloudOptions::seed)
 // UI override for the orientation strategy; empty = use the URL parameter.
 std::string g_orientation;
+// UI override for the palette; unset = use the URL parameter. (Unlike
+// orientation, the empty string is meaningful: the built-in dark scheme.)
+std::optional<std::string> g_palette;
 
 std::string slurp(const char* path) {
   std::ifstream in(path);
@@ -128,8 +132,8 @@ words::Scene buildScene(const std::string& fontPath,
   words::CloudOptions options;
   words::ColorScheme scheme;
   const char* paletteLabel = "App Colors";
-  if (const words::NamedPalette* palette =
-          words::findPalette(urlParam("palette"))) {
+  if (const words::NamedPalette* palette = words::findPalette(
+          g_palette ? *g_palette : urlParam("palette"))) {
     scheme.palette = palette->palette;
     if (auto v = words::findVariance(urlParam("variance"))) {
       scheme.variance = *v;
@@ -180,14 +184,17 @@ void render() {
 }  // namespace
 
 // Rebuild the cloud from a new spec (the ?ui panel, via the worker shell):
-// seed, orientation slug ("" keeps the URL's), and font path ("" keeps the
-// current font — the worker stages fetched fonts into MEMFS first).
+// seed, orientation slug ("" keeps the URL's), palette slug ("" is the
+// built-in dark scheme), and font path ("" keeps the current font — the
+// worker stages fetched fonts into MEMFS first).
 extern "C" EMSCRIPTEN_KEEPALIVE void wordsRebuild(int seed,
                                                   const char* orientation,
+                                                  const char* palette,
                                                   const char* fontPath) {
   if (!g_app) return;
   g_seed = static_cast<uint32_t>(seed);
   g_orientation = orientation ? orientation : "";
+  g_palette = std::string(palette ? palette : "");
   if (fontPath && *fontPath) g_app->fontPath = fontPath;
   std::string description;
   g_app->scene = buildScene(g_app->fontPath, &description);
