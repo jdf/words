@@ -4,8 +4,20 @@
 #
 #   ./dev            debug build (default)
 #   ./dev release    release build (serves the release dist instead)
+#   ./dev stop       stop the dev server
 set -euo pipefail
 cd "$(dirname "$0")"
+
+if [ "${1:-}" = "stop" ]; then
+  if [ -f build/serve.pid ] && kill -0 "$(cat build/serve.pid)" 2>/dev/null; then
+    kill "$(cat build/serve.pid)"
+    echo "dev server stopped"
+  else
+    echo "dev server not running"
+  fi
+  rm -f build/serve.pid build/serve.dir
+  exit 0
+fi
 
 export VCPKG_ROOT="${VCPKG_ROOT:-$HOME/vcpkg}"
 export EMSDK="${EMSDK:-$HOME/emsdk}"
