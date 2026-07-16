@@ -17,7 +17,6 @@ add_library(words_core STATIC
   src/hbb.cc
   src/layout.cc
   src/quad_tree.cc
-  src/scene.cc
   src/shape.cc
   src/svg.cc
   src/text.cc
@@ -35,7 +34,6 @@ if(EMSCRIPTEN)
   add_executable(words
     src/gl_util.cc
     src/main.cc
-    src/shape_renderer.cc
     src/word_renderer.cc
   )
   target_link_libraries(words PRIVATE words_core)

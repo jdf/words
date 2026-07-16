@@ -138,17 +138,6 @@ void WordRenderer::draw(const Scene& scene, int width, int height) {
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
   }
   glDisable(GL_STENCIL_TEST);
-
-  // Hit boxes on top.
-  for (size_t i = 0; i < n; ++i) {
-    const Scene::Entry& e = entries[i];
-    if (!e.hit) continue;
-    glUniform2f(offsetLoc_, static_cast<float>(e.word.x() * ndcX),
-                static_cast<float>(e.word.y() * ndcY));
-    glUniform4f(colorLoc_, e.color.r, e.color.g, e.color.b, 1.0f);
-    glBindVertexArray(words_[i].quadVao);
-    glDrawArrays(GL_LINE_LOOP, 4, 4);
-  }
 }
 
 }  // namespace words

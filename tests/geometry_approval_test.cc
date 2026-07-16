@@ -45,7 +45,6 @@ TEST_CASE("hbb of a rotated word") {
 
 TEST_CASE("cloud layout") {
   words::Scene scene = words::buildCloudScene(kFont);
-  scene.update(0.0);
   verifySvg(words::toSvg(scene));
 }
 
@@ -58,7 +57,6 @@ TEST_CASE("text cloud layout") {
       "great civil war testing whether that nation or any nation so "
       "conceived and so dedicated can long endure we are met on a great "
       "battlefield of that war nation nation");
-  scene.update(0.0);
   verifySvg(words::toSvg(scene));
 }
 

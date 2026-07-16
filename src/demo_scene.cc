@@ -13,15 +13,12 @@
 #include "box.h"
 #include "layout.h"
 #include "scene.h"
-#include "shape.h"
 #include "text.h"
 #include "word.h"
 
 namespace words {
 
 namespace {
-
-constexpr double kTriangleRadius = 310.0;
 
 // Weighted vocabulary, most important first (layout order).
 struct Entry {
@@ -60,7 +57,7 @@ constexpr double kVerticalFraction = 0.25;
 }  // namespace
 
 Scene buildCloudScene(const std::string& fontPath) {
-  Scene scene(Shape::equilateralTriangle(kTriangleRadius));
+  Scene scene;
 
   std::mt19937 rng(20080623);  // deterministic demo; Wordle's birthday-ish
   std::uniform_real_distribution<double> unit(0.0, 1.0);
@@ -97,7 +94,7 @@ Scene buildCloudScene(const std::string& fontPath) {
 Scene buildCloudFromText(const std::string& fontPath,
                          const std::string& stopWordsDir,
                          std::string_view text, size_t maxWords) {
-  Scene scene(Shape::equilateralTriangle(kTriangleRadius));
+  Scene scene;
 
   StopWordsSet stopSets(stopWordsDir);
   const StopWords* language = stopSets.guess(text);

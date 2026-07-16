@@ -17,8 +17,6 @@
 
 #include "demo_scene.h"
 #include "scene.h"
-#include "shape.h"
-#include "shape_renderer.h"
 #include "word_renderer.h"
 
 namespace {
@@ -28,11 +26,9 @@ constexpr const char* kStopWordsDir = "/stopwords";
 constexpr const char* kSampleTextPath = "/sample-text.txt";
 
 struct App {
-  words::Scene scene{words::Shape::equilateralTriangle(1.0)};
+  words::Scene scene;
   words::WordRenderer wordRenderer;
-  words::ShapeRenderer shapeRenderer;
-  double startTime = 0;
-  double frozenTime = -1;  // >= 0: render one frame at this time, no loop
+  bool frozen = false;  // render once, run no loop (for e2e screenshots)
 };
 
 App* g_app = nullptr;
@@ -83,23 +79,17 @@ void frame() {
   syncCanvasSize(&width, &height);
   glViewport(0, 0, width, height);
 
-  double t = g_app->frozenTime >= 0
-                 ? g_app->frozenTime
-                 : emscripten_get_now() / 1000.0 - g_app->startTime;
-  g_app->scene.update(t);
-
   glClearColor(0.09f, 0.09f, 0.11f, 1.0f);
   glClearStencil(0);
   glClear(GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
-  g_app->shapeRenderer.draw(g_app->scene.shape(), width, height);
   g_app->wordRenderer.draw(g_app->scene, width, height);
 }
 
 }  // namespace
 
 int main() {
-  double frozenTime = frozenTimeFromUrl();
+  bool frozen = frozenTimeFromUrl() >= 0;
 
   EmscriptenWebGLContextAttributes attrs;
   emscripten_webgl_init_context_attributes(&attrs);
@@ -109,7 +99,7 @@ int main() {
   attrs.stencil = true;
   // Frozen frames must survive later composites (there is no loop to
   // repaint them); live rendering keeps the cheaper default.
-  attrs.preserveDrawingBuffer = frozenTime >= 0;
+  attrs.preserveDrawingBuffer = frozen;
 
   EMSCRIPTEN_WEBGL_CONTEXT_HANDLE ctx =
       emscripten_webgl_create_context("#canvas", &attrs);
@@ -125,26 +115,19 @@ int main() {
 
   app.scene = words::buildCloudFromText(kFontPath, kStopWordsDir, cloudText());
   app.wordRenderer.init(app.scene);
-  app.shapeRenderer.init(app.scene.shape(),
-                         std::vector<words::Color>{
-                             {0.96f, 0.65f, 0.14f},  // top: orange
-                             {0.24f, 0.66f, 0.85f},  // left: cyan
-                             {0.55f, 0.83f, 0.30f},  // right: green
-                         });
-  app.startTime = emscripten_get_now() / 1000.0;
-  app.frozenTime = frozenTime;
+  app.frozen = frozen;
 
   std::printf("words up: GL_VERSION = %s\n", glGetString(GL_VERSION));
 
-  if (app.frozenTime >= 0) {
-    std::printf("frozen frame at t=%.3f\n", app.frozenTime);
+  if (app.frozen) {
+    std::printf("frozen frame\n");
     // Render exactly twice — the first frame's canvas resize clears the
     // drawing buffer — and run no loop: preserveDrawingBuffer keeps the
-    // result visible, and headless screenshots don't wait out an
-    // animation that renders the same pixels forever.
+    // result visible, and headless screenshots don't wait for a loop.
     frame();
     frame();
   } else {
+    // Nothing animates; the loop just tracks canvas resizes.
     emscripten_set_main_loop(frame, 0, /*simulate_infinite_loop=*/false);
   }
   return 0;

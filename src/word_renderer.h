@@ -9,8 +9,7 @@
 namespace words {
 
 // Draws a Scene's words with WebGL2: each word's local outline geometry is
-// stencil-filled (two-pass even-odd) at its current position, and the root
-// bounding box of any word whose `hit` flag is set is outlined on top.
+// stencil-filled (two-pass even-odd) at its current position.
 //
 // The GPU draws exactly the polygons the collision code computes with —
 // word-local geometry uploaded once at init, positioned per frame by a
