@@ -9,8 +9,12 @@
 #include <numbers>
 #include <vector>
 
+#include <fstream>
+#include <sstream>
+
 #include "box.h"
 #include "demo_scene.h"
+#include "layout.h"
 #include "scene.h"
 #include "svg.h"
 #include "word.h"
@@ -58,6 +62,20 @@ TEST_CASE("text cloud layout") {
       "conceived and so dedicated can long endure we are met on a great "
       "battlefield of that war nation nation");
   verifySvg(words::toSvg(scene));
+}
+
+TEST_CASE("spiral trail of a placed word") {
+  // The search spiral "ago" walks through the Moby-Dick cloud before
+  // finding a home — the layout-debugging view.
+  std::ifstream in(WORDS_ASSETS_DIR "/sample-text.txt");
+  std::ostringstream ss;
+  ss << in.rdbuf();
+  words::LayoutDebug debug;
+  debug.traceLabel = "ago";
+  words::Scene scene = words::buildCloudFromText(
+      kFont, WORDS_ASSETS_DIR "/stopwords", ss.str(), 150, &debug);
+  REQUIRE_FALSE(debug.trail.empty());
+  verifySvg(words::toSvg(scene, debug));
 }
 
 TEST_CASE("cloud layout properties") {

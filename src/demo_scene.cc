@@ -94,7 +94,8 @@ Scene buildCloudScene(const std::string& fontPath) {
 
 Scene buildCloudFromText(const std::string& fontPath,
                          const std::string& stopWordsDir,
-                         std::string_view text, size_t maxWords) {
+                         std::string_view text, size_t maxWords,
+                         LayoutDebug* debug) {
   Scene scene;
 
   StopWordsSet stopSets(stopWordsDir);
@@ -125,7 +126,7 @@ Scene buildCloudFromText(const std::string& fontPath,
 
   Box world{-Scene::kWidth / 2.0, -Scene::kHeight / 2.0, Scene::kWidth / 2.0,
             Scene::kHeight / 2.0};
-  layoutWords(laid, world, LayoutParams{});
+  layoutWords(laid, world, LayoutParams{}, debug);
 
   for (size_t i = 0; i < laid.size(); ++i) {
     scene.addWord(std::move(laid[i]), colors[i]);

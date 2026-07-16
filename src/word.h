@@ -14,6 +14,7 @@ namespace words {
 // and merged with Clipper2 into disjoint contours (holes as separate paths)
 // — ready for even-odd filling and boolean ops.
 struct ShapedText {
+  std::string text;  // what was shaped, for labeling/debugging
   Clipper2Lib::PathsD paths;
   Box bounds;
   double upem = 1000.0;  // font units per em
@@ -38,6 +39,7 @@ class Word {
 
   double scale() const { return scale_; }
   double angle() const { return angleRad_; }
+  const std::string& label() const { return label_; }
 
   double x() const { return x_; }
   double y() const { return y_; }
@@ -73,6 +75,7 @@ class Word {
   }
 
  private:
+  std::string label_;
   double scale_;
   double angleRad_;
   double x_ = 0, y_ = 0;

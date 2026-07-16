@@ -7,6 +7,7 @@
 #include <string>
 
 #include "box.h"
+#include "layout.h"
 #include "scene.h"
 #include "word.h"
 
@@ -74,6 +75,27 @@ std::string toSvg(const Scene& scene) {
   }
 
   svg += "</g>\n</svg>\n";
+  return svg;
+}
+
+std::string toSvg(const Scene& scene, const LayoutDebug& debug) {
+  std::string svg = toSvg(scene);
+  if (debug.trail.empty()) return svg;
+  // Splice the overlay in before the closing tags (inside the y-flip).
+  std::string overlay = "<polyline fill=\"none\" stroke=\"#4aa3ff\" "
+                        "stroke-width=\"2.5\" stroke-opacity=\"0.9\" points=\"";
+  for (const auto& p : debug.trail) {
+    overlay += num(p.x) + "," + num(p.y) + " ";
+  }
+  overlay += "\"/>\n";
+  const auto& first = debug.trail.front();
+  const auto& last = debug.trail.back();
+  overlay += "<circle fill=\"none\" stroke=\"#4aa3ff\" stroke-width=\"3\" r=\"8\" cx=\"" +
+             num(first.x) + "\" cy=\"" + num(first.y) + "\"/>\n";
+  overlay += "<circle fill=\"#4aa3ff\" r=\"6\" cx=\"" + num(last.x) +
+             "\" cy=\"" + num(last.y) + "\"/>\n";
+  size_t pos = svg.rfind("</g>");
+  svg.insert(pos, overlay);
   return svg;
 }
 

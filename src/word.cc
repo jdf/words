@@ -173,6 +173,7 @@ ShapedText shapeText(const std::string& fontPath, const std::string& text) {
   FT_Done_FreeType(library);
 
   ShapedText result;
+  result.text = text;
   result.upem = upem;
   // Union produces disjoint contours (holes as separate paths), which both
   // the even-odd stencil fill and downstream boolean ops rely on.
@@ -183,7 +184,7 @@ ShapedText shapeText(const std::string& fontPath, const std::string& text) {
 }
 
 Word::Word(const ShapedText& text, double scale, double angleRad)
-    : scale_(scale), angleRad_(angleRad) {
+    : label_(text.text), scale_(scale), angleRad_(angleRad) {
   double cx = text.bounds.centerX();
   double cy = text.bounds.centerY();
   double c = std::cos(angleRad), s = std::sin(angleRad);

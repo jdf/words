@@ -1,6 +1,9 @@
 #pragma once
 
+#include <clipper2/clipper.h>
+
 #include <cstdint>
+#include <string>
 #include <vector>
 
 #include "box.h"
@@ -8,6 +11,14 @@
 #include "word.h"
 
 namespace words {
+
+// Debug instrumentation: set traceLabel to a word's label and layoutWords
+// records every position that word tried (including out-of-bounds skips)
+// on its way to rest — the search spiral, ready to draw.
+struct LayoutDebug {
+  std::string traceLabel;
+  std::vector<Clipper2Lib::PointD> trail;
+};
 
 struct LayoutParams {
   // Archimedean search spiral: per step, angle advances dTheta and radius
@@ -31,6 +42,7 @@ struct LayoutParams {
 // Builds every word's HBB (the expensive phase). On return, every word has
 // its final position. Deterministic for a given seed.
 void layoutWords(std::vector<Word>& wordList, const Box& bounds,
-                 const LayoutParams& params = {});
+                 const LayoutParams& params = {},
+                 LayoutDebug* debug = nullptr);
 
 }  // namespace words

@@ -4,6 +4,7 @@
 #include <string>
 #include <string_view>
 
+#include "layout.h"
 #include "scene.h"
 
 namespace words {
@@ -20,6 +21,7 @@ Scene buildCloudScene(const std::string& fontPath);
 // out. Deterministic for fixed inputs.
 Scene buildCloudFromText(const std::string& fontPath,
                          const std::string& stopWordsDir,
-                         std::string_view text, size_t maxWords = 150);
+                         std::string_view text, size_t maxWords = 150,
+                         LayoutDebug* debug = nullptr);
 
 }  // namespace words

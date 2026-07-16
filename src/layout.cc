@@ -12,7 +12,7 @@
 namespace words {
 
 void layoutWords(std::vector<Word>& wordList, const Box& bounds,
-                 const LayoutParams& params) {
+                 const LayoutParams& params, LayoutDebug* debug) {
   std::mt19937 rng(params.seed);
   std::uniform_real_distribution<double> angle(0.0, 2.0 * std::numbers::pi);
 
@@ -22,9 +22,11 @@ void layoutWords(std::vector<Word>& wordList, const Box& bounds,
 
   QuadTree index(bounds, params.quadMinCell, params.quadMaxDepth);
   for (Word& w : wordList) {
+    bool traced = debug && w.label() == debug->traceLabel;
     const double startX = bounds.centerX();
     const double startY = bounds.centerY();
     w.moveTo(startX, startY);
+    if (traced) debug->trail.push_back({w.x(), w.y()});
 
     double theta = angle(rng);
     double radius = 1.0;
@@ -43,6 +45,7 @@ void layoutWords(std::vector<Word>& wordList, const Box& bounds,
       do {
         w.moveTo(startX + radius * std::cos(theta),
                  startY + radius * std::sin(theta));
+        if (traced) debug->trail.push_back({w.x(), w.y()});
         theta += params.dTheta;
         radius += params.dRadius;
         if (radius > bounds.width() || radius > bounds.height()) {

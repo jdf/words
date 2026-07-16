@@ -2,6 +2,7 @@
 
 #include <string>
 
+#include "layout.h"
 #include "scene.h"
 #include "word.h"
 
@@ -13,6 +14,11 @@ namespace words {
 // byte-stable for golden-file comparison, and the result is a viewable
 // image in its own right.
 std::string toSvg(const Scene& scene);
+
+// toSvg plus a debug overlay: the traced word's search spiral as a blue
+// polyline, with a hollow circle at the start (scene center) and a solid
+// dot where the word came to rest.
+std::string toSvg(const Scene& scene, const LayoutDebug& debug);
 
 // Debug rendering of one word's hierarchical bounding box: the filled
 // outlines with every HBB box stroked on top (stroke thins with depth, ink
