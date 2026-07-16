@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 #include <string>
 #include <string_view>
 
@@ -26,6 +27,7 @@ struct CloudOptions {
   size_t maxWords = 800;
   Orientation orientation = Orientation::kMostlyHorizontal;
   Placement placement = Placement::kCenterLine;
+  uint32_t seed = 1;  // layout randomness (seeding positions, spirals)
   const ColorScheme* colors = nullptr;  // null = built-in dark scheme
   LayoutDebug* debug = nullptr;
 };

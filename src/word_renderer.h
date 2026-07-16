@@ -17,8 +17,13 @@ namespace words {
 // buffer.
 class WordRenderer {
  public:
-  // Uploads per-word buffers. Call once, after the scene's words are built.
+  // Uploads per-word buffers. Call after the scene's words are built;
+  // calling again (e.g. after a relayout) releases the previous scene's
+  // GPU objects first.
   bool init(const Scene& scene);
+
+  // Releases all GPU objects. Safe to call repeatedly.
+  void destroy();
 
   // Draws all words, then hit boxes. `width`/`height` are the framebuffer
   // size in device pixels.
@@ -40,6 +45,7 @@ class WordRenderer {
   GLint offsetLoc_ = -1;
   GLint colorLoc_ = -1;
   std::vector<PerWord> words_;
+  std::vector<GLuint> buffers_;  // every VBO, for destroy()
 };
 
 }  // namespace words

@@ -15,6 +15,8 @@
 //   ?orientation=<name>  horizontal|mostly-horizontal|half-and-half|...
 //                        (see src/orientation.h)
 //   ?placement=<name>    center-line|center
+//   ?seed=<n>            layout randomness (default 1); live-adjustable
+//                        via wordsSetSeed() from the ?ui panel
 
 #include <emscripten/emscripten.h>
 #include <emscripten/html5.h>
@@ -23,6 +25,7 @@
 
 #include <absl/log/log.h>
 
+#include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <fstream>
@@ -53,9 +56,11 @@ constexpr const char* kFontOverridePath = "/font-override.ttf";
 struct App {
   words::Scene scene;
   words::WordRenderer wordRenderer;
+  std::string fontPath;  // resolved at startup, reused on relayout
 };
 
 App* g_app = nullptr;
+uint32_t g_seed = 1;
 
 std::string slurp(const char* path) {
   std::ifstream in(path);
@@ -108,6 +113,7 @@ words::Scene buildScene(const std::string& fontPath,
   if (auto p = words::findPlacement(urlParam("placement"))) {
     options.placement = *p;
   }
+  options.seed = g_seed;
   std::string fontLabel = words::fontFamilyName(fontPath);
   if (fontLabel.empty()) fontLabel = fontPath;
   *description =
@@ -164,6 +170,18 @@ EM_BOOL onResize(int /*eventType*/, const EmscriptenUiEvent* /*event*/,
 
 }  // namespace
 
+// Relayout with a new seed — the first live JS->C++ command (wired to the
+// ?ui panel's slider). Same text, font, and strategies; new randomness.
+extern "C" EMSCRIPTEN_KEEPALIVE void wordsSetSeed(int seed) {
+  if (!g_app) return;
+  g_seed = static_cast<uint32_t>(seed);
+  std::string description;
+  g_app->scene = buildScene(g_app->fontPath, &description);
+  g_app->wordRenderer.init(g_app->scene);
+  render();
+  std::printf("%s · seed %u\n", description.c_str(), g_seed);
+}
+
 // Console-callable engine interrogation (the page exposes the module as
 // window.words): `words._wordsLogScene()` dumps the scene to the console.
 extern "C" EMSCRIPTEN_KEEPALIVE void wordsLogScene() {
@@ -216,10 +234,15 @@ int main() {
   static App app;
   g_app = &app;
 
+  std::string seedParam = urlParam("seed");
+  if (!seedParam.empty()) {
+    g_seed = static_cast<uint32_t>(std::strtoul(seedParam.c_str(), nullptr, 10));
+  }
+
   std::ifstream fontOverride(kFontOverridePath);
+  app.fontPath = fontOverride ? kFontOverridePath : kFontPath;
   std::string description;
-  app.scene = buildScene(fontOverride ? kFontOverridePath : kFontPath,
-                         &description);
+  app.scene = buildScene(app.fontPath, &description);
   app.wordRenderer.init(app.scene);
 
   std::printf("words up: GL_VERSION = %s\n", glGetString(GL_VERSION));

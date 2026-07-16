@@ -34,14 +34,29 @@ void main() {
 
 }  // namespace
 
+void WordRenderer::destroy() {
+  for (PerWord& pw : words_) {
+    if (pw.fillVao) glDeleteVertexArrays(1, &pw.fillVao);
+    if (pw.quadVao) glDeleteVertexArrays(1, &pw.quadVao);
+  }
+  words_.clear();
+  if (!buffers_.empty()) {
+    glDeleteBuffers(static_cast<GLsizei>(buffers_.size()), buffers_.data());
+    buffers_.clear();
+  }
+  if (program_) {
+    glDeleteProgram(program_);
+    program_ = 0;
+  }
+}
+
 bool WordRenderer::init(const Scene& scene) {
+  destroy();  // re-init on relayout must not leak the old scene's GPU state
   program_ = linkProgram(kVS, kFS);
   if (!program_) return false;
   matLoc_ = glGetUniformLocation(program_, "u_mat");
   offsetLoc_ = glGetUniformLocation(program_, "u_offset");
   colorLoc_ = glGetUniformLocation(program_, "u_color");
-
-  words_.clear();
   for (const Scene::Entry& e : scene.entries()) {
     PerWord pw;
 
@@ -62,6 +77,7 @@ bool WordRenderer::init(const Scene& scene) {
     glBindVertexArray(pw.fillVao);
     GLuint vbo = 0;
     glGenBuffers(1, &vbo);
+    buffers_.push_back(vbo);
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
     glBufferData(GL_ARRAY_BUFFER, data.size() * sizeof(float), data.data(),
                  GL_STATIC_DRAW);
@@ -85,6 +101,7 @@ bool WordRenderer::init(const Scene& scene) {
     glBindVertexArray(pw.quadVao);
     GLuint quadVbo = 0;
     glGenBuffers(1, &quadVbo);
+    buffers_.push_back(quadVbo);
     glBindBuffer(GL_ARRAY_BUFFER, quadVbo);
     glBufferData(GL_ARRAY_BUFFER, sizeof quad, quad, GL_STATIC_DRAW);
     glEnableVertexAttribArray(0);
