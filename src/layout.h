@@ -3,7 +3,9 @@
 #include <clipper2/clipper.h>
 
 #include <cstdint>
+#include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "box.h"
@@ -29,6 +31,11 @@ enum class Placement {
   kCenterLine,  // random x across the width, y jittered near the center line
   kCenter,      // everything starts at the exact center
 };
+
+// Lookup by slug ("center-line", "center") and human-readable label
+// ("Center Line", "Center").
+std::optional<Placement> findPlacement(std::string_view name);
+std::string_view placementName(Placement placement);
 
 struct LayoutParams {
   // Archimedean search spiral: per step, angle advances dTheta and radius

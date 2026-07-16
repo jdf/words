@@ -3,6 +3,7 @@
 #include <absl/log/initialize.h>
 
 #ifdef __EMSCRIPTEN__
+#include <emscripten/em_asm.h>
 #include <emscripten/emscripten.h>
 
 #include <absl/base/log_severity.h>

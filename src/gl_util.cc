@@ -1,5 +1,6 @@
 #include "gl_util.h"
 
+#include <GLES3/gl3.h>
 #include <cstdio>
 
 namespace words {

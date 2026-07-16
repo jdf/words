@@ -14,6 +14,7 @@
 //   ?variance=<name>     color variance: exact|little|some|lots|wild
 //   ?orientation=<name>  horizontal|mostly-horizontal|half-and-half|...
 //                        (see src/orientation.h)
+//   ?placement=<name>    center-line|center
 
 #include <emscripten/emscripten.h>
 #include <emscripten/html5.h>
@@ -31,6 +32,7 @@
 
 #include "box.h"
 #include "demo_scene.h"
+#include "layout.h"
 #include "logging.h"
 #include "orientation.h"
 #include "palette.h"
@@ -82,24 +84,36 @@ std::string cloudText() {
   return slurp(kSampleTextPath);
 }
 
-words::Scene buildScene(const std::string& fontPath) {
+// Builds the scene per URL parameters; `description` receives the
+// human-readable configuration (orientation · placement · palette) that
+// the page shows in its status line.
+words::Scene buildScene(const std::string& fontPath,
+                        std::string* description) {
   words::CloudOptions options;
   words::ColorScheme scheme;
-  if (const words::Palette* palette = words::findPalette(urlParam("palette"))) {
-    scheme.palette = *palette;
+  const char* paletteLabel = "App Colors";
+  if (const words::NamedPalette* palette =
+          words::findPalette(urlParam("palette"))) {
+    scheme.palette = palette->palette;
     if (auto v = words::findVariance(urlParam("variance"))) {
       scheme.variance = *v;
     }
     options.colors = &scheme;
+    paletteLabel = palette->displayName;
   }
   if (auto o = words::findOrientation(urlParam("orientation"))) {
     options.orientation = *o;
   }
+  if (auto p = words::findPlacement(urlParam("placement"))) {
+    options.placement = *p;
+  }
+  *description =
+      std::string(words::orientationName(options.orientation)) + " · " +
+      std::string(words::placementName(options.placement)) + " · " +
+      paletteLabel;
   LOG(INFO) << "build: font=" << fontPath
-            << " corpus=" << urlParam("corpus")
-            << " palette=" << urlParam("palette")
-            << " variance=" << urlParam("variance")
-            << " orientation=" << urlParam("orientation");
+            << " corpus=" << urlParam("corpus") << " config=" << *description
+            << " variance=" << urlParam("variance");
 
   std::string tsv = slurp(kCorpusTsvPath);
   if (!tsv.empty()) {
@@ -200,10 +214,15 @@ int main() {
   g_app = &app;
 
   std::ifstream fontOverride(kFontOverridePath);
-  app.scene = buildScene(fontOverride ? kFontOverridePath : kFontPath);
+  std::string description;
+  app.scene = buildScene(fontOverride ? kFontOverridePath : kFontPath,
+                         &description);
   app.wordRenderer.init(app.scene);
 
   std::printf("words up: GL_VERSION = %s\n", glGetString(GL_VERSION));
+  // Last print line = the page's status overlay: the human-readable
+  // configuration, so every golden names what it shows.
+  std::printf("%s\n", description.c_str());
 
   // Draw twice at startup (the first pass resizes the canvas, which clears
   // the buffer mid-task in some engines), then only on window resizes. The

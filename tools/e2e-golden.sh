@@ -36,17 +36,28 @@ CASES=(
   "belye-nochi|?corpus=belye-nochi&font=gentium"
   "hatzofe|?corpus=hatzofe&font=sbl-hebrew"
   "kalila-wa-dimna|?corpus=kalila-wa-dimna&font=scheherazade"
-  # Color verification happens here, through the real GL pipeline: one
-  # chromatic palette (hue variance, white background) and one achromatic
-  # (brightness variance — the hue<0.01 branch), per the original's
-  # PaletteManager/ColorVariance semantics.
-  "wordly|?corpus=moby-dick&palette=wordly&variance=some"
-  "heat-wild|?corpus=moby-dick&palette=heat&variance=wild"
-  # Arbitrary rotations through the real renderer (OrientationStrategy's
-  # ANY_WHICH_WAY): angled words, angled HBB collisions, angled stencil
-  # fills.
-  "any-which-way|?corpus=moby-dick&orientation=any-which-way"
 )
+
+# The strategy matrix: one golden per orientation strategy, placement
+# strategy, and palette, all over the same corpus (moby-dick) with the
+# same seed. Each dimension varies alone while the other two hold fixed
+# values, and every image's status line names its configuration. Color
+# verification happens here, through the real GL pipeline (SwANGLE), per
+# the project's testing rule.
+ORIENTATIONS="horizontal mostly-horizontal long-horizontal-likely
+              half-and-half mostly-vertical vertical any-which-way"
+for o in $ORIENTATIONS; do
+  CASES+=("orientation-$o|?corpus=moby-dick&orientation=$o&placement=center-line&palette=blue-meets-orange&variance=little")
+done
+PLACEMENTS="center-line center"
+for p in $PLACEMENTS; do
+  CASES+=("placement-$p|?corpus=moby-dick&placement=$p&orientation=mostly-horizontal&palette=chilled-summer&variance=little")
+done
+PALETTES="bw wb wordly asparagus bluesugar heat ghostly chilled-summer
+          blue-meets-orange yramirp"
+for p in $PALETTES; do
+  CASES+=("palette-$p|?corpus=moby-dick&palette=$p&placement=center-line&orientation=mostly-horizontal&variance=little")
+done
 
 # Build the release dist directly (not via ./dev, which would also point
 # the dev server at the release build).

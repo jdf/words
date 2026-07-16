@@ -184,7 +184,9 @@ Scene cloudFromCounts(const std::string& fontPath,
 
   auto layoutStart = std::chrono::steady_clock::now();
   Box world = worldFor(laid);
-  layoutWords(laid, world, LayoutParams{}, options.debug);
+  LayoutParams params;
+  params.placement = options.placement;
+  layoutWords(laid, world, params, options.debug);
   auto layoutMs = std::chrono::duration_cast<std::chrono::milliseconds>(
                       std::chrono::steady_clock::now() - layoutStart)
                       .count();

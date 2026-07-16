@@ -24,7 +24,7 @@ class Handler(SimpleHTTPRequestHandler):
         self.send_header("Cross-Origin-Embedder-Policy", "require-corp")
         super().end_headers()
 
-    def log_message(self, fmt, *args):
+    def log_message(self, format, *args):
         pass  # keep serve.log quiet; errors still surface via stderr
 
 

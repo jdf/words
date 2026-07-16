@@ -41,11 +41,12 @@ Color varied(const Color& c, double variance, std::mt19937& rng);
 
 // The built-in palettes, in the original menu's order.
 struct NamedPalette {
-  const char* name;  // lowercase slug: "wordly", "blue-meets-orange", ...
+  const char* name;         // lowercase slug: "wordly", "blue-meets-orange"
+  const char* displayName;  // the original menu label: "Blue Meets Orange"
   Palette palette;
 };
 const std::vector<NamedPalette>& builtinPalettes();
-const Palette* findPalette(std::string_view name);
+const NamedPalette* findPalette(std::string_view name);
 
 // The original's variance menu: exact 0, little 0.08 (the startup
 // default), some 0.12, lots 0.25, wild 0.5.

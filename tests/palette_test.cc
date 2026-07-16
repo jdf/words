@@ -26,11 +26,13 @@ TEST_CASE("builtin palettes match the original menu") {
   CHECK(palettes.front().name == std::string("bw"));
   CHECK(palettes.back().name == std::string("yramirp"));
 
-  const words::Palette* wordly = words::findPalette("wordly");
+  const words::NamedPalette* wordly = words::findPalette("wordly");
   REQUIRE(wordly != nullptr);
-  CHECK(wordly->colors.size() == 4);
-  CHECK(sameColor(wordly->background, words::colorFromHex(0xffffff)));
-  CHECK(sameColor(wordly->colors[0].color, words::colorFromHex(0x880099)));
+  CHECK(wordly->displayName == std::string("Wordly"));
+  CHECK(wordly->palette.colors.size() == 4);
+  CHECK(sameColor(wordly->palette.background, words::colorFromHex(0xffffff)));
+  CHECK(sameColor(wordly->palette.colors[0].color,
+                  words::colorFromHex(0x880099)));
 
   CHECK(words::findPalette("no-such-palette") == nullptr);
   CHECK(words::findPalette("") == nullptr);

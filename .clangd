@@ -7,14 +7,29 @@ Diagnostics:
   Includes:
     # Third-party libraries lack IWYU export pragmas, so include-cleaner
     # attributes their symbols to internal headers instead of the sanctioned
-    # entry points (clipper2/clipper.h; ft2build.h + FT_* macros; hb.h).
-    # Exempt them from provider analysis; our own headers and the standard
-    # library stay under strict enforcement.
+    # entry points (clipper2/clipper.h; ft2build.h + FT_* macros; hb.h;
+    # the emscripten.h/html5.h umbrellas; GLES3/gl3.h; absl's per-symbol
+    # headers). Exempt them from provider analysis; our own headers and the
+    # standard library stay under strict enforcement.
     IgnoreHeader:
       - clipper2/.*
       - freetype/.*
       - ft2build\.h
       - hb\.h
       - hb-.*\.h
+      - emscripten/.*
+      - GLES3/.*
+      - GL/.*
       - ApprovalTests\.hpp
       - catch2/.*
+      - absl/.*
+
+---
+
+# Host-only translation units (tests, corpus tooling) compile against the
+# native database — the wasm one has no entry for them, which otherwise
+# leaves clangd guessing flags and flagging every Catch2 include.
+If:
+  PathMatch: (tests|tools)/.*
+CompileFlags:
+  CompilationDatabase: build/host-test

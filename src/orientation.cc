@@ -50,6 +50,19 @@ double orientationAngle(Orientation orientation, std::string_view label,
   return 0.0;
 }
 
+std::string_view orientationName(Orientation orientation) {
+  switch (orientation) {
+    case Orientation::kHorizontal: return "Horizontal";
+    case Orientation::kMostlyHorizontal: return "Mostly Horizontal";
+    case Orientation::kLongHorizontalLikely: return "Long Horizontal Likely";
+    case Orientation::kHalfAndHalf: return "Half And Half";
+    case Orientation::kMostlyVertical: return "Mostly Vertical";
+    case Orientation::kVertical: return "Vertical";
+    case Orientation::kAnyWhichWay: return "Any Which Way";
+  }
+  return "?";
+}
+
 std::optional<Orientation> findOrientation(std::string_view name) {
   if (name == "horizontal") return Orientation::kHorizontal;
   if (name == "mostly-horizontal") return Orientation::kMostlyHorizontal;

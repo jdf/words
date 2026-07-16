@@ -115,34 +115,36 @@ Color varied(const Color& c, double variance, std::mt19937& rng) {
 }
 
 const std::vector<NamedPalette>& builtinPalettes() {
-  // The original PaletteManager's table, in menu order.
+  // The original PaletteManager's table, in menu order, with its labels.
   static const std::vector<NamedPalette> kPalettes = {
-      {"bw", makePalette(0xffffff, {0x000000})},
-      {"wb", makePalette(0x000000, {0xffffff})},
-      {"wordly",
+      {"bw", "BW", makePalette(0xffffff, {0x000000})},
+      {"wb", "WB", makePalette(0x000000, {0xffffff})},
+      {"wordly", "Wordly",
        makePalette(0xffffff, {0x880099, 0x339922, 0x993333, 0x2266CC})},
-      {"asparagus",
+      {"asparagus", "Asparagus",
        makePalette(0xffffff, {0xCCFFCC, 0xCCCC7E, 0x727E4C, 0xB1BD35})},
-      {"bluesugar",
+      {"bluesugar", "BlueSugar",
        makePalette(0xffffff, {0xFFCC66, 0x999999, 0x9999CC, 0xCCCCFF})},
-      {"heat", makePalette(0xffffff, {0xCCCCCC, 0x996666, 0x660000,
-                                      0x330000, 0x666666})},
-      {"ghostly",
+      {"heat", "Heat",
+       makePalette(0xffffff,
+                   {0xCCCCCC, 0x996666, 0x660000, 0x330000, 0x666666})},
+      {"ghostly", "Ghostly",
        makePalette(0xffffff, {0x000000, 0x333333, 0x666666, 0x888888})},
-      {"chilled-summer", makePalette(0x000000, {0x8DC3F2, 0xCBE4F8,
-                                                0xF2F2F2, 0x8CBF1F,
-                                                0x7AA61B})},
-      {"blue-meets-orange", makePalette(0x000000, {0x023059, 0x3F7EA6,
-                                                   0xF2F2F2, 0xD99E32,
-                                                   0xBF5E0A})},
-      {"yramirp", makePalette(0x000000, {0xff0000, 0x00ff00, 0x0000ff})},
+      {"chilled-summer", "Chilled Summer",
+       makePalette(0x000000,
+                   {0x8DC3F2, 0xCBE4F8, 0xF2F2F2, 0x8CBF1F, 0x7AA61B})},
+      {"blue-meets-orange", "Blue Meets Orange",
+       makePalette(0x000000,
+                   {0x023059, 0x3F7EA6, 0xF2F2F2, 0xD99E32, 0xBF5E0A})},
+      {"yramirp", "yramirP",
+       makePalette(0x000000, {0xff0000, 0x00ff00, 0x0000ff})},
   };
   return kPalettes;
 }
 
-const Palette* findPalette(std::string_view name) {
+const NamedPalette* findPalette(std::string_view name) {
   for (const NamedPalette& np : builtinPalettes()) {
-    if (name == np.name) return &np.palette;
+    if (name == np.name) return &np;
   }
   return nullptr;
 }

@@ -20,10 +20,12 @@ struct ColorScheme {
 };
 
 // Knobs for the text->cloud pipeline. The defaults are the app's stock
-// look: up to 800 words, one word in four vertical, dark-scheme colors.
+// look: up to 800 words, one word in four vertical, center-line seeding,
+// dark-scheme colors.
 struct CloudOptions {
   size_t maxWords = 800;
   Orientation orientation = Orientation::kMostlyHorizontal;
+  Placement placement = Placement::kCenterLine;
   const ColorScheme* colors = nullptr;  // null = built-in dark scheme
   LayoutDebug* debug = nullptr;
 };

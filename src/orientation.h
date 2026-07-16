@@ -31,4 +31,7 @@ double orientationAngle(Orientation orientation, std::string_view label,
 // "vertical", "any-which-way".
 std::optional<Orientation> findOrientation(std::string_view name);
 
+// Human-readable label, e.g. "Mostly Horizontal".
+std::string_view orientationName(Orientation orientation);
+
 }  // namespace words

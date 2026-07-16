@@ -4,7 +4,9 @@
 #include <cmath>
 #include <cstddef>
 #include <numbers>
+#include <optional>
 #include <random>
+#include <string_view>
 #include <vector>
 
 #include "box.h"
@@ -12,6 +14,20 @@
 #include "word.h"
 
 namespace words {
+
+std::optional<Placement> findPlacement(std::string_view name) {
+  if (name == "center-line") return Placement::kCenterLine;
+  if (name == "center") return Placement::kCenter;
+  return std::nullopt;
+}
+
+std::string_view placementName(Placement placement) {
+  switch (placement) {
+    case Placement::kCenterLine: return "Center Line";
+    case Placement::kCenter: return "Center";
+  }
+  return "?";
+}
 
 namespace {
 

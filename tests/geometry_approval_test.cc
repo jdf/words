@@ -107,6 +107,14 @@ TEST_CASE("text cloud in coolvetica") {
   verifySvg(words::toSvg(scene));
 }
 
+TEST_CASE("placement lookup by slug") {
+  CHECK(words::findPlacement("center-line") == words::Placement::kCenterLine);
+  CHECK(words::findPlacement("center") == words::Placement::kCenter);
+  CHECK_FALSE(words::findPlacement("edge").has_value());
+  CHECK(words::placementName(words::Placement::kCenterLine) == "Center Line");
+  CHECK(words::placementName(words::Placement::kCenter) == "Center");
+}
+
 TEST_CASE("any-which-way cloud properties") {
   // Arbitrary rotations through the whole pipeline: every pairwise HBB
   // collision here runs at angles the 0/90 clouds never exercise.
