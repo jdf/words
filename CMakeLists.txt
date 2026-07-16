@@ -116,4 +116,9 @@ else()
   include(CTest)
   include(Catch)
   catch_discover_tests(words_tests WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
+  # Corpus-building CLI: counts a text file's words with the app's exact
+  # word model. Driven by tools/make-corpus.py.
+  add_executable(word_counts tools/word_counts_main.cc)
+  target_link_libraries(word_counts PRIVATE words_core)
 endif()

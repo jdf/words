@@ -7,13 +7,21 @@
 #include <clipper2/clipper.h>
 #include <cstddef>
 
+#include <algorithm>
 #include <cmath>
+#include <fstream>
 #include <numbers>
+#include <random>
+#include <sstream>
+#include <string>
 #include <vector>
 
 #include "box.h"
+#include "demo_scene.h"
 #include "layout.h"
+#include "scene.h"
 #include "shape.h"
+#include "text.h"
 #include "word.h"
 
 namespace {
@@ -113,6 +121,70 @@ void BM_Layout(benchmark::State& state) {
   state.SetItemsProcessed(state.iterations() * shaped.size());
 }
 BENCHMARK(BM_Layout)->Unit(benchmark::kMillisecond);
+
+// Layout of a real text's cloud at increasing density (shaping excluded):
+// the Moby-Dick sample, sized and oriented exactly as the app does it.
+// Range arg = word cap. This is where superlinear growth shows up — later
+// words spiral through ever-denser occupancy before finding a home.
+void BM_LayoutText(benchmark::State& state) {
+  std::ifstream in("assets/sample-text.txt");
+  std::ostringstream ss;
+  ss << in.rdbuf();
+  std::string text = ss.str();
+  words::StopWordsSet stopSets("assets/stopwords");
+  std::vector<words::WordCount> counts =
+      words::countWords(text, stopSets.guess(text));
+  size_t cap = std::min(counts.size(), static_cast<size_t>(state.range(0)));
+  counts.resize(cap);
+
+  std::mt19937 rng(20080623);
+  std::uniform_real_distribution<double> unit(0.0, 1.0);
+  std::vector<words::ShapedText> shaped;
+  std::vector<double> scales;
+  std::vector<double> angles;
+  double maxCount = counts[0].count;
+  for (const words::WordCount& wc : counts) {
+    shaped.push_back(words::shapeText(kFont, wc.display));
+    double em = std::max(60.0, 1000.0 * wc.count / maxCount);
+    scales.push_back(em / shaped.back().upem);
+    angles.push_back(unit(rng) < 0.25 ? std::numbers::pi / 2.0 : 0.0);
+  }
+
+  for (auto _ : state) {
+    state.PauseTiming();
+    std::vector<words::Word> wordList;
+    double totalArea = 0;
+    for (size_t i = 0; i < shaped.size(); ++i) {
+      wordList.emplace_back(shaped[i], scales[i], angles[i]);
+      const words::Box& b = wordList.back().localBounds();
+      totalArea += b.width() * b.height();
+    }
+    double w = std::sqrt(1.6 * totalArea) * 1.2;
+    double h = std::sqrt(totalArea / 1.6) * 1.5;
+    words::Box world{-w / 2, -h / 2, w / 2, h / 2};
+    state.ResumeTiming();
+    words::layoutWords(wordList, world);
+    benchmark::DoNotOptimize(wordList);
+  }
+  state.SetItemsProcessed(state.iterations() * shaped.size());
+}
+BENCHMARK(BM_LayoutText)->Arg(150)->Arg(400)->Arg(800)->Unit(
+    benchmark::kMillisecond);
+
+// The whole app startup cost after the GL context: stop-list loading,
+// language guessing, counting, shaping every word, HBBs, and layout.
+void BM_CloudFromText(benchmark::State& state) {
+  std::ifstream in("assets/sample-text.txt");
+  std::ostringstream ss;
+  ss << in.rdbuf();
+  std::string text = ss.str();
+  for (auto _ : state) {
+    words::Scene scene = words::buildCloudFromText(
+        kFont, "assets/stopwords", text, state.range(0));
+    benchmark::DoNotOptimize(scene);
+  }
+}
+BENCHMARK(BM_CloudFromText)->Arg(800)->Unit(benchmark::kMillisecond);
 
 // The per-frame collision query: triangle polygon vs a word's root box.
 void BM_BoxIntersects(benchmark::State& state) {
