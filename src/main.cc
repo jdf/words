@@ -9,6 +9,10 @@
 #include <GLES3/gl3.h>
 
 #include <cstdio>
+#include <cstdlib>
+#include <fstream>
+#include <sstream>
+#include <string>
 #include <vector>
 
 #include "demo_scene.h"
@@ -20,6 +24,8 @@
 namespace {
 
 constexpr const char* kFontPath = "/fonts/Sexsmith.otf";
+constexpr const char* kStopWordsDir = "/stopwords";
+constexpr const char* kSampleTextPath = "/sample-text.txt";
 
 struct App {
   words::Scene scene{words::Shape::equilateralTriangle(1.0)};
@@ -37,6 +43,23 @@ double frozenTimeFromUrl() {
     const t = parseFloat(new URLSearchParams(location.search).get('t'));
     return isNaN(t) ? -1 : t;
   });
+}
+
+// The "text" URL query parameter, or the bundled sample text.
+std::string cloudText() {
+  char* fromUrl = static_cast<char*>(EM_ASM_PTR({
+    const t = new URLSearchParams(location.search).get('text');
+    return t ? stringToNewUTF8(t) : 0;
+  }));
+  if (fromUrl) {
+    std::string text(fromUrl);
+    std::free(fromUrl);
+    if (!text.empty()) return text;
+  }
+  std::ifstream in(kSampleTextPath);
+  std::ostringstream ss;
+  ss << in.rdbuf();
+  return ss.str();
 }
 
 // Keeps the drawing buffer matched to the canvas CSS size × devicePixelRatio.
@@ -100,7 +123,7 @@ int main() {
   static App app;
   g_app = &app;
 
-  app.scene = words::buildCloudScene(kFontPath);
+  app.scene = words::buildCloudFromText(kFontPath, kStopWordsDir, cloudText());
   app.wordRenderer.init(app.scene);
   app.shapeRenderer.init(app.scene.shape(),
                          std::vector<words::Color>{

@@ -53,6 +53,8 @@ if(EMSCRIPTEN)
     -sEXPORT_NAME=createWordsModule
     "SHELL:--preload-file ${CMAKE_SOURCE_DIR}/assets/Sexsmith.otf@/fonts/Sexsmith.otf"
     "SHELL:--preload-file ${CMAKE_SOURCE_DIR}/assets/stopwords@/stopwords"
+    "SHELL:--preload-file ${CMAKE_SOURCE_DIR}/assets/sample-text.txt@/sample-text.txt"
+    "SHELL:-sEXPORTED_RUNTIME_METHODS=stringToNewUTF8"
   )
   set_property(TARGET words APPEND PROPERTY LINK_DEPENDS ${CMAKE_SOURCE_DIR}/assets/Sexsmith.otf)
 

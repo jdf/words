@@ -1,5 +1,7 @@
 #include "demo_scene.h"
 
+#include <string_view>
+
 #include <cstdint>
 #include <cstddef>
 #include <numbers>
@@ -12,6 +14,7 @@
 #include "layout.h"
 #include "scene.h"
 #include "shape.h"
+#include "text.h"
 #include "word.h"
 
 namespace words {
@@ -79,6 +82,47 @@ Scene buildCloudScene(const std::string& fontPath) {
     laid.emplace_back(shaped, scale, angle);
     colors.push_back(kPalette[static_cast<size_t>(unit(rng) *
                                                   std::size(kPalette))]);
+  }
+
+  Box world{-Scene::kWidth / 2.0, -Scene::kHeight / 2.0, Scene::kWidth / 2.0,
+            Scene::kHeight / 2.0};
+  layoutWords(laid, world, LayoutParams{});
+
+  for (size_t i = 0; i < laid.size(); ++i) {
+    scene.addWord(std::move(laid[i]), colors[i]);
+  }
+  return scene;
+}
+
+Scene buildCloudFromText(const std::string& fontPath,
+                         const std::string& stopWordsDir,
+                         std::string_view text, size_t maxWords) {
+  Scene scene(Shape::equilateralTriangle(kTriangleRadius));
+
+  StopWordsSet stopSets(stopWordsDir);
+  const StopWords* language = stopSets.guess(text);
+  std::vector<WordCount> counts = countWords(text, language);
+  if (counts.empty()) return scene;
+  if (counts.size() > maxWords) counts.resize(maxWords);
+
+  std::mt19937 rng(20080623);
+  std::uniform_real_distribution<double> unit(0.0, 1.0);
+
+  double maxCount = counts[0].count;
+  std::vector<Word> laid;
+  std::vector<Color> colors;
+  laid.reserve(counts.size());
+  for (const WordCount& wc : counts) {
+    ShapedText shaped = shapeText(fontPath, wc.display);
+    if (shaped.empty()) continue;
+    // Type size linear in frequency, like the original.
+    double emPx = kMinEmPx + (kMaxEmPx - kMinEmPx) * (wc.count / maxCount);
+    double scale = emPx / shaped.upem;
+    double angle =
+        unit(rng) < kVerticalFraction ? std::numbers::pi / 2.0 : 0.0;
+    laid.emplace_back(shaped, scale, angle);
+    colors.push_back(
+        kPalette[static_cast<size_t>(unit(rng) * std::size(kPalette))]);
   }
 
   Box world{-Scene::kWidth / 2.0, -Scene::kHeight / 2.0, Scene::kWidth / 2.0,

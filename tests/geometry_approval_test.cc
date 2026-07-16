@@ -49,6 +49,19 @@ TEST_CASE("cloud layout") {
   verifySvg(words::toSvg(scene));
 }
 
+TEST_CASE("text cloud layout") {
+  words::Scene scene = words::buildCloudFromText(
+      kFont, WORDS_ASSETS_DIR "/stopwords",
+      "four score and seven years ago our fathers brought forth on this "
+      "continent a new nation conceived in liberty and dedicated to the "
+      "proposition that all men are created equal now we are engaged in a "
+      "great civil war testing whether that nation or any nation so "
+      "conceived and so dedicated can long endure we are met on a great "
+      "battlefield of that war nation nation");
+  scene.update(0.0);
+  verifySvg(words::toSvg(scene));
+}
+
 TEST_CASE("cloud layout properties") {
   words::Scene scene = words::buildCloudScene(kFont);
   const auto& entries = scene.entries();
