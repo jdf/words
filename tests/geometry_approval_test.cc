@@ -13,7 +13,7 @@ namespace {
 constexpr const char* kFont = WORDS_ASSETS_DIR "/Sexsmith.otf";
 
 auto subdirectory = ApprovalTests::Approvals::useApprovalsSubdirectory(
-    "goldens");
+    "goldens/geometry");
 
 }  // namespace
 

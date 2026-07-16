@@ -18,7 +18,7 @@ CHROME="${CHROME:-$(tools/get-chrome.sh)}"
 PORT=8788
 T=2.0
 SIZE=1200,750
-GOLDEN=tests/goldens/e2e-t2.png
+GOLDEN=tests/goldens/e2e/t2.png
 RECEIVED=build/e2e-received.png
 
 # Build the release dist directly (not via ./dev, which would also point

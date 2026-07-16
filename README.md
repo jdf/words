@@ -72,7 +72,7 @@ Two tiers of golden-image tests:
 - **Geometry approvals** (`cmake --preset host-test && ctest --preset
   host-test`): the GL-free world model builds natively and serializes the
   demo scene to SVG; ApprovalTests compares against
-  `tests/goldens/*.approved.svg`. The approved files are viewable
+  `tests/goldens/geometry/*.approved.svg`. The approved files are viewable
   images — open them in a browser. On a mismatch, inspect the `.received`
   file and rename it over the `.approved` one to bless. Runs in the
   presubmit when `src/` or `tests/` changed.
@@ -80,7 +80,7 @@ Two tiers of golden-image tests:
   build in headless Chrome on SwiftShader-backed ANGLE — CPU
   rasterization, byte-deterministic for a fixed browser version — at a
   frozen scene time (`?t=<seconds>` URL parameter), and byte-compares the
-  screenshot against `tests/goldens/`. The browser is a pinned
+  screenshot against `tests/goldens/e2e/`. The browser is a pinned
   [Chrome for Testing](https://googlechromelabs.github.io/chrome-for-testing/)
   build (version in `tools/chrome-version.txt`, auto-downloaded to
   `~/.cache/words/chrome` by `tools/get-chrome.sh`), so system browser
