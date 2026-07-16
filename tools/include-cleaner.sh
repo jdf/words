@@ -2,8 +2,8 @@
 # Include hygiene via clang-tidy's misc-include-cleaner: reports (or, with
 # --fix, strips/inserts) unused and missing #includes.
 #
-#   tools/include-cleaner.sh                    # check all of src/
-#   tools/include-cleaner.sh --fix              # rewrite all of src/
+#   tools/include-cleaner.sh                    # check src/, bench/, tests/
+#   tools/include-cleaner.sh --fix              # rewrite them
 #   tools/include-cleaner.sh [--fix] FILE...    # limit to specific files
 #
 # Needs build/wasm-debug/compile_commands.json (run ./dev once first).
@@ -32,18 +32,24 @@ if [ "${1:-}" = "--fix" ]; then
   shift
 fi
 
-# Remaining args limit the check; default is everything in src/.
+# Remaining args limit the check; default is everything. src/ and bench/
+# translation units resolve through the wasm-debug compile database;
+# tests/ ones through host-test's (skipped, with a warning, if that
+# preset hasn't been configured).
 CC_FILES=()
+TEST_CC_FILES=()
 H_FILES=()
 if [ "$#" -gt 0 ]; then
   for f in "$@"; do
     case "$f" in
+      tests/*.cc) TEST_CC_FILES+=("$f") ;;
       *.cc) CC_FILES+=("$f") ;;
       *.h) H_FILES+=("$f") ;;
     esac
   done
 else
-  CC_FILES=(src/*.cc)
+  CC_FILES=(src/*.cc bench/*.cc)
+  TEST_CC_FILES=(tests/*.cc)
   H_FILES=(src/*.h)
 fi
 
@@ -59,6 +65,17 @@ if [ "${#CC_FILES[@]}" -gt 0 ]; then
   "$TIDY" -p build/wasm-debug --quiet ${FIX[@]+"${FIX[@]}"} \
     "${SYS_ARGS[@]}" \
     "${CC_FILES[@]}"
+fi
+
+if [ "${#TEST_CC_FILES[@]}" -gt 0 ]; then
+  if [ -f build/host-test/compile_commands.json ]; then
+    # Homebrew clang-tidy doesn't know Apple's default sysroot.
+    "$TIDY" -p build/host-test --quiet ${FIX[@]+"${FIX[@]}"} \
+      --extra-arg=-isysroot --extra-arg="$(xcrun --show-sdk-path)" \
+      "${TEST_CC_FILES[@]}"
+  else
+    echo "warning: host-test not configured; skipping include check for: ${TEST_CC_FILES[*]}" >&2
+  fi
 fi
 
 if [ "${#H_FILES[@]}" -gt 0 ]; then

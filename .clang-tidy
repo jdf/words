@@ -8,4 +8,4 @@ CheckOptions:
   # no IWYU export pragmas, so symbols are attributed to internal headers
   # rather than the sanctioned entry points (clipper2/clipper.h; ft2build.h
   # + FT_* macros; hb.h).
-  misc-include-cleaner.IgnoreHeaders: 'emscripten/.*;GLES3/.*;GL/.*;clipper2/.*;freetype/.*;ft2build\.h;hb\.h;hb-.*\.h'
+  misc-include-cleaner.IgnoreHeaders: 'emscripten/.*;GLES3/.*;GL/.*;clipper2/.*;freetype/.*;ft2build\.h;hb\.h;hb-.*\.h;ApprovalTests\.hpp;catch2/.*'

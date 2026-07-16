@@ -16,3 +16,5 @@ Diagnostics:
       - ft2build\.h
       - hb\.h
       - hb-.*\.h
+      - ApprovalTests\.hpp
+      - catch2/.*

@@ -6,6 +6,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "demo_scene.h"
+#include "scene.h"
 #include "svg.h"
 
 namespace {

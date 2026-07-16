@@ -8,7 +8,6 @@
 
 #include <numbers>
 
-#include "scene.h"
 #include "shape.h"
 #include "word.h"
 
