@@ -25,7 +25,14 @@ try {
     const name = c.slice(0, sep);
     const query = c.slice(sep + 1);
     await page.goto(baseUrl + query, { waitUntil: 'load' });
-    await page.waitForFunction('window.__wordsIdle === true', { timeout: 30000 });
+    // Poll from this side, not via waitForFunction: its rAF-based polling
+    // starves in new headless once the page goes quiet (frames are only
+    // produced on demand), deadlocking against an already-true flag.
+    const deadline = Date.now() + 30000;
+    while (!(await page.evaluate('window.__wordsIdle === true'))) {
+      if (Date.now() > deadline) throw new Error(`timeout waiting for ${name}`);
+      await new Promise((r) => setTimeout(r, 150));
+    }
     await page.screenshot({ path: `${outDir}/e2e-received-${name}.png` });
     console.log(`shot: ${name}`);
   }
