@@ -372,30 +372,30 @@ function barThumb(slug) {
   return `<svg class="thumb" viewBox="0 0 60 36" aria-hidden="true">${rects}</svg>`;
 }
 
+// Word-bar silhouettes of the two cloud shapes: center-line packs a wide
+// lens hugging the horizontal midline; center packs a round blob.
+const PLACEMENT_THUMBS = {
+  'center-line': [
+    [22, 2, 10],
+    [10, 9, 12], [26, 9, 16], [46, 9, 8],
+    [2, 16, 13], [18, 16, 17], [38, 16, 13], [53, 16, 6],
+    [9, 23, 13], [26, 23, 14], [44, 23, 9],
+    [24, 30, 11],
+  ],
+  'center': [
+    [24, 2, 13],
+    [16, 9, 13], [32, 9, 13],
+    [12, 16, 17], [31, 16, 18],
+    [16, 23, 12], [31, 23, 14],
+    [23, 30, 13],
+  ],
+};
+
 function scatterThumb(slug) {
-  // Deterministic little scatters: a wide lens for center-line, a disc
-  // for center.
-  const dots = [];
-  const n = 26;
-  for (let i = 0; i < n; ++i) {
-    const t = i / (n - 1);
-    const jitter = ((i * 7919) % 11 - 5) / 5;  // -1..1, fixed pattern
-    let x;
-    let y;
-    if (slug === 'center-line') {
-      x = 4 + 52 * t;
-      y = 18 + jitter * 6 * Math.sin(Math.PI * (0.15 + 0.7 * t));
-    } else {
-      const ang = i * 2.39996;  // golden-angle spiral
-      const r = 13 * Math.sqrt(t);
-      x = 30 + r * Math.cos(ang) * 1.6;
-      y = 18 + r * Math.sin(ang);
-    }
-    const rr = 1.2 + ((i * 31) % 5) / 3;
-    dots.push(`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}"` +
-              ` r="${rr.toFixed(1)}" fill="currentColor"/>`);
-  }
-  return `<svg class="thumb" viewBox="0 0 60 36" aria-hidden="true">${dots.join('')}</svg>`;
+  const rects = (PLACEMENT_THUMBS[slug] || []).map(([x, y, w]) =>
+      `<rect x="${x}" y="${y}" width="${w}" height="5" rx="2.5"` +
+      ` fill="currentColor"/>`).join('');
+  return `<svg class="thumb" viewBox="0 0 60 36" aria-hidden="true">${rects}</svg>`;
 }
 
 function paletteThumb(bg, colors) {
