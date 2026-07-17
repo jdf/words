@@ -59,6 +59,68 @@ The typefaces are the original Wordle's font collection:
   Blambot), Powell Antique (Dieter Steffmann), and ArTarumianBakhum
   (Ruben Tarumian).
 
+## Credits From the Original Wordle
+
+Wordle collected many debts in its day, and this reimplementation
+inherits them gladly.
+
+Thank you, [Martin Wattenberg](https://www.bewitched.com/), for the
+central idea of just throwing stuff at the screen until it fits. I
+raise my glass to the philosophy of "the dumbest possible thing that
+works."
+
+Thank you, Frank van Ham, for explaining hierarchical bounding boxes
+to me. Without that notion, this would have been too slow for
+interactive use.
+
+Thank you, [Katherine McVety](http://katherinemcvety.com/), for your
+expert guidance about color, and for your loving indulgence while I
+worked obsessively on this for two weeks.
+
+Thank you, علیرضا فرخی, for your research and assistance in making
+Wordle look beautiful in Nastaliq scripts.
+
+धन्यबाद, Eric Nedervold, for long and detailed email discussions about
+the rendering of Devanagari, and for giving such careful attention to
+the results.
+
+Thanks, [Matt McKeon](http://www.mattmckeon.com/), for your
+wonderfully simple and obvious (in retrospect) solution to a vexing
+technical design problem.
+
+Thanks, [Jesse Kriss](http://jklabs.net/) and Fernanda Viégas, for
+friendly testing and brainstorming. Fernanda, thanks especially for
+allowing me to completely destroy your Java plugin.
+
+Asante, [Mark Dingemanse](https://markdingemanse.net/), for your
+cheerful assistance in getting Wordle to speak in the extended ranges
+of Latin-derived alphabets.
+
+The stop-word lists were gifts in many tongues: hvala lepa, Mitja
+Decman (Slovene); hvala vam, Marko Rakar and Marko Tadic (Croatian);
+dankon, Fabio Bettani (Esperanto); תודה רבה, Irina Ros (Hebrew); sağ
+olun, Mert Torun and Mesut Aydemir (Turkish, and great help tracking
+down a locale-dependent bug); gratias tibi ago, Evan Smith (Latin);
+ďakujem, Brendor (Slovak); and gràcies, Carlos Gimenez and your
+students at Collegi Sant Gabriel de Viladecans (Catalan).
+
+Bugfinders: Eric Wilcox, Bernard Kerr, Peeter Sällström Randsalu,
+Stephan Geue, Jacob Tardell, Drew Harry, John Cullen, Brian Clegg,
+Mark Cathcart, Tania Hunt, Shane Curcuru, Turadg Aleahmad, Mike
+Lindstrom, Ottó Oláh, Steven Woolley, Alistair McKinnell, Chris
+Searle, δασκαλάκος, Stuart Axon, Yuriy Opryshko, Greg Haines, and
+Kathleen DeWitt.
+
+### Palettes
+
+**Heat** is the work of [Yoon Soo Lee](http://yoonsoo.com/). **Chilled
+Summer** (wi.hi.fi) and **Blue Meets Orange** (shiz0-media) came from
+the Adobe Kuler community, as did palettes from the original not yet
+ported here: Indian Earthy (Pillai.SubbiahMuthus), Firenze
+(matthepworth), Kindled (monnacat), Shooting Star (hitapillow),
+Organic Carrot (blazingbunny), Milk Paints (dianesteinberg), and Moss
+(franco_weezer).
+
 ## Development tools
 
 Built with [CMake](https://cmake.org/) and
