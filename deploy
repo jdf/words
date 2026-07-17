@@ -11,8 +11,10 @@
 #   WORDS_DEPLOY_HOST=example.com
 #   WORDS_DEPLOY_PATH=example.com/words/
 #
-# WORDS_DEPLOY_SSH overrides the ssh binary (default /usr/bin/ssh, the
-# system one your ~/.ssh config and keychain are set up for).
+# WORDS_DEPLOY_SSH overrides the ssh command (default: system ssh,
+# restricted to explicitly configured identities and no interactive
+# prompts, so a bad key setup fails once instead of spiraling into the
+# host's brute-force IP block).
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -43,5 +45,6 @@ for f in index.html app.js worker.js words.js words.wasm words.data credits.html
   fi
 done
 
-exec rsync -e "${WORDS_DEPLOY_SSH:-/usr/bin/ssh}" -av --delete "$@" \
+DEPLOY_SSH="${WORDS_DEPLOY_SSH:-/usr/bin/ssh -o IdentitiesOnly=yes -o BatchMode=yes}"
+exec rsync -e "$DEPLOY_SSH" -av --delete "$@" \
   "$DIST/" "$WORDS_DEPLOY_USER@$WORDS_DEPLOY_HOST:$WORDS_DEPLOY_PATH"
