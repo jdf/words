@@ -96,6 +96,16 @@
     dialog button:hover { border-color: #777; background: #26262e; }
     dialog .go { border-color: #4aa3ff !important; color: #cfe6ff; }
     #export-dialog { width: min(440px, 90vw); }
+    /* Credits: rendered markdown, scrolling inside the dialog. */
+    #credits-dialog { width: min(560px, 90vw); }
+    .credits-body { max-height: 65vh; overflow-y: auto; font-size: 13px; }
+    .credits-body h1 { margin: 0 0 10px; font-size: 16px; color: #e0e0e8; }
+    .credits-body h2 { margin: 16px 0 6px; font-size: 14px; color: #e0e0e8; }
+    .credits-body p { margin: 8px 0; }
+    .credits-body ul { margin: 8px 0; padding-left: 20px; }
+    .credits-body li { margin: 4px 0; }
+    .credits-body a { color: #4aa3ff; text-decoration: none; }
+    .credits-body a:hover { text-decoration: underline; }
     /* Segmented format selector. */
     .seg { display: flex; gap: 0; }
     .seg button {
@@ -143,6 +153,7 @@
     <span class="spacer"></span>
     <button id="use-words" title="Cloud your own text">Use My Words</button>
     <button id="export-btn" title="Save as PNG, SVG, or PDF">Export…</button>
+    <button id="credits-btn" title="Acknowledgements and licenses">Credits</button>
   </div>
   <!-- "Use My Words": paste or pick a local file (read entirely in the
        browser via FileReader — no upload anywhere). -->
@@ -203,6 +214,15 @@
         <button id="export-cancel">Cancel</button>
         <button id="export-go" class="go">Export</button>
       </span>
+    </div>
+  </dialog>
+  <!-- Credits: content/credits.md, rendered to credits.html at build time
+       and fetched on first open. -->
+  <dialog id="credits-dialog">
+    <div id="credits-body" class="credits-body">loading…</div>
+    <div class="row">
+      <span></span>
+      <button id="credits-close" class="go">Close</button>
     </div>
   </dialog>
   <canvas id="canvas"></canvas>

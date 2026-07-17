@@ -116,6 +116,22 @@ if(EMSCRIPTEN)
   add_custom_target(lazy_assets ALL DEPENDS ${WORDS_LAZY_STAMP})
   add_dependencies(words lazy_assets)
 
+  # content/*.md, rendered to HTML fragments at build time (the credits
+  # dialog fetches credits.html on first open).
+  find_package(Python3 REQUIRED COMPONENTS Interpreter)
+  add_custom_command(
+    OUTPUT ${WORDS_DIST_DIR}/credits.html
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${WORDS_DIST_DIR}
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/md2html.py
+            ${CMAKE_SOURCE_DIR}/content/credits.md
+            ${WORDS_DIST_DIR}/credits.html
+    DEPENDS ${CMAKE_SOURCE_DIR}/content/credits.md
+            ${CMAKE_SOURCE_DIR}/tools/md2html.py
+    COMMENT "Rendering content/credits.md"
+  )
+  add_custom_target(content_assets ALL DEPENDS ${WORDS_DIST_DIR}/credits.html)
+  add_dependencies(words content_assets)
+
   # wasm runtime microbenchmarks: Google Benchmark compiled to wasm, run
   # under node (same V8 as Chrome, so codegen is representative of the
   # browser). Built in both configs so the dev loop compiles it and clangd

@@ -665,7 +665,7 @@ if (showUi) {
   redoBtn.addEventListener('click', redo);
   window.addEventListener('keydown', (e) => {
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z' &&
-        !dialog.open && !exportDialog.open) {
+        !dialog.open && !exportDialog.open && !creditsDialog.open) {
       e.preventDefault();
       e.shiftKey ? redo() : undo();
     }
@@ -793,5 +793,28 @@ if (showUi) {
         : { inches: +pdfInches.value || 11 };
     const { blob, filename } = await buildExport(exportMode, opts);
     download(blob, filename);
+  });
+
+  // ----- Credits dialog: content/credits.md, rendered at build time and
+  // fetched once.
+  const creditsDialog = document.getElementById('credits-dialog');
+  const creditsBody = document.getElementById('credits-body');
+  let creditsLoaded = false;
+  document.getElementById('credits-btn').addEventListener('click', async () => {
+    if (!creditsLoaded) {
+      try {
+        const resp = await fetch('credits.html');
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        creditsBody.innerHTML = await resp.text();
+        creditsLoaded = true;
+      } catch (err) {
+        console.error('credits fetch failed', err);
+        creditsBody.textContent = 'Credits are unavailable.';
+      }
+    }
+    creditsDialog.showModal();
+  });
+  document.getElementById('credits-close').addEventListener('click', () => {
+    creditsDialog.close();
   });
 }
