@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+# Build the release dist and rsync it to the web host.
+#
+#   ./deploy           build, then upload
+#   ./deploy -n        build, then rsync dry run (shows what would change)
+#
+# The destination is private config, read from the environment or from
+# .deploy.env in the repo root (gitignored; KEY=value lines):
+#
+#   WORDS_DEPLOY_USER=dh_xxxxxx
+#   WORDS_DEPLOY_HOST=example.com
+#   WORDS_DEPLOY_PATH=example.com/words/
+#
+# WORDS_DEPLOY_SSH overrides the ssh binary (default /usr/bin/ssh, the
+# system one your ~/.ssh config and keychain are set up for).
+set -euo pipefail
+cd "$(dirname "$0")"
+
+if [ -f .deploy.env ]; then
+  set -a
+  # shellcheck source=/dev/null
+  source .deploy.env
+  set +a
+fi
+: "${WORDS_DEPLOY_USER:?set WORDS_DEPLOY_USER in the environment or .deploy.env}"
+: "${WORDS_DEPLOY_HOST:?set WORDS_DEPLOY_HOST in the environment or .deploy.env}"
+: "${WORDS_DEPLOY_PATH:?set WORDS_DEPLOY_PATH in the environment or .deploy.env}"
+
+# Make sure what we upload is the current release build.
+export VCPKG_ROOT="${VCPKG_ROOT:-$HOME/vcpkg}"
+export EMSDK="${EMSDK:-$HOME/emsdk}"
+export PATH="$EMSDK/upstream/emscripten:$PATH"
+if [ ! -f build/wasm-release/build.ninja ]; then
+  cmake --preset wasm-release >/dev/null
+fi
+cmake --build --preset wasm-release
+
+DIST="$PWD/build/wasm-release/dist"
+for f in index.html app.js worker.js words.js words.wasm words.data credits.html; do
+  if [ ! -f "$DIST/$f" ]; then
+    echo "deploy: $DIST/$f missing after build" >&2
+    exit 1
+  fi
+done
+
+exec rsync -e "${WORDS_DEPLOY_SSH:-/usr/bin/ssh}" -av --delete "$@" \
+  "$DIST/" "$WORDS_DEPLOY_USER@$WORDS_DEPLOY_HOST:$WORDS_DEPLOY_PATH"

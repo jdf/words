@@ -3,3 +3,4 @@ vcpkg_installed/
 .cache/
 .DS_Store
 node_modules/
+.deploy.env
