@@ -40,6 +40,12 @@
     #panel button:disabled { opacity: 0.35; cursor: default; }
     #panel button:hover:not(:disabled) { border-color: #777; background: #26262e; }
     #panel .spacer { flex: 1; }
+    #panel .divider {
+      border: none; border-top: 1px solid #2c2c34; margin: 2px 0;
+      align-self: stretch;
+    }
+    /* Green, to invite discovery. */
+    #panel #use-words { color: #7ed99a; }
     #generate { text-align: left; }
     #panel .pair { display: flex; gap: 8px; }
     #panel .pair button { flex: 1; }
@@ -150,9 +156,11 @@
       <button class="dd-btn"><span class="dd-cur"></span><span class="tri">▸</span></button>
       <div class="dd-panel" hidden></div>
     </div>
-    <span class="spacer"></span>
+    <hr class="divider">
     <button id="use-words" title="Cloud your own text">Use My Words</button>
+    <hr class="divider">
     <button id="export-btn" title="Save as PNG, SVG, or PDF">Export…</button>
+    <span class="spacer"></span>
     <button id="credits-btn" title="Acknowledgements and licenses">Credits</button>
   </div>
   <!-- "Use My Words": paste or pick a local file (read entirely in the
