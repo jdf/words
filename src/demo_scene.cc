@@ -67,7 +67,7 @@ constexpr double kAspect = 1.6;
 // The original's world sizing: barely more than the words' total area,
 // which is where the packed look comes from — the world is grown to fit
 // the words, not the words shrunk to fit a fixed world.
-Box worldFor(const std::vector<Word>& wordList) {
+Box worldFor(const std::vector<Word>& wordList, double aspect) {
   double totalArea = 0, maxW = 0, maxH = 0;
   for (const Word& w : wordList) {
     const Box& b = w.localBounds();
@@ -75,8 +75,8 @@ Box worldFor(const std::vector<Word>& wordList) {
     maxW = std::max(maxW, b.width());
     maxH = std::max(maxH, b.height());
   }
-  double width = std::max(maxW, std::sqrt(kAspect * totalArea)) * 1.2;
-  double height = std::max(maxH, std::sqrt(totalArea / kAspect)) * 1.5;
+  double width = std::max(maxW, std::sqrt(aspect * totalArea)) * 1.2;
+  double height = std::max(maxH, std::sqrt(totalArea / aspect)) * 1.5;
   return {-width / 2, -height / 2, width / 2, height / 2};
 }
 
@@ -142,7 +142,7 @@ Scene buildCloudScene(const std::string& fontPath) {
                                                   std::size(kPalette))]);
   }
 
-  Box world = worldFor(laid);
+  Box world = worldFor(laid, kAspect);
   layoutWords(laid, world, LayoutParams{});
   return sceneFitToContent(std::move(laid), colors);
 }
@@ -187,7 +187,7 @@ Scene cloudFromCounts(const std::string& fontPath,
   if (laid.empty()) return Scene();
 
   auto layoutStart = std::chrono::steady_clock::now();
-  Box world = worldFor(laid);
+  Box world = worldFor(laid, options.aspect);
   LayoutParams params;
   params.placement = options.placement;
   params.seed = options.seed;

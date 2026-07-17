@@ -34,6 +34,9 @@ struct CloudOptions {
   // uniform draws cluster near 1.0 pins the biggest words to the right
   // edge, since word k's starting x is the k-th draw.)
   uint32_t seed = 1447;
+  // World width:height ratio — the canvas's, so portrait screens get
+  // portrait clouds. 1.6 is the original's landscape default.
+  double aspect = 1.6;
   const ColorScheme* colors = nullptr;  // null = built-in dark scheme
   LayoutDebug* debug = nullptr;
   // Pipeline progress: phase is "shaping" or "layout"; (done, total)

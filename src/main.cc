@@ -163,6 +163,12 @@ words::Scene buildScene(const std::string& fontPath,
   }
   options.seed = g_seed;
   options.maxWords = static_cast<size_t>(g_maxWords);
+  // The world takes the canvas's shape: portrait screens get portrait
+  // clouds. (The e2e viewport is 1200x750 — exactly the 1.6 default.)
+  if (g_app && g_app->width > 0 && g_app->height > 0) {
+    options.aspect =
+        static_cast<double>(g_app->width) / static_cast<double>(g_app->height);
+  }
   options.progress = postProgress;
   std::string fontLabel = words::fontFamilyName(fontPath);
   if (fontLabel.empty()) fontLabel = fontPath;

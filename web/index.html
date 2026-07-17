@@ -67,6 +67,9 @@
     /* Green, to invite discovery. */
     #panel #use-words { color: #7ed99a; }
     #generate { text-align: left; }
+    /* On desktop the pin/strip grouping is invisible to layout. */
+    #panel .pin, #panel .strip { display: contents; }
+    #dd-words { display: none; }
     #panel .pair { display: flex; gap: 8px; }
     #panel .pair button { flex: 1; }
     #panel .slider-row {
@@ -75,7 +78,7 @@
     #panel .slider-row input[type="range"] {
       width: 100%; accent-color: #4aa3ff;
     }
-    #max-val { color: #e0e0e8; }
+    .max-val { color: #e0e0e8; }
     /* Menus fly out to the right of the sidebar, vertically centered on
        their button (clamped on screen by app.js). Transient overlays,
        like any menu. */
@@ -168,22 +171,76 @@
     }
     .ex-section input[type="number"] { width: 6em; }
     .ex-dim { color: #8a8a96; }
+    /* Phone in portrait: controls become a top bar — 🔄/↩/↪ icon-only
+       and pinned left, the rest a horizontally scrolling strip; menus
+       pop down below the bar (see positionMenuPanel in app.js). Last in
+       the sheet so it outranks the desktop rules it overrides. */
+    @media (max-width: 600px) and (orientation: portrait) {
+      body { flex-direction: column; }
+      body.with-ui #status { left: 12px; }
+      #canvas { width: 100%; min-width: 0; height: auto; min-height: 0; }
+      #panel {
+        flex-direction: row; align-items: center; gap: 8px;
+        width: auto; padding: 8px;
+        border-right: none; border-bottom: 1px solid #333;
+        overflow: visible;
+      }
+      #panel .pin { display: flex; gap: 6px; flex: none; align-items: center; }
+      #panel .pair { display: contents; }
+      .btn-label { display: none; }
+      #panel .strip {
+        display: flex; align-items: center; gap: 8px;
+        flex: 1; min-width: 0; overflow-x: auto;
+        scrollbar-width: none;
+      }
+      #panel .strip::-webkit-scrollbar { display: none; }
+      #panel .strip > * { flex: none; }
+      #panel button { white-space: nowrap; }
+      #panel #words-inline { display: none; }
+      #dd-words { display: block; }
+      #dd-words .dd-panel .slider-row { width: 240px; padding: 8px; }
+      .dd-btn { width: auto; }
+      #panel .divider {
+        border-top: none; border-left: 1px solid #2c2c34;
+        height: 24px; margin: 0; align-self: center;
+      }
+      #panel .spacer { display: none; }
+    }
   </style>
 </head>
 <body>
   <!-- Dev toolbar, shown with ?ui in the URL: re-layout with undo/redo.
        In-flow above the canvas, so it never covers the cloud. -->
+  <!-- .pin / .strip are display:contents on desktop (layout unchanged);
+       in phone-portrait they become the fixed left cluster and the
+       horizontally scrolling remainder of a top bar. -->
   <div id="panel">
-    <button id="generate" title="Generate a new cloud">🔄 Generate</button>
-    <div class="pair">
-      <button id="undo" title="Undo (⌘Z)" disabled>↩ Undo</button>
-      <button id="redo" title="Redo (⇧⌘Z)" disabled>↪ Redo</button>
+    <div class="pin">
+      <button id="generate" title="Generate a new cloud">🔄<span class="btn-label"> Generate</span></button>
+      <div class="pair">
+        <button id="undo" title="Undo (⌘Z)" disabled>↩<span class="btn-label"> Undo</span></button>
+        <button id="redo" title="Redo (⇧⌘Z)" disabled>↪<span class="btn-label"> Redo</span></button>
+      </div>
     </div>
-    <label class="slider-row" title="Maximum words placed in the cloud">
-      <span>Words <span id="max-val">800</span></span>
-      <input type="range" id="max-words" min="50" max="2000" step="50"
+    <div class="strip">
+    <label class="slider-row" id="words-inline"
+           title="Maximum words placed in the cloud">
+      <span>Words <span class="max-val">800</span></span>
+      <input type="range" class="max-input" min="50" max="2000" step="50"
              value="800">
     </label>
+    <!-- Phone-portrait replacement for the inline slider: a button
+         showing the count, slider in a pop-down. -->
+    <div class="dd" id="dd-words" title="Maximum words placed in the cloud">
+      <button class="dd-btn"><span class="dd-cur" id="words-btn-label">800 words</span><span class="tri">▸</span></button>
+      <div class="dd-panel" hidden>
+        <label class="slider-row">
+          <span>Words <span class="max-val">800</span></span>
+          <input type="range" class="max-input" min="50" max="2000" step="50"
+                 value="800">
+        </label>
+      </div>
+    </div>
     <div class="dd" id="dd-font">
       <button class="dd-btn"><span class="dd-cur"></span><span class="tri">▸</span></button>
       <div class="dd-panel" hidden></div>
@@ -207,6 +264,7 @@
     <span class="spacer"></span>
     <button id="credits-btn" title="Acknowledgements and licenses">Credits</button>
     <button id="feedback-btn" title="Report a bug, request a feature, or just say hi">Feedback</button>
+    </div>
   </div>
   <!-- "Use My Words": paste or pick a local file (read entirely in the
        browser via FileReader — no upload anywhere). -->

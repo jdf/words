@@ -632,6 +632,34 @@ function closeMenus() {
   }
 }
 
+// Desktop: fly out to the right of the sidebar, vertically centered on
+// the button but clamped to the viewport. Phone-portrait: pop down
+// below the top bar, spanning the screen. Call with the panel visible
+// (offsetHeight must be real).
+const phoneMode = () =>
+    matchMedia('(max-width: 600px) and (orientation: portrait)').matches;
+function positionMenuPanel(btn, panel) {
+  const margin = 8;
+  const bar = document.getElementById('panel').getBoundingClientRect();
+  if (phoneMode()) {
+    panel.style.left = `${margin}px`;
+    panel.style.top = `${bar.bottom + margin}px`;
+    panel.style.maxWidth = `calc(100vw - ${2 * margin}px)`;
+    panel.style.maxHeight =
+        `${window.innerHeight - bar.bottom - 2 * margin}px`;
+    return;
+  }
+  panel.style.maxWidth = '';
+  panel.style.maxHeight = '';
+  const btnRect = btn.getBoundingClientRect();
+  const height = panel.offsetHeight;
+  const top = Math.min(
+      Math.max(btnRect.top + btnRect.height / 2 - height / 2, margin),
+      window.innerHeight - height - margin);
+  panel.style.left = `${bar.right + margin}px`;
+  panel.style.top = `${top}px`;
+}
+
 function buildMenu(menuName) {
   const menu = MENUS[menuName];
   const dim = menu.dim || menuName;
@@ -668,18 +696,8 @@ function buildMenu(menuName) {
       }
       panel.querySelector('.dd-random').classList.toggle('selected',
           spec[dim + 'Mode'] === 'random');
-      // Fly out to the right of the sidebar, vertically centered on the
-      // button but clamped to the viewport.
       panel.hidden = false;
-      const btnRect = btn.getBoundingClientRect();
-      const sidebar = document.getElementById('panel').getBoundingClientRect();
-      const margin = 8;
-      const height = panel.offsetHeight;
-      const top = Math.min(
-          Math.max(btnRect.top + btnRect.height / 2 - height / 2, margin),
-          window.innerHeight - height - margin);
-      panel.style.left = `${sidebar.right + margin}px`;
-      panel.style.top = `${top}px`;
+      positionMenuPanel(btn, panel);
     }
   });
 }
@@ -687,9 +705,14 @@ function buildMenu(menuName) {
 function refreshUi() {
   undoBtn.disabled = undoStack.length === 0;
   redoBtn.disabled = redoStack.length === 0;
-  const slider = document.getElementById('max-words');
-  slider.value = spec.maxWords;
-  document.getElementById('max-val').textContent = spec.maxWords;
+  for (const s of document.querySelectorAll('.max-input')) {
+    s.value = spec.maxWords;
+  }
+  for (const v of document.querySelectorAll('.max-val')) {
+    v.textContent = spec.maxWords;
+  }
+  document.getElementById('words-btn-label').textContent =
+      `${spec.maxWords} words`;
   for (const menuName of Object.keys(MENUS)) {
     const cur = document.querySelector(`#dd-${menuName} .dd-cur`);
     cur.textContent = menuLabel(menuName);
@@ -726,21 +749,41 @@ if (showUi) {
   undoBtn.addEventListener('click', undo);
   redoBtn.addEventListener('click', redo);
 
-  // Word-count slider: the label tracks the drag live; the rebuild (one
-  // undoable action) fires on release.
-  const maxSlider = document.getElementById('max-words');
-  maxSlider.addEventListener('input', () => {
-    document.getElementById('max-val').textContent = maxSlider.value;
-  });
-  maxSlider.addEventListener('change', () => {
-    const maxWords = clampWords(+maxSlider.value);
-    if (maxWords === spec.maxWords) return;
-    apply({
-      label: 'Word Count',
-      before: { ...spec },
-      after: { ...spec, maxWords },
+  // Word-count sliders (inline on desktop, pop-down on phone): the
+  // labels track the drag live; the rebuild (one undoable action) fires
+  // on release.
+  for (const slider of document.querySelectorAll('.max-input')) {
+    slider.addEventListener('input', () => {
+      for (const v of document.querySelectorAll('.max-val')) {
+        v.textContent = slider.value;
+      }
     });
+    slider.addEventListener('change', () => {
+      const maxWords = clampWords(+slider.value);
+      if (maxWords === spec.maxWords) return;
+      apply({
+        label: 'Word Count',
+        before: { ...spec },
+        after: { ...spec, maxWords },
+      });
+    });
+  }
+
+  // The phone-portrait words button: pop down the slider panel.
+  const wordsRoot = document.getElementById('dd-words');
+  const wordsBtn = wordsRoot.querySelector('.dd-btn');
+  const wordsPanel = wordsRoot.querySelector('.dd-panel');
+  wordsBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const wasHidden = wordsPanel.hidden;
+    closeMenus();
+    if (wasHidden) {
+      wordsPanel.hidden = false;
+      positionMenuPanel(wordsBtn, wordsPanel);
+    }
   });
+  // Slider drags end with a click that must not dismiss the panel.
+  wordsPanel.addEventListener('click', (e) => e.stopPropagation());
   window.addEventListener('keydown', (e) => {
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z' &&
         !dialog.open && !exportDialog.open && !creditsDialog.open &&
