@@ -4,6 +4,17 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
+# Markdown formatting: prettier with proseWrap always (.prettierrc),
+# the same formatter VS Code uses on save.
+echo "== markdown format"
+if [ ! -d node_modules/prettier ]; then
+  npm install >/dev/null
+fi
+if ! npx prettier --check "**/*.md" >/dev/null; then
+  echo "markdown needs formatting: npx prettier --write '**/*.md'" >&2
+  exit 1
+fi
+
 # Only check src/ files that changed relative to the remote main. Since
 # every file explicitly includes every name it touches (enforced here), a
 # header's own include changes can't affect findings in unchanged dependents
