@@ -33,22 +33,22 @@ CASES=()
 ORIENTATIONS="horizontal mostly-horizontal long-horizontal-likely
               half-and-half mostly-vertical vertical any-which-way"
 for o in $ORIENTATIONS; do
-  CASES+=("orientation-$o|?corpus=moby-dick&orientation=$o&placement=center-line&palette=blue-meets-orange&variance=little")
+  CASES+=("orientation-$o|?corpus=moby-dick&orientation=$o&placement=center-line&palette=blue-meets-orange&variance=little&no-ui")
 done
 PLACEMENTS="center-line center"
 for p in $PLACEMENTS; do
-  CASES+=("placement-$p|?corpus=moby-dick&placement=$p&orientation=mostly-horizontal&palette=chilled-summer&variance=little")
+  CASES+=("placement-$p|?corpus=moby-dick&placement=$p&orientation=mostly-horizontal&palette=chilled-summer&variance=little&no-ui")
 done
 PALETTES="bw wb wordly asparagus bluesugar heat ghostly chilled-summer
           blue-meets-orange yramirp"
 for p in $PALETTES; do
-  CASES+=("palette-$p|?corpus=moby-dick&palette=$p&placement=center-line&orientation=mostly-horizontal&variance=little")
+  CASES+=("palette-$p|?corpus=moby-dick&palette=$p&placement=center-line&orientation=mostly-horizontal&variance=little&no-ui")
 done
 # A small font dimension — enough to prove ?font= lazy loading end to end
 # (sexsmith goes through the override path too, not the preloaded copy).
 FONTS="sexsmith grilledcheese boopee"
 for f in $FONTS; do
-  CASES+=("font-$f|?corpus=moby-dick&font=$f&placement=center-line&orientation=mostly-horizontal&palette=yramirp&variance=little")
+  CASES+=("font-$f|?corpus=moby-dick&font=$f&placement=center-line&orientation=mostly-horizontal&palette=yramirp&variance=little&no-ui")
 done
 
 # Build the release dist directly (not via ./dev, which would also point

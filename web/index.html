@@ -57,16 +57,24 @@
     const canvas = document.getElementById('canvas');
     const params = new URLSearchParams(location.search);
 
+    // The toolbar is on by default; tests (and anyone wanting a bare
+    // canvas) pass ?no-ui. ?ui is still accepted as a no-op.
+    const showUi = !params.has('no-ui');
+
     // Show the toolbar before measuring the canvas: it takes layout space,
     // and the OffscreenCanvas is sized from the measurement below.
-    if (params.has('ui')) {
+    if (showUi) {
       document.getElementById('panel').style.display = 'flex';
     }
 
+    // moby-dick is the default corpus; ?text= (or an explicit ?corpus=)
+    // overrides it.
+    const corpus =
+        params.get('corpus') || (params.has('text') ? '' : 'moby-dick');
     const lazyFiles = [];
-    if (params.get('corpus')) {
+    if (corpus) {
       lazyFiles.push({
-        url: 'corpus/' + encodeURIComponent(params.get('corpus')) + '.tsv',
+        url: 'corpus/' + encodeURIComponent(corpus) + '.tsv',
         path: '/corpus.tsv',
       });
     }
@@ -230,7 +238,7 @@
     ];
     const pick = (list) => list[Math.floor(Math.random() * list.length)];
 
-    if (params.has('ui')) {
+    if (showUi) {
       relayoutBtn.addEventListener('click', () => apply({
         label: 'Scramble',
         before: { ...spec },

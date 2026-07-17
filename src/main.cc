@@ -12,8 +12,10 @@
 //
 // URL parameters (?text= is read here; ?corpus= and ?font= are fetched by
 // the worker before the runtime starts and appear as MEMFS files):
-//   ?text=<urlencoded>   cloud this text instead of the bundled sample
+//   ?text=<urlencoded>   cloud this text instead of the default corpus
 //   ?corpus=<slug>       cloud tests/corpus/<slug>.tsv's precomputed counts
+//                        (the page defaults to moby-dick; ?no-ui hides its
+//                        toolbar for the golden harness)
 //   ?font=<basename>     use assets/fonts/<basename>.ttf
 //   ?palette=<name>      color with an original Wordle palette ("wordly",
 //                        "heat", ...; see src/palette.cc)

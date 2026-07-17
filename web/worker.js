@@ -66,6 +66,10 @@ function init(msg) {
           })
           .catch((err) => {
             postMessage({ type: 'printErr', text: 'failed to load ' + f.url + ': ' + err });
+            // Release the boot anyway: the engine falls back (sample text
+            // for a missing corpus, the preloaded font) rather than
+            // hanging the module forever.
+            config.removeRunDependency(f.url);
           });
       }
     }],
