@@ -875,13 +875,27 @@ if (showUi) {
   const feedbackDialog = document.getElementById('feedback-dialog');
   document.getElementById('fb-build').textContent =
       `build ${BUILD.id} · ${BUILD.date}`;
-  const envReport = () => [
-    `build: ${BUILD.id} (${BUILD.date})`,
-    `url: ${location.href}`,
-    `platform: ${navigator.platform}`,
-    `userAgent: ${navigator.userAgent}`,
-    `viewport: ${innerWidth}x${innerHeight} @${devicePixelRatio}x`,
-  ].join('\n');
+  // navigator.platform is frozen ("MacIntel" even on Apple Silicon), as
+  // is the userAgent's OS version; ask Client Hints for the real
+  // platform and architecture where supported.
+  const envReport = async () => {
+    let platform = navigator.platform;
+    try {
+      if (navigator.userAgentData) {
+        const hints = await navigator.userAgentData.getHighEntropyValues(
+            ['platformVersion', 'architecture', 'bitness']);
+        platform = `${navigator.userAgentData.platform} ` +
+            `${hints.platformVersion} ${hints.architecture}${hints.bitness}`;
+      }
+    } catch (err) { /* keep the legacy value */ }
+    return [
+      `build: ${BUILD.id} (${BUILD.date})`,
+      `url: ${location.href}`,
+      `platform: ${platform}`,
+      `userAgent: ${navigator.userAgent}`,
+      `viewport: ${innerWidth}x${innerHeight} @${devicePixelRatio}x`,
+    ].join('\n');
+  };
   document.getElementById('feedback-btn').addEventListener('click', () => {
     feedbackDialog.showModal();
   });
@@ -895,11 +909,11 @@ if (showUi) {
     }
   });
   for (const b of document.querySelectorAll('.fb-opt')) {
-    b.addEventListener('click', () => {
+    b.addEventListener('click', async () => {
       feedbackDialog.close();
       const url = 'https://github.com/jdf/words/issues/new?template=' +
           b.dataset.template +
-          '&environment=' + encodeURIComponent(envReport());
+          '&environment=' + encodeURIComponent(await envReport());
       window.open(url, '_blank', 'noopener');
     });
   }
