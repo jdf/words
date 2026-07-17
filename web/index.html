@@ -29,12 +29,39 @@
     }
     #panel button {
       background: #1c1c22; color: #b8b8c4; border: 1px solid #444;
-      border-radius: 6px; padding: 8px 18px; font: inherit;
-      font-size: 22px; line-height: 1; cursor: pointer;
+      border-radius: 6px; padding: 9px 14px; font: inherit;
+      line-height: 1.2; cursor: pointer; white-space: nowrap;
     }
     #panel button:disabled { opacity: 0.35; cursor: default; }
     #panel button:hover:not(:disabled) { border-color: #777; background: #26262e; }
-    #panel #use-words { font-size: 14px; padding: 10px 14px; }
+    #panel .spacer { flex: 1; }
+    /* Dropdown menus: the toolbar's font/layout/orientation/palette
+       pickers. The open panel floats over the canvas (transient, like any
+       menu); the buttons themselves stay in flow. */
+    .dd { position: relative; }
+    .dd-btn { display: flex; align-items: center; gap: 8px; }
+    .dd-btn .tri { color: #8a8a96; font-size: 11px; }
+    .dd-panel[hidden] { display: none; }
+    .dd-panel {
+      position: absolute; top: calc(100% + 6px); left: 0; z-index: 20;
+      display: flex; flex-direction: column; gap: 2px;
+      min-width: 280px; max-height: min(68vh, 560px); overflow-y: auto;
+      background: #131318; border: 1px solid #444; border-radius: 10px;
+      padding: 8px; box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6);
+    }
+    /* Right-side menus open leftward so they stay on screen. */
+    #dd-orientation .dd-panel, #dd-palette .dd-panel { left: auto; right: 0; }
+    .dd-opt {
+      display: flex; align-items: center; gap: 12px; text-align: left;
+      background: none; border: 1px solid transparent !important;
+      border-radius: 8px; padding: 8px 10px !important;
+    }
+    .dd-opt:hover { background: #26262e; }
+    .dd-opt.selected { border-color: #4aa3ff !important; }
+    .dd-opt .thumb { width: 60px; height: 36px; flex: none; color: #b8b8c4; }
+    .dd-opt .thumb.sw { height: 24px; width: auto; }
+    .dd-opt .opt-label { flex: 1; }
+    .dd-random { border-bottom: 1px solid #333 !important; border-radius: 8px 8px 0 0; margin-bottom: 4px; }
     #words-dialog {
       background: #17171c; color: #b8b8c4; border: 1px solid #444;
       border-radius: 8px; padding: 16px; width: min(640px, 90vw);
@@ -63,9 +90,27 @@
   <!-- Dev toolbar, shown with ?ui in the URL: re-layout with undo/redo.
        In-flow above the canvas, so it never covers the cloud. -->
   <div id="panel">
-    <button id="relayout" title="Scramble">🔄</button>
-    <button id="undo" title="Undo (⌘Z)" disabled>↩</button>
-    <button id="redo" title="Redo (⇧⌘Z)" disabled>↪</button>
+    <button id="generate" title="Generate a new cloud">🔄 Generate</button>
+    <button id="undo" title="Undo (⌘Z)" disabled>↩ Undo</button>
+    <button id="redo" title="Redo (⇧⌘Z)" disabled>↪ Redo</button>
+    <span class="spacer"></span>
+    <div class="dd" id="dd-font">
+      <button class="dd-btn"><span class="dd-cur"></span><span class="tri">▾</span></button>
+      <div class="dd-panel" hidden></div>
+    </div>
+    <div class="dd" id="dd-layout">
+      <button class="dd-btn"><span class="dd-cur"></span><span class="tri">▾</span></button>
+      <div class="dd-panel" hidden></div>
+    </div>
+    <div class="dd" id="dd-orientation">
+      <button class="dd-btn"><span class="dd-cur"></span><span class="tri">▾</span></button>
+      <div class="dd-panel" hidden></div>
+    </div>
+    <div class="dd" id="dd-palette">
+      <button class="dd-btn"><span class="dd-cur"></span><span class="tri">▾</span></button>
+      <div class="dd-panel" hidden></div>
+    </div>
+    <span class="spacer"></span>
     <button id="use-words" title="Cloud your own text">Use My Words</button>
   </div>
   <!-- "Use My Words": paste or pick a local file (read entirely in the

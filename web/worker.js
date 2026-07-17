@@ -42,8 +42,8 @@ async function rebuild(msg) {
     engine.FS.writeFile(kUserTextPath, new TextEncoder().encode(msg.text));
   }
   engine.ccall('wordsRebuild', null,
-               ['number', 'string', 'string', 'string', 'string'],
-               [msg.seed, msg.orientation, msg.palette, path,
+               ['number', 'string', 'string', 'string', 'string', 'string'],
+               [msg.seed, msg.orientation, msg.placement, msg.palette, path,
                 msg.useText ? kUserTextPath : '']);
 }
 

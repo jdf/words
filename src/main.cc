@@ -75,6 +75,8 @@ App* g_app = nullptr;
 uint32_t g_seed = 1447;  // the curated default (see CloudOptions::seed)
 // UI override for the orientation strategy; empty = use the URL parameter.
 std::string g_orientation;
+// UI override for the placement strategy; empty = use the URL parameter.
+std::string g_placement;
 // UI override for the palette; unset = use the URL parameter. (Unlike
 // orientation, the empty string is meaningful: the built-in dark scheme.)
 std::optional<std::string> g_palette;
@@ -151,7 +153,9 @@ words::Scene buildScene(const std::string& fontPath,
   if (auto o = words::findOrientation(orientation)) {
     options.orientation = *o;
   }
-  if (auto p = words::findPlacement(urlParam("placement"))) {
+  std::string placement =
+      g_placement.empty() ? urlParam("placement") : g_placement;
+  if (auto p = words::findPlacement(placement)) {
     options.placement = *p;
   }
   options.seed = g_seed;
@@ -201,12 +205,14 @@ void render() {
 // no user text: fall back to corpus / ?text= / sample).
 extern "C" EMSCRIPTEN_KEEPALIVE void wordsRebuild(int seed,
                                                   const char* orientation,
+                                                  const char* placement,
                                                   const char* palette,
                                                   const char* fontPath,
                                                   const char* textPath) {
   if (!g_app) return;
   g_seed = static_cast<uint32_t>(seed);
   g_orientation = orientation ? orientation : "";
+  g_placement = placement ? placement : "";
   g_palette = std::string(palette ? palette : "");
   g_textPath = textPath ? textPath : "";
   if (fontPath && *fontPath) g_app->fontPath = fontPath;
