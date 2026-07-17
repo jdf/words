@@ -75,6 +75,7 @@ const ORIENTATIONS = [
 const PLACEMENTS = [
   ['center-line', 'Center Line'],
   ['center', 'Center'],
+  ['alphabetical', 'Alphabetical'],
 ];
 
 // [slug, label, background, word colors]. '' = the built-in dark scheme.
@@ -389,13 +390,29 @@ const PLACEMENT_THUMBS = {
     [16, 23, 12], [31, 23, 14],
     [23, 30, 13],
   ],
+  // The A→Z lens: same wide band as center-line, with the reading order
+  // spelled out beneath.
+  'alphabetical': [
+    [14, 4, 12], [32, 4, 14],
+    [4, 11, 15], [22, 11, 18], [44, 11, 11],
+    [9, 18, 14], [27, 18, 13], [44, 18, 9],
+    [17, 25, 12], [33, 25, 11],
+  ],
 };
 
 function scatterThumb(slug) {
   const rects = (PLACEMENT_THUMBS[slug] || []).map(([x, y, w]) =>
       `<rect x="${x}" y="${y}" width="${w}" height="5" rx="2.5"` +
       ` fill="currentColor"/>`).join('');
-  return `<svg class="thumb" viewBox="0 0 60 36" aria-hidden="true">${rects}</svg>`;
+  const letters = slug === 'alphabetical'
+      ? `<text x="3" y="36" font-size="9" fill="currentColor"` +
+        ` font-family="ui-monospace,monospace">A</text>` +
+        `<text x="28" y="36" font-size="9" fill="currentColor"` +
+        ` font-family="ui-monospace,monospace">M</text>` +
+        `<text x="52" y="36" font-size="9" fill="currentColor"` +
+        ` font-family="ui-monospace,monospace">Z</text>`
+      : '';
+  return `<svg class="thumb" viewBox="0 0 60 36" aria-hidden="true">${rects}${letters}</svg>`;
 }
 
 function paletteThumb(bg, colors) {

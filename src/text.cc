@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
+#include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <sstream>
@@ -153,6 +154,19 @@ std::string foldForMatch(std::string_view word) {
     }
   }
   return out;
+}
+
+std::string collationKey(std::string_view word) {
+  utf8proc_uint8_t* mapped = nullptr;
+  utf8proc_ssize_t n = utf8proc_map(
+      reinterpret_cast<const utf8proc_uint8_t*>(word.data()),
+      static_cast<utf8proc_ssize_t>(word.size()), &mapped,
+      static_cast<utf8proc_option_t>(UTF8PROC_DECOMPOSE | UTF8PROC_STRIPMARK |
+                                     UTF8PROC_CASEFOLD | UTF8PROC_STABLE));
+  if (n < 0) return std::string(word);
+  std::string result(reinterpret_cast<char*>(mapped), static_cast<size_t>(n));
+  free(mapped);
+  return result;
 }
 
 void Counter::note(std::string_view item, int count) {

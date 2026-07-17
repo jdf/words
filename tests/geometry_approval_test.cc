@@ -5,6 +5,7 @@
 #include <ApprovalTests.hpp>
 #include <catch2/catch_test_macros.hpp>
 
+#include <algorithm>
 #include <cstddef>
 #include <numbers>
 #include <vector>
@@ -15,6 +16,7 @@
 
 #include "box.h"
 #include "demo_scene.h"
+#include "text.h"
 #include "layout.h"
 #include "scene.h"
 #include "svg.h"
@@ -129,6 +131,48 @@ TEST_CASE("any-which-way cloud properties") {
       {.orientation = words::Orientation::kAnyWhichWay});
   const auto& entries = scene.entries();
   REQUIRE(entries.size() >= 25);
+  for (size_t i = 0; i < entries.size(); ++i) {
+    for (size_t j = i + 1; j < entries.size(); ++j) {
+      INFO("words " << i << " and " << j << " overlap");
+      REQUIRE_FALSE(entries[i].word.intersectsWord(entries[j].word));
+    }
+  }
+}
+
+TEST_CASE("alphabetical cloud properties") {
+  // Alphabetical placement: seeds run A->Z across the width, and the
+  // spiral only jiggles locally — so the finished cloud must still read
+  // left-to-right. Check the ordering statistically (early-alphabet words
+  // sit left of late-alphabet ones on average) plus the usual no-overlap
+  // invariant.
+  words::Scene scene = words::buildCloudFromText(
+      kFont, WORDS_ASSETS_DIR "/stopwords",
+      "four score and seven years ago our fathers brought forth on this "
+      "continent a new nation conceived in liberty and dedicated to the "
+      "proposition that all men are created equal now we are engaged in a "
+      "great civil war testing whether that nation or any nation so "
+      "conceived and so dedicated can long endure we are met on a great "
+      "battlefield of that war nation nation",
+      {.placement = words::Placement::kAlphabetical});
+  const auto& entries = scene.entries();
+  REQUIRE(entries.size() >= 25);
+
+  std::vector<const words::Scene::Entry*> sorted;
+  for (const auto& e : entries) sorted.push_back(&e);
+  std::sort(sorted.begin(), sorted.end(),
+            [](const words::Scene::Entry* a, const words::Scene::Entry* b) {
+              return words::collationKey(a->word.label()) <
+                     words::collationKey(b->word.label());
+            });
+  double firstHalf = 0, secondHalf = 0;
+  size_t half = sorted.size() / 2;
+  for (size_t i = 0; i < half; ++i) firstHalf += sorted[i]->word.x();
+  for (size_t i = half; i < sorted.size(); ++i) {
+    secondHalf += sorted[i]->word.x();
+  }
+  CHECK(firstHalf / half <
+        secondHalf / static_cast<double>(sorted.size() - half));
+
   for (size_t i = 0; i < entries.size(); ++i) {
     for (size_t j = i + 1; j < entries.size(); ++j) {
       INFO("words " << i << " and " << j << " overlap");

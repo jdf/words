@@ -100,6 +100,17 @@ TEST_CASE("language guessing") {
   CHECK(guess("qwzx bnmp vrtk") == "(none)");
 }
 
+TEST_CASE("collation keys fold case and diacritics") {
+  // The alphabetical placement sorts by these: the outcome of the
+  // original's Normalizer + toLowerCase.
+  CHECK(words::collationKey("Éclair") == "eclair");
+  CHECK(words::collationKey("WHALE") == "whale");
+  CHECK(words::collationKey("naïve") == "naive");
+  CHECK(words::collationKey("Настенька") == "настенька");
+  // So "Éclair" sorts among the e's, not after z.
+  CHECK(words::collationKey("Éclair") < words::collationKey("whale"));
+}
+
 TEST_CASE("counting with stop word removal") {
   const words::StopWords* english = stopWords().find("english");
   auto counts = words::countWords(

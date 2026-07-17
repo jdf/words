@@ -24,6 +24,12 @@ std::vector<std::string> wordsOf(std::string_view text);
 // (right single quote) folded to apostrophe first, as stop lists expect.
 std::string foldForMatch(std::string_view word);
 
+// A sort key for alphabetical ordering: decomposed, diacritics stripped,
+// casefolded ("Éclair" sorts as "eclair") — the outcome of the original's
+// cue.lang Normalizer + toLowerCase, as used by its Alphabetical
+// placement strategy.
+std::string collationKey(std::string_view word);
+
 // Counts strings, preserving first-seen order for deterministic ties.
 class Counter {
  public:

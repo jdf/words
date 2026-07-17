@@ -6,11 +6,13 @@
 #include <numbers>
 #include <optional>
 #include <random>
+#include <string>
 #include <string_view>
 #include <vector>
 
 #include "box.h"
 #include "quad_tree.h"
+#include "text.h"
 #include "word.h"
 
 namespace words {
@@ -18,6 +20,7 @@ namespace words {
 std::optional<Placement> findPlacement(std::string_view name) {
   if (name == "center-line") return Placement::kCenterLine;
   if (name == "center") return Placement::kCenter;
+  if (name == "alphabetical") return Placement::kAlphabetical;
   return std::nullopt;
 }
 
@@ -25,6 +28,7 @@ std::string_view placementName(Placement placement) {
   switch (placement) {
     case Placement::kCenterLine: return "Center Line";
     case Placement::kCenter: return "Center";
+    case Placement::kAlphabetical: return "Alphabetical";
   }
   return "?";
 }
@@ -52,12 +56,26 @@ void layoutWords(std::vector<Word>& wordList, const Box& bounds,
   }
 
   // prepare(): each word draws its starting x up front (uniform across the
-  // world width), and placement runs biggest-area first — early words claim
-  // the middle band, later ones fill in around them.
+  // world width for the center-line strategy, its alphabetical-rank slice
+  // for the alphabetical one), and placement runs biggest-area first —
+  // early words claim their spots, later ones fill in around them.
   std::vector<double> startXs(wordList.size(), bounds.centerX());
   if (params.placement == Placement::kCenterLine) {
     for (double& x : startXs) {
       x = bounds.minX + unit(rng) * bounds.width();
+    }
+  } else if (params.placement == Placement::kAlphabetical) {
+    std::vector<std::string> keys(wordList.size());
+    for (size_t i = 0; i < wordList.size(); ++i) {
+      keys[i] = collationKey(wordList[i].label());
+    }
+    std::vector<size_t> alpha(wordList.size());
+    for (size_t i = 0; i < alpha.size(); ++i) alpha[i] = i;
+    std::stable_sort(alpha.begin(), alpha.end(),
+                     [&](size_t a, size_t b) { return keys[a] < keys[b]; });
+    double slice = bounds.width() / static_cast<double>(wordList.size());
+    for (size_t rank = 0; rank < alpha.size(); ++rank) {
+      startXs[alpha[rank]] = bounds.minX + static_cast<double>(rank) * slice;
     }
   }
   std::vector<size_t> order(wordList.size());
@@ -87,12 +105,22 @@ void layoutWords(std::vector<Word>& wordList, const Box& bounds,
       bool lastAttempt = attempt + 1 >= kMaxSeeds;
       double startX = startXs[idx];
       double startY = bounds.centerY();
-      if (attempt > 0) {
+      // Retries reseed x uniformly — except under alphabetical placement,
+      // where a word's x IS its meaning; it keeps its slice and only the
+      // y jitter varies.
+      if (attempt > 0 && params.placement != Placement::kAlphabetical) {
         startX = bounds.minX + unit(rng) * bounds.width();
       }
-      if (params.placement == Placement::kCenterLine || attempt > 0) {
-        // place(): y jittered near the horizontal center line, jitter
-        // scale proportional to the word's own smaller dimension.
+      // place(): y jittered near the horizontal center line, jitter scale
+      // proportional to the word's own smaller dimension. The original's
+      // alphabetical strategy seeds the exact center line for small
+      // clouds and jitters only past 100 words.
+      bool jitterY =
+          params.placement == Placement::kCenterLine ||
+          (params.placement == Placement::kAlphabetical &&
+           wordList.size() > 100) ||
+          attempt > 0;
+      if (jitterY) {
         double sign = unit(rng) < 0.5 ? -1.0 : 1.0;
         startY += derriere(rng, 1.4) * 1.25 *
                   std::min(b.width(), b.height()) * sign;
