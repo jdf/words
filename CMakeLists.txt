@@ -132,6 +132,17 @@ if(EMSCRIPTEN)
   add_custom_target(content_assets ALL DEPENDS ${WORDS_DIST_DIR}/credits.html)
   add_dependencies(words content_assets)
 
+  # Build identifier (commit id + date), stamped on every build; the page
+  # loads it for bug reports and hands it to the engine for export
+  # metadata. The script only rewrites the file when the id changes.
+  add_custom_target(build_info ALL
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${WORDS_DIST_DIR}
+    COMMAND bash ${CMAKE_SOURCE_DIR}/tools/build-info.sh
+            ${WORDS_DIST_DIR}/build-info.js
+    COMMENT "Stamping build-info.js"
+  )
+  add_dependencies(words build_info)
+
   # wasm runtime microbenchmarks: Google Benchmark compiled to wasm, run
   # under node (same V8 as Chrome, so codegen is representative of the
   # browser). Built in both configs so the dev loop compiles it and clangd

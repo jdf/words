@@ -68,7 +68,8 @@ std::string deflate(const std::string& data) {
 
 }  // namespace
 
-std::string toPdf(const Scene& scene, double pointWidth) {
+std::string toPdf(const Scene& scene, double pointWidth,
+                  const std::string& producer) {
   double pageW = pointWidth;
   double pageH = scene.width() > 0
                      ? pointWidth * scene.height() / scene.width()
@@ -99,6 +100,15 @@ std::string toPdf(const Scene& scene, double pointWidth) {
   pdf += " >>\nstream\n";
   pdf += streamData;
   pdf += "\nendstream\nendobj\n";
+  if (!producer.empty()) {
+    std::string escaped;
+    for (char c : producer) {
+      if (c == '(' || c == ')' || c == '\\') escaped += '\\';
+      escaped += c;
+    }
+    beginObj(5);
+    pdf += "<< /Producer (" + escaped + ") >>\nendobj\n";
+  }
 
   size_t xref = pdf.size();
   pdf += "xref\n0 " + std::to_string(offsets.size() + 1) + "\n";
@@ -109,7 +119,9 @@ std::string toPdf(const Scene& scene, double pointWidth) {
     pdf += line;
   }
   pdf += "trailer\n<< /Size " + std::to_string(offsets.size() + 1) +
-         " /Root 1 0 R >>\nstartxref\n" + std::to_string(xref) + "\n%%EOF\n";
+         " /Root 1 0 R";
+  if (!producer.empty()) pdf += " /Info 5 0 R";
+  pdf += " >>\nstartxref\n" + std::to_string(xref) + "\n%%EOF\n";
   return pdf;
 }
 

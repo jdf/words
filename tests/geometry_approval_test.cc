@@ -206,6 +206,21 @@ TEST_CASE("pdf export is a well-formed vector document") {
   std::snprintf(h, sizeof h, "%.2f", expectH);
   CHECK(pdf.find(std::string("792.00 ") + h + "]") != std::string::npos);
   CHECK(pdf.rfind("%%EOF\n") == pdf.size() - 6);
+  // No producer given: no Info dictionary.
+  CHECK(pdf.find("/Info") == std::string::npos);
+}
+
+TEST_CASE("exports carry the build identifier as metadata") {
+  words::Scene scene = words::buildCloudScene(kFont);
+  std::string svg = words::toSvg(scene, true, "words build abc123def456");
+  CHECK(svg.find("<desc>words build abc123def456</desc>") !=
+        std::string::npos);
+  CHECK(words::toSvg(scene).find("<desc>") == std::string::npos);
+  std::string pdf =
+      words::toPdf(scene, 11 * 72.0, "words build abc123def456");
+  CHECK(pdf.find("<< /Producer (words build abc123def456) >>") !=
+        std::string::npos);
+  CHECK(pdf.find("/Info 5 0 R") != std::string::npos);
 }
 
 TEST_CASE("cloud layout properties") {

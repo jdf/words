@@ -1,0 +1,19 @@
+name: General feedback
+description: Impressions, questions, kudos, gripes
+labels: ["feedback"]
+body:
+  - type: textarea
+    id: feedback
+    attributes:
+      label: Your feedback
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description:
+        Prefilled by the app's Feedback button — please leave it as is.
+      render: text
+    validations:
+      required: false

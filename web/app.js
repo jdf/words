@@ -201,6 +201,12 @@ canvas.width = Math.round(canvas.clientWidth * dpr);
 canvas.height = Math.round(canvas.clientHeight * dpr);
 const offscreen = canvas.transferControlToOffscreen();
 
+// The build identifier, stamped into dist/build-info.js by the build;
+// announced on the console (handy in bug reports), shown in the
+// Feedback dialog, and handed to the engine for export metadata.
+const BUILD = globalThis.__wordsBuild || { id: 'dev', date: '' };
+console.info(`words build ${BUILD.id} (${BUILD.date})`);
+
 const worker = new Worker('worker.js');
 worker.postMessage(
     {
@@ -208,6 +214,7 @@ worker.postMessage(
       canvas: offscreen,
       search: showUi ? specUrl(true).search : location.search,
       lazyFiles,
+      build: BUILD.id,
     },
     [offscreen]);
 
@@ -334,6 +341,40 @@ async function rasterize(svgText, width, height, transparent) {
   }
 }
 
+// Canvas rasterization strips everything but pixels, so the PNG build
+// stamp is spliced in afterwards: a tEXt chunk (PNG's metadata
+// mechanism) inserted just before the closing IEND chunk.
+const CRC_TABLE = (() => {
+  const t = new Int32Array(256);
+  for (let n = 0; n < 256; n++) {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+    t[n] = c;
+  }
+  return t;
+})();
+function crc32(bytes) {
+  let c = -1;
+  for (const b of bytes) c = CRC_TABLE[(c ^ b) & 0xff] ^ (c >>> 8);
+  return (c ^ -1) >>> 0;
+}
+async function pngWithText(blob, keyword, text) {
+  const src = new Uint8Array(await blob.arrayBuffer());
+  const body = new TextEncoder().encode(keyword + '\0' + text);
+  const chunk = new Uint8Array(12 + body.length);
+  const view = new DataView(chunk.buffer);
+  view.setUint32(0, body.length);
+  chunk.set([0x74, 0x45, 0x58, 0x74], 4);  // 'tEXt'
+  chunk.set(body, 8);
+  view.setUint32(8 + body.length, crc32(chunk.subarray(4, 8 + body.length)));
+  const iend = src.length - 12;  // IEND is always the trailing 12 bytes
+  const out = new Uint8Array(src.length + chunk.length);
+  out.set(src.subarray(0, iend), 0);
+  out.set(chunk, iend);
+  out.set(src.subarray(iend), iend + chunk.length);
+  return new Blob([out], { type: 'image/png' });
+}
+
 async function buildExport(mode, opts) {
   const name = `words-${spec.seed}`;
   if (mode === 'svg') {
@@ -349,8 +390,9 @@ async function buildExport(mode, opts) {
         { type: 'exportSvg', background: !opts.transparent });
     const surface =
         await rasterize(svg, opts.width, opts.height, opts.transparent);
+    const png = await surface.convertToBlob({ type: 'image/png' });
     return {
-      blob: await surface.convertToBlob({ type: 'image/png' }),
+      blob: await pngWithText(png, 'Software', `words build ${BUILD.id}`),
       filename: `${name}.png`,
     };
   }
@@ -378,6 +420,7 @@ function download(blob, filename) {
 window.words = {
   _wordsLogScene: () => worker.postMessage({ type: 'logScene' }),
   buildExport,
+  build: BUILD,
 };
 
 // ---------------------------------------------------------------------------
@@ -664,7 +707,8 @@ if (showUi) {
   redoBtn.addEventListener('click', redo);
   window.addEventListener('keydown', (e) => {
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z' &&
-        !dialog.open && !exportDialog.open && !creditsDialog.open) {
+        !dialog.open && !exportDialog.open && !creditsDialog.open &&
+        !feedbackDialog.open) {
       e.preventDefault();
       e.shiftKey ? redo() : undo();
     }
@@ -824,4 +868,39 @@ if (showUi) {
       creditsDialog.close();
     }
   });
+
+  // ----- Feedback dialog: each choice opens a GitHub issue form in a
+  // new tab, prefilled (via the form field's id as a query parameter)
+  // with the environment a bug report needs.
+  const feedbackDialog = document.getElementById('feedback-dialog');
+  document.getElementById('fb-build').textContent =
+      `build ${BUILD.id} · ${BUILD.date}`;
+  const envReport = () => [
+    `build: ${BUILD.id} (${BUILD.date})`,
+    `url: ${location.href}`,
+    `platform: ${navigator.platform}`,
+    `userAgent: ${navigator.userAgent}`,
+    `viewport: ${innerWidth}x${innerHeight} @${devicePixelRatio}x`,
+  ].join('\n');
+  document.getElementById('feedback-btn').addEventListener('click', () => {
+    feedbackDialog.showModal();
+  });
+  document.getElementById('feedback-cancel').addEventListener('click', () => {
+    feedbackDialog.close();
+  });
+  feedbackDialog.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      feedbackDialog.close();
+    }
+  });
+  for (const b of document.querySelectorAll('.fb-opt')) {
+    b.addEventListener('click', () => {
+      feedbackDialog.close();
+      const url = 'https://github.com/jdf/words/issues/new?template=' +
+          b.dataset.template +
+          '&environment=' + encodeURIComponent(envReport());
+      window.open(url, '_blank', 'noopener');
+    });
+  }
 }

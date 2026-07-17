@@ -242,13 +242,23 @@ extern "C" EMSCRIPTEN_KEEPALIVE void wordsResize(int width, int height) {
   render();
 }
 
+// The build identifier, set once by the worker at boot; embedded in
+// export metadata so shipped files say which build made them.
+std::string g_buildId;
+extern "C" EMSCRIPTEN_KEEPALIVE void wordsSetBuildId(const char* id) {
+  g_buildId = id;
+}
+static std::string buildTag() {
+  return g_buildId.empty() ? "" : "words build " + g_buildId;
+}
+
 // The scene as SVG for export (the source of every save format — the
 // page rasterizes it for PNG and PDF). Returned pointer stays valid
 // until the next call.
 extern "C" EMSCRIPTEN_KEEPALIVE const char* wordsSceneSvg(int background) {
   static std::string svg;
   if (!g_app) return "";
-  svg = words::toSvg(g_app->scene, background != 0);
+  svg = words::toSvg(g_app->scene, background != 0, buildTag());
   return svg.c_str();
 }
 
@@ -266,7 +276,7 @@ extern "C" EMSCRIPTEN_KEEPALIVE double wordsSceneHeight() {
 std::string g_pdfBytes;
 extern "C" EMSCRIPTEN_KEEPALIVE const char* wordsScenePdf(double pointWidth) {
   if (!g_app) return "";
-  g_pdfBytes = words::toPdf(g_app->scene, pointWidth);
+  g_pdfBytes = words::toPdf(g_app->scene, pointWidth, buildTag());
   return g_pdfBytes.data();
 }
 extern "C" EMSCRIPTEN_KEEPALIVE int wordsScenePdfSize() {

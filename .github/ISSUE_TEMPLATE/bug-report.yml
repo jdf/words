@@ -1,0 +1,22 @@
+name: Bug report
+description: Something's broken or looks wrong
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description:
+        What did you do, what did you expect, and what happened instead? A
+        screenshot or an exported image helps enormously.
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description:
+        Prefilled by the app's Feedback button — please leave it as is.
+      render: text
+    validations:
+      required: false

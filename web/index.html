@@ -124,6 +124,15 @@
     /* Pin the top edge (instead of centering) so the mode buttons stay
        put while PNG/SVG/PDF sections of different heights swap below. */
     #export-dialog { width: min(440px, 90vw); margin-top: 22vh; margin-bottom: auto; }
+    /* Feedback: three big choices, build id in the footer. */
+    #feedback-dialog { width: min(400px, 90vw); }
+    .fb-hint { margin: 0 0 12px; color: #8a8a96; }
+    .fb-opt {
+      display: block; width: 100%; text-align: left; margin-top: 8px;
+    }
+    .fb-build {
+      color: #8a8a96; font-size: 12px; user-select: text;
+    }
     /* Credits: rendered markdown, scrolling inside the dialog. */
     #credits-dialog { width: min(560px, 90vw); }
     .credits-body { max-height: 65vh; overflow-y: auto; font-size: 13px; }
@@ -185,6 +194,7 @@
     <button id="export-btn" title="Save as PNG, SVG, or PDF">Export…</button>
     <span class="spacer"></span>
     <button id="credits-btn" title="Acknowledgements and licenses">Credits</button>
+    <button id="feedback-btn" title="Report a bug, request a feature, or just say hi">Feedback</button>
   </div>
   <!-- "Use My Words": paste or pick a local file (read entirely in the
        browser via FileReader — no upload anywhere). -->
@@ -249,6 +259,21 @@
   </dialog>
   <!-- Credits: content/credits.md, rendered to credits.html at build time
        and fetched on first open. -->
+  <!-- Feedback: each choice opens a prefilled GitHub issue form in a
+       new tab (environment details included so bug reports arrive
+       reproducible). -->
+  <dialog id="feedback-dialog">
+    <h3>Feedback</h3>
+    <p class="fb-hint">Each option opens a GitHub issue in a new tab,
+      prefilled with your platform, browser, and build details.</p>
+    <button class="fb-opt" data-template="bug-report.yml">🐞 Report a Bug</button>
+    <button class="fb-opt" data-template="feature-request.yml">✨ Request a Feature</button>
+    <button class="fb-opt" data-template="feedback.yml">💬 General Feedback</button>
+    <div class="row">
+      <span class="fb-build" id="fb-build"></span>
+      <button id="feedback-cancel">Cancel</button>
+    </div>
+  </dialog>
   <dialog id="credits-dialog">
     <div id="credits-body" class="credits-body">loading…</div>
     <div class="row">
@@ -259,6 +284,7 @@
   <canvas id="canvas"></canvas>
   <div id="status">loading…</div>
   <div id="progress"></div>
+  <script src="build-info.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

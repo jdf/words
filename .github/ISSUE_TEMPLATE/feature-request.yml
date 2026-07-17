@@ -1,0 +1,20 @@
+name: Feature request
+description: Something words should do
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: request
+    attributes:
+      label: What would you like?
+      description: What should words do, and what would you use it for?
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description:
+        Prefilled by the app's Feedback button — please leave it as is.
+      render: text
+    validations:
+      required: false

@@ -106,6 +106,9 @@ function init(msg) {
   };
   createWordsModule(config).then((module) => {
     engine = module;
+    if (msg.build) {
+      engine.ccall('wordsSetBuildId', null, ['string'], [msg.build]);
+    }
     for (const p of pending) handle(p);
     pending.length = 0;
   }).catch((err) => {

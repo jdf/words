@@ -14,7 +14,10 @@ namespace words {
 // and the result is a viewable image in its own right (it is also the
 // source for every user-facing export). `background` false omits the
 // backdrop rect for a transparent export.
-std::string toSvg(const Scene& scene, bool background = true);
+// generator, when non-empty, is embedded as a <desc> element — the
+// build identifier in exported files.
+std::string toSvg(const Scene& scene, bool background = true,
+                  const std::string& generator = "");
 
 // toSvg plus a debug overlay: the traced word's search spiral as a blue
 // polyline, with a hollow circle at the start (scene center) and a solid

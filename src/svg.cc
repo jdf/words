@@ -48,7 +48,8 @@ std::string pathData(const Clipper2Lib::PathsD& paths, double dx, double dy) {
 
 }  // namespace
 
-std::string toSvg(const Scene& scene, bool background) {
+std::string toSvg(const Scene& scene, bool background,
+                  const std::string& generator) {
   std::string svg;
   char buf[256];
   std::snprintf(buf, sizeof buf,
@@ -59,6 +60,9 @@ std::string toSvg(const Scene& scene, bool background) {
                 static_cast<int>(scene.width()),
                 static_cast<int>(scene.height()));
   svg += buf;
+  if (!generator.empty()) {
+    svg += "<desc>" + generator + "</desc>\n";
+  }
   if (background) {
     std::snprintf(buf, sizeof buf,
                   "<rect x=\"%d\" y=\"%d\" width=\"%d\" height=\"%d\" "
