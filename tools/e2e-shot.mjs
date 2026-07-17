@@ -19,7 +19,11 @@ const browser = await puppeteer.launch({
 });
 try {
   const page = await browser.newPage();
-  await page.setViewport({ width: 1200, height: 750, deviceScaleFactor: 1 });
+  // SHOT_VIEWPORT=WxH overrides for one-off renders (e.g. the 1200x630
+  // social card); the golden harness never sets it.
+  const [vw, vh] = (process.env.SHOT_VIEWPORT || '1200x750')
+      .split('x').map(Number);
+  await page.setViewport({ width: vw, height: vh, deviceScaleFactor: 1 });
   for (const c of cases) {
     const sep = c.indexOf('|');
     const name = c.slice(0, sep);
@@ -36,6 +40,15 @@ try {
     // The flag is set when the engine reports drawn; give the worker's
     // canvas commit a beat to reach the compositor before capturing.
     await new Promise((r) => setTimeout(r, 200));
+    // SHOT_HIDE=<selector> blanks page chrome for one-off renders (the
+    // social card hides #status); the golden harness never sets it.
+    if (process.env.SHOT_HIDE) {
+      await page.evaluate((sel) => {
+        document.querySelectorAll(sel).forEach((el) => {
+          el.style.display = 'none';
+        });
+      }, process.env.SHOT_HIDE);
+    }
     await page.screenshot({ path: `${outDir}/e2e-received-${name}.png` });
     console.log(`shot: ${name}`);
   }

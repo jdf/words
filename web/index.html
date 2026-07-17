@@ -5,6 +5,26 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>words</title>
   <link rel="icon" href="data:,"><!-- no favicon; silence the 404 -->
+  <!-- Link-preview snippet (Open Graph + Twitter Card): what Slack,
+       iMessage, Mastodon, etc. render when someone shares the URL. The
+       image URL must be absolute — scrapers don't resolve relative
+       paths reliably. Card regenerated via tools/e2e-shot.mjs with
+       SHOT_VIEWPORT=1200x630 SHOT_HIDE="#status" (the demo config). -->
+  <meta name="description"
+        content="Paste any text and watch it become a beautiful word cloud — a rebuild of the original Wordle (2008) by its creator, running entirely in your browser. Export as PNG, SVG, or PDF.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://mrfeinberg.com/words/">
+  <meta property="og:site_name" content="MrFeinberg.com">
+  <meta property="og:title" content="words — beautiful word clouds">
+  <meta property="og:description"
+        content="Paste any text and watch it become a beautiful word cloud — a rebuild of the original Wordle (2008) by its creator, running entirely in your browser. Export as PNG, SVG, or PDF.">
+  <meta property="og:image" content="https://mrfeinberg.com/words/social-card.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt"
+        content="A word cloud of Moby-Dick: whale, one, now, Ahab — bright words packed on black.">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="theme-color" content="#17171c">
   <style>
     html, body { margin: 0; height: 100%; background: #17171c; }
     /* The hidden attribute always wins, even over display:flex rules. */
