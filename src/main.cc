@@ -78,6 +78,9 @@ std::string g_orientation;
 // UI override for the palette; unset = use the URL parameter. (Unlike
 // orientation, the empty string is meaningful: the built-in dark scheme.)
 std::optional<std::string> g_palette;
+// MEMFS path of user-pasted text (the worker stages it); empty = none —
+// use the corpus / ?text= / sample-text sources.
+std::string g_textPath;
 
 std::string slurp(const char* path) {
   std::ifstream in(path);
@@ -163,6 +166,12 @@ words::Scene buildScene(const std::string& fontPath,
             << " corpus=" << urlParam("corpus") << " config=" << *description
             << " variance=" << urlParam("variance");
 
+  // Source priority: the user's own words, then a corpus TSV, then the
+  // ?text= parameter / bundled sample.
+  if (!g_textPath.empty()) {
+    return words::buildCloudFromText(fontPath, kStopWordsDir,
+                                     slurp(g_textPath.c_str()), options);
+  }
   std::string tsv = slurp(kCorpusTsvPath);
   if (!tsv.empty()) {
     return words::buildCloudFromCountsTsv(fontPath, kStopWordsDir, tsv,
@@ -185,18 +194,21 @@ void render() {
 
 }  // namespace
 
-// Rebuild the cloud from a new spec (the ?ui panel, via the worker shell):
+// Rebuild the cloud from a new spec (the toolbar, via the worker shell):
 // seed, orientation slug ("" keeps the URL's), palette slug ("" is the
-// built-in dark scheme), and font path ("" keeps the current font — the
-// worker stages fetched fonts into MEMFS first).
+// built-in dark scheme), font path ("" keeps the current font — the
+// worker stages fetched fonts into MEMFS first), and text path ("" means
+// no user text: fall back to corpus / ?text= / sample).
 extern "C" EMSCRIPTEN_KEEPALIVE void wordsRebuild(int seed,
                                                   const char* orientation,
                                                   const char* palette,
-                                                  const char* fontPath) {
+                                                  const char* fontPath,
+                                                  const char* textPath) {
   if (!g_app) return;
   g_seed = static_cast<uint32_t>(seed);
   g_orientation = orientation ? orientation : "";
   g_palette = std::string(palette ? palette : "");
+  g_textPath = textPath ? textPath : "";
   if (fontPath && *fontPath) g_app->fontPath = fontPath;
   std::string description;
   g_app->scene = buildScene(g_app->fontPath, &description);

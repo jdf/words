@@ -20,9 +20,12 @@ function handle(msg) {
   }
 }
 
-// Rebuild the cloud from a spec {seed, orientation, font}. Fonts are
-// staged into MEMFS on first use (the page only ever names them); on a
-// failed fetch the engine keeps its current font ("" path).
+// Rebuild the cloud from a spec {seed, orientation, palette, font,
+// useText, text?}. Fonts are staged into MEMFS on first use (the page
+// only ever names them); on a failed fetch the engine keeps its current
+// font ("" path). User text arrives in `text` only when it changed —
+// once staged, `useText` alone selects it.
+const kUserTextPath = '/user-text.txt';
 async function rebuild(msg) {
   let path = '/fonts/' + msg.font + '.ttf';
   if (!engine.FS.analyzePath(path).exists) {
@@ -35,9 +38,13 @@ async function rebuild(msg) {
       path = '';
     }
   }
+  if (msg.text !== undefined) {
+    engine.FS.writeFile(kUserTextPath, new TextEncoder().encode(msg.text));
+  }
   engine.ccall('wordsRebuild', null,
-               ['number', 'string', 'string', 'string'],
-               [msg.seed, msg.orientation, msg.palette, path]);
+               ['number', 'string', 'string', 'string', 'string'],
+               [msg.seed, msg.orientation, msg.palette, path,
+                msg.useText ? kUserTextPath : '']);
 }
 
 function init(msg) {
