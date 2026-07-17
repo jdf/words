@@ -7,50 +7,55 @@
   <link rel="icon" href="data:,"><!-- no favicon; silence the 404 -->
   <style>
     html, body { margin: 0; height: 100%; background: #17171c; }
-    body { display: flex; flex-direction: column; }
-    /* The canvas owns whatever the toolbar doesn't take. */
-    #canvas { display: block; flex: 1; width: 100%; min-height: 0; }
+    body { display: flex; flex-direction: row; }
+    /* The canvas owns whatever the sidebar doesn't take. */
+    #canvas { display: block; flex: 1; min-width: 0; height: 100%; }
     #status {
       position: fixed; left: 12px; bottom: 10px;
       font: 12px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
       color: #8a8a96; pointer-events: none; white-space: pre;
     }
+    body.with-ui #status { left: 236px; }
     #progress {
       position: fixed; left: 0; top: 0; height: 3px; width: 0;
       background: #4aa3ff; opacity: 0; transition: opacity 0.2s;
       pointer-events: none;
     }
-    /* Toolbar: in-flow (never overlays the canvas), shown with ?ui. */
+    /* Sidebar: in-flow down the left (never overlays the canvas), shown
+       by default; ?no-ui hides it. */
     #panel {
-      display: none; align-items: center; gap: 10px; padding: 8px 12px;
-      background: #101014; border-bottom: 1px solid #333;
+      display: none; flex-direction: column; align-items: stretch;
+      gap: 10px; width: 200px; flex: none; padding: 12px;
+      background: #101014; border-right: 1px solid #333;
       font: 14px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
-      color: #b8b8c4;
+      color: #b8b8c4; overflow-y: auto;
     }
     #panel button {
       background: #1c1c22; color: #b8b8c4; border: 1px solid #444;
-      border-radius: 6px; padding: 9px 14px; font: inherit;
+      border-radius: 6px; padding: 9px 12px; font: inherit;
       line-height: 1.2; cursor: pointer; white-space: nowrap;
     }
     #panel button:disabled { opacity: 0.35; cursor: default; }
     #panel button:hover:not(:disabled) { border-color: #777; background: #26262e; }
     #panel .spacer { flex: 1; }
-    /* Dropdown menus: the toolbar's font/layout/orientation/palette
-       pickers. The open panel floats over the canvas (transient, like any
-       menu); the buttons themselves stay in flow. */
-    .dd { position: relative; }
-    .dd-btn { display: flex; align-items: center; gap: 8px; }
+    #panel .pair { display: flex; gap: 8px; }
+    #panel .pair button { flex: 1; }
+    /* Menus fly out to the right of the sidebar, vertically centered on
+       their button (clamped on screen by app.js). Transient overlays,
+       like any menu. */
+    .dd-btn {
+      display: flex; align-items: center; gap: 8px; width: 100%;
+      justify-content: space-between;
+    }
     .dd-btn .tri { color: #8a8a96; font-size: 11px; }
     .dd-panel[hidden] { display: none; }
     .dd-panel {
-      position: absolute; top: calc(100% + 6px); left: 0; z-index: 20;
+      position: fixed; z-index: 20;
       display: flex; flex-direction: column; gap: 2px;
-      min-width: 280px; max-height: min(68vh, 560px); overflow-y: auto;
+      min-width: 280px; max-height: min(80vh, 640px); overflow-y: auto;
       background: #131318; border: 1px solid #444; border-radius: 10px;
       padding: 8px; box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6);
     }
-    /* Right-side menus open leftward so they stay on screen. */
-    #dd-orientation .dd-panel, #dd-palette .dd-panel { left: auto; right: 0; }
     .dd-opt {
       display: flex; align-items: center; gap: 12px; text-align: left;
       background: none; border: 1px solid transparent !important;
@@ -94,23 +99,24 @@
        In-flow above the canvas, so it never covers the cloud. -->
   <div id="panel">
     <button id="generate" title="Generate a new cloud">🔄 Generate</button>
-    <button id="undo" title="Undo (⌘Z)" disabled>↩ Undo</button>
-    <button id="redo" title="Redo (⇧⌘Z)" disabled>↪ Redo</button>
-    <span class="spacer"></span>
+    <div class="pair">
+      <button id="undo" title="Undo (⌘Z)" disabled>↩ Undo</button>
+      <button id="redo" title="Redo (⇧⌘Z)" disabled>↪ Redo</button>
+    </div>
     <div class="dd" id="dd-font">
-      <button class="dd-btn"><span class="dd-cur"></span><span class="tri">▾</span></button>
+      <button class="dd-btn"><span class="dd-cur"></span><span class="tri">▸</span></button>
       <div class="dd-panel" hidden></div>
     </div>
     <div class="dd" id="dd-layout">
-      <button class="dd-btn"><span class="dd-cur"></span><span class="tri">▾</span></button>
+      <button class="dd-btn"><span class="dd-cur"></span><span class="tri">▸</span></button>
       <div class="dd-panel" hidden></div>
     </div>
     <div class="dd" id="dd-orientation">
-      <button class="dd-btn"><span class="dd-cur"></span><span class="tri">▾</span></button>
+      <button class="dd-btn"><span class="dd-cur"></span><span class="tri">▸</span></button>
       <div class="dd-panel" hidden></div>
     </div>
     <div class="dd" id="dd-palette">
-      <button class="dd-btn"><span class="dd-cur"></span><span class="tri">▾</span></button>
+      <button class="dd-btn"><span class="dd-cur"></span><span class="tri">▸</span></button>
       <div class="dd-panel" hidden></div>
     </div>
     <span class="spacer"></span>

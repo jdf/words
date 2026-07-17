@@ -21,10 +21,12 @@ const params = new URLSearchParams(location.search);
 // pass ?no-ui. ?ui is still accepted as a no-op.
 const showUi = !params.has('no-ui');
 
-// Show the toolbar before measuring the canvas: it takes layout space,
-// and the OffscreenCanvas is sized from the measurement below.
+// Show the sidebar before measuring the canvas: it takes layout space,
+// and the OffscreenCanvas is sized from the measurement below. The
+// with-ui class shifts the fixed status line clear of the sidebar.
 if (showUi) {
   document.getElementById('panel').style.display = 'flex';
+  document.body.classList.add('with-ui');
 }
 
 // ---------------------------------------------------------------------------
@@ -272,6 +274,7 @@ worker.onmessage = (e) => {
 // of intermediate sizes — that churn reads as flicker.
 let resizeQueued = false;
 window.addEventListener('resize', () => {
+  if (typeof closeMenus === 'function') closeMenus();  // positions go stale
   if (resizeQueued) return;
   resizeQueued = true;
   requestAnimationFrame(() => {
@@ -518,7 +521,18 @@ function buildMenu(menuName) {
       }
       panel.querySelector('.dd-random').classList.toggle('selected',
           spec[dim + 'Mode'] === 'random');
+      // Fly out to the right of the sidebar, vertically centered on the
+      // button but clamped to the viewport.
       panel.hidden = false;
+      const btnRect = btn.getBoundingClientRect();
+      const sidebar = document.getElementById('panel').getBoundingClientRect();
+      const margin = 8;
+      const height = panel.offsetHeight;
+      const top = Math.min(
+          Math.max(btnRect.top + btnRect.height / 2 - height / 2, margin),
+          window.innerHeight - height - margin);
+      panel.style.left = `${sidebar.right + margin}px`;
+      panel.style.top = `${top}px`;
     }
   });
 }
