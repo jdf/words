@@ -46,7 +46,6 @@ const FONTS = [
   ['fridge', 'AlphaFridgeMagnetsAllCap'],
   ['gnuolane', 'Gnuolane'],
   ['goudy', 'Goudy Bookletter 1911'],
-  ['grilledcheese', 'GrilledCheese BTN'],
   ['jblack', 'JSL Blackletter'],
   ['kenyan', 'Kenyan Coffee'],
   ['king', 'Loved by the King'],

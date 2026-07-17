@@ -54,12 +54,10 @@ The typefaces are the original Wordle's font collection:
 - **GNU General Public License**: Chandas and Uttara (Mihail Bayaryn,
   incorporating DejaVu glyphs).
 - **Their own licenses**: Nafees Nastaleeq (Center for Research in Urdu
-  Language Processing, Lahore), SBL Hebrew (John Hudson, Tiro Typeworks,
-  for the Society of Biblical Literature), IranNastaliq (SCICT),
-  Chrysanthi Unicode, GrilledCheese BTN (Stuart Sandler, Font Diner), JSL
-  Blackletter (Jeff Lee), Alpha Fridge Magnets (Daniel Gauthier,
-  GautFonts), LetterOMatic! (Nate Piekos, Blambot), Powell Antique
-  (Dieter Steffmann), and ArTarumianBakhum (Ruben Tarumian).
+  Language Processing, Lahore), JSL Blackletter (Jeff Lee), Alpha Fridge
+  Magnets (Daniel Gauthier, GautFonts), LetterOMatic! (Nate Piekos,
+  Blambot), Powell Antique (Dieter Steffmann), and ArTarumianBakhum
+  (Ruben Tarumian).
 
 ## Development tools
 

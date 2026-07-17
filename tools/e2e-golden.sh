@@ -46,7 +46,7 @@ for p in $PALETTES; do
 done
 # A small font dimension — enough to prove ?font= lazy loading end to end
 # (sexsmith goes through the override path too, not the preloaded copy).
-FONTS="sexsmith grilledcheese boopee"
+FONTS="sexsmith goudy boopee"
 for f in $FONTS; do
   CASES+=("font-$f|?corpus=moby-dick&font=$f&placement=center-line&orientation=mostly-horizontal&palette=yramirp&variance=little&no-ui")
 done
