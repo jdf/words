@@ -101,7 +101,9 @@
     }
     dialog button:hover { border-color: #777; background: #26262e; }
     dialog .go { border-color: #4aa3ff !important; color: #cfe6ff; }
-    #export-dialog { width: min(440px, 90vw); }
+    /* Pin the top edge (instead of centering) so the mode buttons stay
+       put while PNG/SVG/PDF sections of different heights swap below. */
+    #export-dialog { width: min(440px, 90vw); margin-top: 22vh; margin-bottom: auto; }
     /* Credits: rendered markdown, scrolling inside the dialog. */
     #credits-dialog { width: min(560px, 90vw); }
     .credits-body { max-height: 65vh; overflow-y: auto; font-size: 13px; }
