@@ -65,10 +65,20 @@ if [ ! -d node_modules/puppeteer-core ]; then
   npm install >/dev/null
 fi
 
+# The harness owns this port. A leftover server (an interactive session,
+# an interrupted earlier run) would otherwise make our bind fail — and,
+# worse, could silently serve a stale dist to the screenshots. Kill only
+# the LISTENER: a bare -ti also matches processes holding client
+# connections to the port (e.g. a browser), which must not be killed.
+lsof -ti :"$PORT" -sTCP:LISTEN 2>/dev/null | xargs kill 2>/dev/null || true
+
 python3 tools/serve.py "$PWD/build/wasm-release/dist" "$PORT" &
 SERVER_PID=$!
 trap 'kill $SERVER_PID 2>/dev/null' EXIT
-sleep 0.3
+for _ in $(seq 1 50); do
+  curl -sf -o /dev/null "http://localhost:$PORT/" && break
+  sleep 0.1
+done
 
 # Verify each case as its screenshot lands (the driver prints one
 # "shot: name" line per capture), so progress is visible during the

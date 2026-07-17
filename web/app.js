@@ -250,12 +250,11 @@ worker.onmessage = (e) => {
   } else if (m.type === 'idle') {
     busy = false;
     // The e2e harness (tools/e2e-shot.mjs) waits on this before taking
-    // its screenshot. The idle message can outrun the worker's canvas
-    // commit (separate threads), so let two compositor frames pass
-    // before declaring the pixels ready.
-    requestAnimationFrame(() => requestAnimationFrame(() => {
-      window.__wordsIdle = true;
-    }));
+    // its screenshot. Set it directly: deferring via rAF starves in
+    // headless (no frames, no rAF), and the capture itself forces a
+    // composite of the worker's committed frame — the driver adds a
+    // small grace period for the commit to land.
+    window.__wordsIdle = true;
     progress.style.opacity = 0;
     progress.style.width = '0';
     if (pendingSpec !== null) {

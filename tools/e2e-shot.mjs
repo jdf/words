@@ -33,6 +33,9 @@ try {
       if (Date.now() > deadline) throw new Error(`timeout waiting for ${name}`);
       await new Promise((r) => setTimeout(r, 150));
     }
+    // The flag is set when the engine reports drawn; give the worker's
+    // canvas commit a beat to reach the compositor before capturing.
+    await new Promise((r) => setTimeout(r, 200));
     await page.screenshot({ path: `${outDir}/e2e-received-${name}.png` });
     console.log(`shot: ${name}`);
   }
