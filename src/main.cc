@@ -208,6 +208,7 @@ extern "C" EMSCRIPTEN_KEEPALIVE void wordsRebuild(int seed,
 // the worker to observe.
 extern "C" EMSCRIPTEN_KEEPALIVE void wordsResize(int width, int height) {
   if (!g_app) return;
+  if (width == g_app->width && height == g_app->height) return;
   g_app->width = width;
   g_app->height = height;
   EM_ASM(

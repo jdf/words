@@ -128,11 +128,22 @@
       }
     };
 
+    // Resize events flood during a drag; coalesce to at most one message
+    // per animation frame (the rAF always reads the *current* size, so
+    // the final geometry is never missed) to keep the worker from
+    // re-rendering dozens of intermediate sizes — that churn reads as
+    // flicker.
+    let resizeQueued = false;
     window.addEventListener('resize', () => {
-      worker.postMessage({
-        type: 'resize',
-        width: Math.round(canvas.clientWidth * dpr),
-        height: Math.round(canvas.clientHeight * dpr),
+      if (resizeQueued) return;
+      resizeQueued = true;
+      requestAnimationFrame(() => {
+        resizeQueued = false;
+        worker.postMessage({
+          type: 'resize',
+          width: Math.round(canvas.clientWidth * dpr),
+          height: Math.round(canvas.clientHeight * dpr),
+        });
       });
     });
 
