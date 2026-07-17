@@ -816,4 +816,12 @@ if (showUi) {
   document.getElementById('credits-close').addEventListener('click', () => {
     creditsDialog.close();
   });
+  // Belt and suspenders: the native Escape-cancel doesn't fire reliably
+  // for this dialog everywhere.
+  creditsDialog.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      creditsDialog.close();
+    }
+  });
 }
