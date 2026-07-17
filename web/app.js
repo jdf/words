@@ -403,10 +403,12 @@ function paletteThumb(bg, colors) {
   const dots = colors.map((c, i) =>
       `<circle cx="${10 + i * 9}" cy="10" r="3.5" fill="${c}"/>`).join('');
   const w = 20 + colors.length * 9 - 9;
-  return `<svg class="thumb sw" viewBox="0 0 ${w} 20" aria-hidden="true"` +
-         ` style="width:${w * 1.6}px">` +
+  // A fixed-width slot centers the variable-width swatch, so the palette
+  // names line up in a clean left-aligned column.
+  return `<span class="sw-slot"><svg class="thumb sw" viewBox="0 0 ${w} 20"` +
+         ` aria-hidden="true" style="width:${w * 1.6}px">` +
          `<rect x="0.5" y="0.5" width="${w - 1}" height="19" rx="4"` +
-         ` fill="${bg}" stroke="#555"/>${dots}</svg>`;
+         ` fill="${bg}" stroke="#555"/>${dots}</svg></span>`;
 }
 
 // Menu fonts load lazily the first time they're needed; each font option
