@@ -70,12 +70,18 @@ SERVER_PID=$!
 trap 'kill $SERVER_PID 2>/dev/null' EXIT
 sleep 0.3
 
-node tools/e2e-shot.mjs "$CHROME" "http://localhost:$PORT/" build \
-  "${CASES[@]}" >/dev/null
-
+# Verify each case as its screenshot lands (the driver prints one
+# "shot: name" line per capture), so progress is visible during the
+# ~20s screenshot pass instead of arriving in one burst at the end.
 FAILED=0
-for case in "${CASES[@]}"; do
-  NAME="${case%%|*}"
+VERIFIED=0
+while IFS= read -r line; do
+  NAME="${line#shot: }"
+  if [ "$NAME" = "$line" ]; then
+    echo "$line"  # passthrough for anything else the driver says
+    continue
+  fi
+  VERIFIED=$((VERIFIED + 1))
   GOLDEN="$GOLDEN_DIR/$NAME.png"
   RECEIVED="build/e2e-received-$NAME.png"
 
@@ -92,7 +98,15 @@ for case in "${CASES[@]}"; do
     echo "e2e golden MISMATCH: compare $RECEIVED against $GOLDEN" >&2
     FAILED=1
   fi
-done
+done < <(node tools/e2e-shot.mjs "$CHROME" "http://localhost:$PORT/" build \
+  "${CASES[@]}")
+
+# A process substitution's exit status is invisible to set -e; if the
+# driver died mid-run, the shot count gives it away.
+if [ "$VERIFIED" -ne "${#CASES[@]}" ]; then
+  echo "e2e driver produced $VERIFIED of ${#CASES[@]} shots" >&2
+  FAILED=1
+fi
 
 if [ "${1:-}" = "--bless" ]; then
   echo "blessed with chrome $("$CHROME" --version | tr -d '\n')"
