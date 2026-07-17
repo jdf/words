@@ -237,9 +237,27 @@ const sendSpec = (s) => {
   worker.postMessage(msg);
 };
 
+// Request/reply channel for export payloads (SVG text, PDF bytes, scene
+// dimensions) computed by the engine.
+let replySeq = 0;
+const replyWaiters = new Map();
+function askWorker(msg) {
+  return new Promise((resolve) => {
+    const id = ++replySeq;
+    replyWaiters.set(id, resolve);
+    worker.postMessage({ ...msg, id });
+  });
+}
+
 worker.onmessage = (e) => {
   const m = e.data;
-  if (m.type === 'print') {
+  if (m.type === 'reply') {
+    const waiter = replyWaiters.get(m.id);
+    if (waiter) {
+      replyWaiters.delete(m.id);
+      waiter(m.payload);
+    }
+  } else if (m.type === 'print') {
     console.log(m.text);
     status.textContent = m.text;
   } else if (m.type === 'printErr') {
@@ -287,10 +305,80 @@ window.addEventListener('resize', () => {
   });
 });
 
+// ---------------------------------------------------------------------------
+// Export. Every format derives from the engine's vector output: SVG is
+// served verbatim, PNG rasterizes the SVG in-page at the chosen size,
+// and PDF comes from the engine with the same outlines as native path
+// operators (vector, not raster).
+
+async function rasterize(svgText, width, height, transparent) {
+  // Give the SVG explicit dimensions so the browser rasterizes at
+  // exactly the requested size. preserveAspectRatio="none": the target
+  // is already aspect-matched to within rounding, and stretching that
+  // final fraction of a pixel beats an antialiased letterbox sliver at
+  // the edges.
+  const sized = svgText.replace(
+      '<svg ',
+      `<svg width="${width}" height="${height}" preserveAspectRatio="none" `);
+  const url = URL.createObjectURL(
+      new Blob([sized], { type: 'image/svg+xml' }));
+  try {
+    const img = new Image();
+    img.src = url;
+    await img.decode();
+    const surface = new OffscreenCanvas(width, height);
+    const ctx = surface.getContext('2d');
+    ctx.drawImage(img, 0, 0, width, height);
+    return surface;
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+async function buildExport(mode, opts) {
+  const name = `words-${spec.seed}`;
+  if (mode === 'svg') {
+    const svg = await askWorker(
+        { type: 'exportSvg', background: !opts.transparent });
+    return {
+      blob: new Blob([svg], { type: 'image/svg+xml' }),
+      filename: `${name}.svg`,
+    };
+  }
+  if (mode === 'png') {
+    const svg = await askWorker(
+        { type: 'exportSvg', background: !opts.transparent });
+    const surface =
+        await rasterize(svg, opts.width, opts.height, opts.transparent);
+    return {
+      blob: await surface.convertToBlob({ type: 'image/png' }),
+      filename: `${name}.png`,
+    };
+  }
+  // pdf
+  const bytes = await askWorker(
+      { type: 'exportPdf', pointWidth: opts.inches * 72 });
+  return {
+    blob: new Blob([bytes], { type: 'application/pdf' }),
+    filename: `${name}.pdf`,
+  };
+}
+
+function download(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
+
 // The engine's console handle, a shim over the worker:
-// words._wordsLogScene() still dumps engine state to the console.
+// words._wordsLogScene() still dumps engine state to the console;
+// buildExport is exposed for the harness and console experiments.
 window.words = {
   _wordsLogScene: () => worker.postMessage({ type: 'logScene' }),
+  buildExport,
 };
 
 // ---------------------------------------------------------------------------
@@ -577,7 +665,7 @@ if (showUi) {
   redoBtn.addEventListener('click', redo);
   window.addEventListener('keydown', (e) => {
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z' &&
-        !dialog.open) {
+        !dialog.open && !exportDialog.open) {
       e.preventDefault();
       e.shiftKey ? redo() : undo();
     }
@@ -613,5 +701,97 @@ if (showUi) {
       before: { ...spec },
       after: { ...spec, text },
     });
+  });
+
+  // ----- Export dialog.
+  const exportDialog = document.getElementById('export-dialog');
+  const modeButtons = [...document.querySelectorAll('#export-mode button')];
+  const sections = {
+    png: document.getElementById('ex-png'),
+    svg: document.getElementById('ex-svg'),
+    pdf: document.getElementById('ex-pdf'),
+  };
+  const pngTransparent = document.getElementById('png-transparent');
+  const svgTransparent = document.getElementById('svg-transparent');
+  const pngSize = document.getElementById('png-size');
+  const pngCustom = document.getElementById('png-custom');
+  const pngW = document.getElementById('png-w');
+  const pngH = document.getElementById('png-h');
+  const pngDim = document.getElementById('png-dim');
+  const pdfInches = document.getElementById('pdf-inches');
+  const pdfDim = document.getElementById('pdf-dim');
+  let exportMode = 'png';
+  let aspect = 1.6;  // refreshed from the engine when the dialog opens
+
+  const setMode = (mode) => {
+    exportMode = mode;
+    for (const b of modeButtons) {
+      b.classList.toggle('selected', b.dataset.mode === mode);
+    }
+    for (const [key, el] of Object.entries(sections)) {
+      el.hidden = key !== mode;
+    }
+  };
+  for (const b of modeButtons) {
+    b.addEventListener('click', () => setMode(b.dataset.mode));
+  }
+
+  const pngDims = () => {
+    if (pngSize.value === 'custom') {
+      return { width: Math.round(+pngW.value) || 16,
+               height: Math.round(+pngH.value) || 16 };
+    }
+    const width = +pngSize.value;
+    return { width, height: Math.round(width / aspect) };
+  };
+  const refreshDims = () => {
+    const { width, height } = pngDims();
+    pngDim.textContent =
+        pngSize.value === 'custom' ? '' : `= ${width} × ${height} px`;
+    const inches = +pdfInches.value || 11;
+    pdfDim.textContent = `= ${inches} × ${(inches / aspect).toFixed(2)} in`;
+  };
+
+  pngSize.addEventListener('change', () => {
+    const custom = pngSize.value === 'custom';
+    pngCustom.hidden = !custom;
+    if (custom && !pngW.value) {
+      pngW.value = 1920;
+      pngH.value = Math.round(1920 / aspect);
+    }
+    refreshDims();
+  });
+  // Custom dimensions stay aspect-locked: editing either edits both.
+  pngW.addEventListener('input', () => {
+    pngH.value = Math.round((+pngW.value || 0) / aspect) || '';
+  });
+  pngH.addEventListener('input', () => {
+    pngW.value = Math.round((+pngH.value || 0) * aspect) || '';
+  });
+  pdfInches.addEventListener('input', refreshDims);
+
+  document.getElementById('export-btn').addEventListener('click', async () => {
+    const size = await askWorker({ type: 'sceneSize' });
+    if (size.width > 0 && size.height > 0) {
+      aspect = size.width / size.height;
+    }
+    if (pngSize.value === 'custom' && pngW.value) {
+      pngH.value = Math.round(+pngW.value / aspect);
+    }
+    refreshDims();
+    exportDialog.showModal();
+  });
+  document.getElementById('export-cancel').addEventListener('click', () => {
+    exportDialog.close();
+  });
+  document.getElementById('export-go').addEventListener('click', async () => {
+    exportDialog.close();
+    const opts = exportMode === 'png'
+        ? { transparent: pngTransparent.checked, ...pngDims() }
+        : exportMode === 'svg'
+        ? { transparent: svgTransparent.checked }
+        : { inches: +pdfInches.value || 11 };
+    const { blob, filename } = await buildExport(exportMode, opts);
+    download(blob, filename);
   });
 }

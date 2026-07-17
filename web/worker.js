@@ -16,8 +16,31 @@ function handle(msg) {
     case 'rebuild': rebuild(msg); break;
     case 'resize': engine._wordsResize(msg.width, msg.height); break;
     case 'logScene': engine._wordsLogScene(); break;
+    case 'exportSvg':
+      reply(msg.id,
+            engine.ccall('wordsSceneSvg', 'string', ['number'],
+                         [msg.background ? 1 : 0]));
+      break;
+    case 'exportPdf': {
+      const ptr = engine.ccall('wordsScenePdf', 'number', ['number'],
+                               [msg.pointWidth]);
+      const size = engine._wordsScenePdfSize();
+      // Copy out of the heap; the buffer is reused on the next call.
+      reply(msg.id, engine.HEAPU8.slice(ptr, ptr + size));
+      break;
+    }
+    case 'sceneSize':
+      reply(msg.id, {
+        width: engine._wordsSceneWidth(),
+        height: engine._wordsSceneHeight(),
+      });
+      break;
     default: console.warn('worker: unknown message', msg);
   }
+}
+
+function reply(id, payload) {
+  postMessage({ type: 'reply', id, payload });
 }
 
 // Rebuild the cloud from a spec {seed, orientation, palette, font,

@@ -7,6 +7,8 @@
   <link rel="icon" href="data:,"><!-- no favicon; silence the 404 -->
   <style>
     html, body { margin: 0; height: 100%; background: #17171c; }
+    /* The hidden attribute always wins, even over display:flex rules. */
+    [hidden] { display: none !important; }
     body { display: flex; flex-direction: row; }
     /* The canvas owns whatever the sidebar doesn't take. */
     #canvas { display: block; flex: 1; min-width: 0; height: 100%; }
@@ -71,28 +73,46 @@
     }
     .dd-opt .opt-label { flex: 1; }
     .dd-random { border-bottom: 1px solid #333 !important; border-radius: 8px 8px 0 0; margin-bottom: 4px; }
-    #words-dialog {
+    dialog {
       background: #17171c; color: #b8b8c4; border: 1px solid #444;
       border-radius: 8px; padding: 16px; width: min(640px, 90vw);
       font: 14px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
     }
-    #words-dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
-    #words-dialog h3 { margin: 0 0 10px; font-size: 15px; color: #e0e0e8; }
-    #words-dialog textarea {
+    dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
+    dialog h3 { margin: 0 0 10px; font-size: 15px; color: #e0e0e8; }
+    dialog textarea {
       width: 100%; box-sizing: border-box; resize: vertical;
       background: #101014; color: #d8d8e0; border: 1px solid #444;
       border-radius: 4px; padding: 8px; font: inherit; font-size: 13px;
     }
-    #words-dialog .row {
+    dialog .row {
       display: flex; align-items: center; justify-content: space-between;
       gap: 10px; margin-top: 12px;
     }
-    #words-dialog button {
+    dialog button {
       background: #1c1c22; color: #b8b8c4; border: 1px solid #444;
       border-radius: 6px; padding: 8px 18px; font: inherit; cursor: pointer;
     }
-    #words-dialog button:hover { border-color: #777; background: #26262e; }
-    #words-dialog #use-go { border-color: #4aa3ff; color: #cfe6ff; }
+    dialog button:hover { border-color: #777; background: #26262e; }
+    dialog .go { border-color: #4aa3ff !important; color: #cfe6ff; }
+    #export-dialog { width: min(440px, 90vw); }
+    /* Segmented format selector. */
+    .seg { display: flex; gap: 0; }
+    .seg button {
+      flex: 1; border-radius: 0; border-right-width: 0;
+    }
+    .seg button:first-child { border-radius: 6px 0 0 6px; }
+    .seg button:last-child { border-radius: 0 6px 6px 0; border-right-width: 1px; }
+    .seg button.selected { background: #2a3b52; border-color: #4aa3ff; color: #cfe6ff; }
+    .seg button.selected + button { border-left-color: #4aa3ff; }
+    .ex-section { margin-top: 14px; display: flex; flex-direction: column; gap: 10px; }
+    .ex-section label { display: flex; align-items: center; gap: 8px; }
+    .ex-section input[type="number"], .ex-section select {
+      background: #101014; color: #d8d8e0; border: 1px solid #444;
+      border-radius: 4px; padding: 4px 6px; font: inherit;
+    }
+    .ex-section input[type="number"] { width: 6em; }
+    .ex-dim { color: #8a8a96; }
   </style>
 </head>
 <body>
@@ -122,6 +142,7 @@
     </div>
     <span class="spacer"></span>
     <button id="use-words" title="Cloud your own text">Use My Words</button>
+    <button id="export-btn" title="Save as PNG, SVG, or PDF">Export…</button>
   </div>
   <!-- "Use My Words": paste or pick a local file (read entirely in the
        browser via FileReader — no upload anywhere). -->
@@ -133,7 +154,54 @@
       <input type="file" id="user-file" accept=".txt,.md,text/plain,text/*">
       <span>
         <button id="use-cancel">Cancel</button>
-        <button id="use-go">Make Cloud</button>
+        <button id="use-go" class="go">Make Cloud</button>
+      </span>
+    </div>
+  </dialog>
+  <!-- Export: everything derives from the engine's vector output — SVG
+       verbatim, PNG rasterized in-page, PDF with the same outlines as
+       native path operators. -->
+  <dialog id="export-dialog">
+    <h3>Export</h3>
+    <div class="seg" id="export-mode">
+      <button data-mode="png" class="selected">PNG</button>
+      <button data-mode="svg">SVG</button>
+      <button data-mode="pdf">PDF</button>
+    </div>
+    <div class="ex-section" id="ex-png">
+      <label><input type="checkbox" id="png-transparent">
+        Transparent background</label>
+      <label>Size
+        <select id="png-size">
+          <option value="1280">1280 px wide</option>
+          <option value="1920" selected>1920 px wide</option>
+          <option value="2560">2560 px wide</option>
+          <option value="3840">3840 px wide</option>
+          <option value="custom">Custom…</option>
+        </select>
+        <span class="ex-dim" id="png-dim"></span>
+      </label>
+      <label id="png-custom" hidden>
+        <input type="number" id="png-w" min="16" max="8192"> ×
+        <input type="number" id="png-h" min="16" max="8192"> px
+      </label>
+    </div>
+    <div class="ex-section" id="ex-svg" hidden>
+      <label><input type="checkbox" id="svg-transparent">
+        Transparent background</label>
+    </div>
+    <div class="ex-section" id="ex-pdf" hidden>
+      <label>Page width
+        <input type="number" id="pdf-inches" value="11" min="2" max="40"
+               step="0.5"> in
+        <span class="ex-dim" id="pdf-dim"></span>
+      </label>
+    </div>
+    <div class="row">
+      <span></span>
+      <span>
+        <button id="export-cancel">Cancel</button>
+        <button id="export-go" class="go">Export</button>
       </span>
     </div>
   </dialog>

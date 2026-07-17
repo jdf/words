@@ -7,6 +7,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 find_package(absl CONFIG REQUIRED)
 find_package(Freetype REQUIRED)
+find_package(ZLIB REQUIRED)
 find_package(harfbuzz CONFIG REQUIRED)
 find_package(Clipper2 CONFIG REQUIRED)
 find_package(utf8proc CONFIG REQUIRED)
@@ -20,6 +21,7 @@ add_library(words_core STATIC
   src/logging.cc
   src/orientation.cc
   src/palette.cc
+  src/pdf.cc
   src/quad_tree.cc
   src/shape.cc
   src/svg.cc
@@ -36,6 +38,7 @@ target_link_libraries(words_core PUBLIC
   harfbuzz::harfbuzz
   Clipper2::Clipper2
   utf8proc::utf8proc
+  ZLIB::ZLIB
 )
 target_include_directories(words_core PUBLIC src)
 
@@ -66,7 +69,9 @@ if(EMSCRIPTEN)
     "SHELL:--preload-file ${CMAKE_SOURCE_DIR}/assets/sample-text.txt@/sample-text.txt"
     # FS + run-dependency methods let the page's preRun inject lazily
     # fetched ?corpus=/?font= files into MEMFS before main() runs.
-    "SHELL:-sEXPORTED_RUNTIME_METHODS=stringToNewUTF8,ccall,FS,addRunDependency,removeRunDependency"
+    # HEAPU8 lets the worker lift binary export payloads (PDF) out of the
+    # wasm heap.
+    "SHELL:-sEXPORTED_RUNTIME_METHODS=stringToNewUTF8,ccall,FS,HEAPU8,addRunDependency,removeRunDependency"
   )
   set_property(TARGET words APPEND PROPERTY LINK_DEPENDS ${CMAKE_SOURCE_DIR}/assets/fonts/sexsmith.ttf)
 

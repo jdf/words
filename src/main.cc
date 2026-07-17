@@ -49,7 +49,9 @@
 #include "logging.h"
 #include "orientation.h"
 #include "palette.h"
+#include "pdf.h"
 #include "scene.h"
+#include "svg.h"
 #include "word.h"
 #include "word_renderer.h"
 
@@ -238,6 +240,37 @@ extern "C" EMSCRIPTEN_KEEPALIVE void wordsResize(int width, int height) {
       },
       width, height);
   render();
+}
+
+// The scene as SVG for export (the source of every save format — the
+// page rasterizes it for PNG and PDF). Returned pointer stays valid
+// until the next call.
+extern "C" EMSCRIPTEN_KEEPALIVE const char* wordsSceneSvg(int background) {
+  static std::string svg;
+  if (!g_app) return "";
+  svg = words::toSvg(g_app->scene, background != 0);
+  return svg.c_str();
+}
+
+// Scene dimensions, for aspect-correct export UI.
+extern "C" EMSCRIPTEN_KEEPALIVE double wordsSceneWidth() {
+  return g_app ? g_app->scene.width() : 0;
+}
+extern "C" EMSCRIPTEN_KEEPALIVE double wordsSceneHeight() {
+  return g_app ? g_app->scene.height() : 0;
+}
+
+// The scene as a vector PDF (same outlines as the SVG, Flate-compressed
+// binary — hence pointer + size, not a C string). The buffer stays valid
+// until the next call.
+std::string g_pdfBytes;
+extern "C" EMSCRIPTEN_KEEPALIVE const char* wordsScenePdf(double pointWidth) {
+  if (!g_app) return "";
+  g_pdfBytes = words::toPdf(g_app->scene, pointWidth);
+  return g_pdfBytes.data();
+}
+extern "C" EMSCRIPTEN_KEEPALIVE int wordsScenePdfSize() {
+  return static_cast<int>(g_pdfBytes.size());
 }
 
 // Console-callable engine interrogation (the page's window.words shim

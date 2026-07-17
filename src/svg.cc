@@ -48,7 +48,7 @@ std::string pathData(const Clipper2Lib::PathsD& paths, double dx, double dy) {
 
 }  // namespace
 
-std::string toSvg(const Scene& scene) {
+std::string toSvg(const Scene& scene, bool background) {
   std::string svg;
   char buf[256];
   std::snprintf(buf, sizeof buf,
@@ -59,15 +59,17 @@ std::string toSvg(const Scene& scene) {
                 static_cast<int>(scene.width()),
                 static_cast<int>(scene.height()));
   svg += buf;
-  std::snprintf(buf, sizeof buf,
-                "<rect x=\"%d\" y=\"%d\" width=\"%d\" height=\"%d\" "
-                "fill=\"%s\"/>\n",
-                static_cast<int>(-scene.width() / 2),
-                static_cast<int>(-scene.height() / 2),
-                static_cast<int>(scene.width()),
-                static_cast<int>(scene.height()),
-                rgb(scene.background()).c_str());
-  svg += buf;
+  if (background) {
+    std::snprintf(buf, sizeof buf,
+                  "<rect x=\"%d\" y=\"%d\" width=\"%d\" height=\"%d\" "
+                  "fill=\"%s\"/>\n",
+                  static_cast<int>(-scene.width() / 2),
+                  static_cast<int>(-scene.height() / 2),
+                  static_cast<int>(scene.width()),
+                  static_cast<int>(scene.height()),
+                  rgb(scene.background()).c_str());
+    svg += buf;
+  }
   // Scene coordinates are y-up; SVG is y-down.
   svg += "<g transform=\"scale(1,-1)\">\n";
 

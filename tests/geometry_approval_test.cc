@@ -14,8 +14,11 @@
 #include <sstream>
 #include <string>
 
+#include <cstdio>
+
 #include "box.h"
 #include "demo_scene.h"
+#include "pdf.h"
 #include "text.h"
 #include "layout.h"
 #include "scene.h"
@@ -179,6 +182,30 @@ TEST_CASE("alphabetical cloud properties") {
       REQUIRE_FALSE(entries[i].word.intersectsWord(entries[j].word));
     }
   }
+}
+
+TEST_CASE("transparent svg omits the background") {
+  words::Scene scene = words::buildCloudScene(kFont);
+  std::string opaque = words::toSvg(scene);
+  std::string transparent = words::toSvg(scene, false);
+  CHECK(opaque.find("<rect") != std::string::npos);
+  CHECK(transparent.find("<rect") == std::string::npos);
+  // Same geometry either way: the background rect is the only difference.
+  CHECK(transparent.find("<path") != std::string::npos);
+}
+
+TEST_CASE("pdf export is a well-formed vector document") {
+  words::Scene scene = words::buildCloudScene(kFont);
+  std::string pdf = words::toPdf(scene, 11 * 72.0);
+  CHECK(pdf.compare(0, 8, "%PDF-1.4") == 0);
+  CHECK(pdf.find("/Filter /FlateDecode") != std::string::npos);
+  // Page preserves the scene aspect: MediaBox [0 0 792 H].
+  CHECK(pdf.find("/MediaBox [0 0 792.00 ") != std::string::npos);
+  double expectH = 792.0 * scene.height() / scene.width();
+  char h[32];
+  std::snprintf(h, sizeof h, "%.2f", expectH);
+  CHECK(pdf.find(std::string("792.00 ") + h + "]") != std::string::npos);
+  CHECK(pdf.rfind("%%EOF\n") == pdf.size() - 6);
 }
 
 TEST_CASE("cloud layout properties") {

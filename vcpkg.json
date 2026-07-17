@@ -15,7 +15,8 @@
         "freetype"
       ]
     },
-    "utf8proc"
+    "utf8proc",
+    "zlib"
   ],
   "features": {
     "tests": {
