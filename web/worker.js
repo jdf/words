@@ -65,9 +65,10 @@ async function rebuild(msg) {
     engine.FS.writeFile(kUserTextPath, new TextEncoder().encode(msg.text));
   }
   engine.ccall('wordsRebuild', null,
-               ['number', 'string', 'string', 'string', 'string', 'string'],
+               ['number', 'string', 'string', 'string', 'string', 'string',
+                'number'],
                [msg.seed, msg.orientation, msg.placement, msg.palette, path,
-                msg.useText ? kUserTextPath : '']);
+                msg.useText ? kUserTextPath : '', msg.maxWords | 0]);
 }
 
 function init(msg) {

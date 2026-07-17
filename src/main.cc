@@ -75,6 +75,7 @@ struct App {
 
 App* g_app = nullptr;
 uint32_t g_seed = 1447;  // the curated default (see CloudOptions::seed)
+int g_maxWords = 800;    // the word-count slider; benchmarked cap 2000
 // UI override for the orientation strategy; empty = use the URL parameter.
 std::string g_orientation;
 // UI override for the placement strategy; empty = use the URL parameter.
@@ -161,6 +162,7 @@ words::Scene buildScene(const std::string& fontPath,
     options.placement = *p;
   }
   options.seed = g_seed;
+  options.maxWords = static_cast<size_t>(g_maxWords);
   options.progress = postProgress;
   std::string fontLabel = words::fontFamilyName(fontPath);
   if (fontLabel.empty()) fontLabel = fontPath;
@@ -210,9 +212,11 @@ extern "C" EMSCRIPTEN_KEEPALIVE void wordsRebuild(int seed,
                                                   const char* placement,
                                                   const char* palette,
                                                   const char* fontPath,
-                                                  const char* textPath) {
+                                                  const char* textPath,
+                                                  int maxWords) {
   if (!g_app) return;
   g_seed = static_cast<uint32_t>(seed);
+  if (maxWords > 0) g_maxWords = maxWords;
   g_orientation = orientation ? orientation : "";
   g_placement = placement ? placement : "";
   g_palette = std::string(palette ? palette : "");
@@ -345,6 +349,11 @@ int main() {
   std::string seedParam = urlParam("seed");
   if (!seedParam.empty()) {
     g_seed = static_cast<uint32_t>(std::strtoul(seedParam.c_str(), nullptr, 10));
+  }
+  std::string maxParam = urlParam("max");
+  if (!maxParam.empty()) {
+    int m = std::atoi(maxParam.c_str());
+    if (m > 0) g_maxWords = m;
   }
 
   std::ifstream fontOverride(kFontOverridePath);

@@ -69,6 +69,13 @@
     #generate { text-align: left; }
     #panel .pair { display: flex; gap: 8px; }
     #panel .pair button { flex: 1; }
+    #panel .slider-row {
+      display: flex; flex-direction: column; gap: 2px; padding: 0 2px;
+    }
+    #panel .slider-row input[type="range"] {
+      width: 100%; accent-color: #4aa3ff;
+    }
+    #max-val { color: #e0e0e8; }
     /* Menus fly out to the right of the sidebar, vertically centered on
        their button (clamped on screen by app.js). Transient overlays,
        like any menu. */
@@ -172,6 +179,11 @@
       <button id="undo" title="Undo (⌘Z)" disabled>↩ Undo</button>
       <button id="redo" title="Redo (⇧⌘Z)" disabled>↪ Redo</button>
     </div>
+    <label class="slider-row" title="Maximum words placed in the cloud">
+      <span>Words <span id="max-val">800</span></span>
+      <input type="range" id="max-words" min="50" max="2000" step="50"
+             value="800">
+    </label>
     <div class="dd" id="dd-font">
       <button class="dd-btn"><span class="dd-cur"></span><span class="tri">▸</span></button>
       <div class="dd-panel" hidden></div>

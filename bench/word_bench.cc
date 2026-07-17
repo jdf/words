@@ -187,6 +187,30 @@ void BM_CloudFromText(benchmark::State& state) {
 }
 BENCHMARK(BM_CloudFromText)->Arg(800)->Unit(benchmark::kMillisecond);
 
+// Same pipeline minus counting, fed by the full Moby-Dick vocabulary
+// (18k+ distinct words) — the scaling data behind the word-count
+// slider's ceiling: where does a rebuild stop feeling interactive?
+void BM_CloudFromCounts(benchmark::State& state) {
+  std::ifstream in("tests/corpus/moby-dick.tsv");
+  std::ostringstream ss;
+  ss << in.rdbuf();
+  std::string tsv = ss.str();
+  for (auto _ : state) {
+    words::Scene scene = words::buildCloudFromCountsTsv(
+        kFont, "assets/stopwords", tsv,
+        {.maxWords = static_cast<size_t>(state.range(0))});
+    benchmark::DoNotOptimize(scene);
+  }
+}
+BENCHMARK(BM_CloudFromCounts)
+    ->Arg(400)
+    ->Arg(800)
+    ->Arg(1600)
+    ->Arg(2400)
+    ->Arg(3200)
+    ->Arg(4000)
+    ->Unit(benchmark::kMillisecond);
+
 // The per-frame collision query: triangle polygon vs a word's root box.
 void BM_BoxIntersects(benchmark::State& state) {
   words::ShapedText shaped = words::shapeText(kFont, kText);

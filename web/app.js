@@ -146,7 +146,22 @@ function bootDimension(dim) {
   return { mode: 'fixed', value: decode(raw) };
 }
 
-const spec = { seed: parseInt(params.get('seed'), 10) || 1447, text: '' };
+// Word-count bounds: benchmarked (BM_CloudFromCounts) — a 2000-word
+// rebuild is ~1s on a fast laptop for typical fonts, ~4x that for the
+// heaviest outlines (Fridge), doubling again on slow hardware. The far
+// end is a deliberate drag with a progress bar; past it the wait stops
+// feeling interactive anywhere.
+const MIN_WORDS = 50;
+const MAX_WORDS = 2000;
+const DEFAULT_WORDS = 800;
+const clampWords = (n) =>
+    Math.min(MAX_WORDS, Math.max(MIN_WORDS, n | 0)) || DEFAULT_WORDS;
+
+const spec = {
+  seed: parseInt(params.get('seed'), 10) || 1447,
+  maxWords: clampWords(parseInt(params.get('max'), 10) || DEFAULT_WORDS),
+  text: '',
+};
 for (const dim of ['font', 'orientation', 'placement', 'palette']) {
   const { mode, value } = bootDimension(dim);
   spec[dim] = value;
@@ -158,6 +173,7 @@ for (const dim of ['font', 'orientation', 'placement', 'palette']) {
 function specUrl(forEngine) {
   const url = new URL(location);
   url.searchParams.set('seed', spec.seed);
+  url.searchParams.set('max', spec.maxWords);
   for (const dim of ['font', 'orientation', 'placement', 'palette']) {
     const encode = dim === 'palette' ? paletteToToken : (x) => x;
     const tilde =
@@ -234,6 +250,7 @@ const sendSpec = (s) => {
     placement: s.placement,
     palette: s.palette,
     font: s.font,
+    maxWords: s.maxWords,
     useText: s.text !== '',
   };
   if (s.text !== '' && s.text !== stagedText) {
@@ -670,6 +687,9 @@ function buildMenu(menuName) {
 function refreshUi() {
   undoBtn.disabled = undoStack.length === 0;
   redoBtn.disabled = redoStack.length === 0;
+  const slider = document.getElementById('max-words');
+  slider.value = spec.maxWords;
+  document.getElementById('max-val').textContent = spec.maxWords;
   for (const menuName of Object.keys(MENUS)) {
     const cur = document.querySelector(`#dd-${menuName} .dd-cur`);
     cur.textContent = menuLabel(menuName);
@@ -705,6 +725,22 @@ if (showUi) {
   });
   undoBtn.addEventListener('click', undo);
   redoBtn.addEventListener('click', redo);
+
+  // Word-count slider: the label tracks the drag live; the rebuild (one
+  // undoable action) fires on release.
+  const maxSlider = document.getElementById('max-words');
+  maxSlider.addEventListener('input', () => {
+    document.getElementById('max-val').textContent = maxSlider.value;
+  });
+  maxSlider.addEventListener('change', () => {
+    const maxWords = clampWords(+maxSlider.value);
+    if (maxWords === spec.maxWords) return;
+    apply({
+      label: 'Word Count',
+      before: { ...spec },
+      after: { ...spec, maxWords },
+    });
+  });
   window.addEventListener('keydown', (e) => {
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z' &&
         !dialog.open && !exportDialog.open && !creditsDialog.open &&
