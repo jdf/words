@@ -1,0 +1,17 @@
+# Cache policy for the deployed app (Dreamhost runs Apache).
+#
+# The app shell — index.html, app.js, worker.js, words.js, words.wasm,
+# words.data, build-info.js, credits.html — must stay mutually
+# consistent across deploys, so it always revalidates: no-cache doesn't
+# mean "don't cache", it means "ask first", and an unchanged file costs
+# only a 304. The heavy assets that rarely change (fonts, corpus,
+# images) may cache for a week.
+<IfModule mod_headers.c>
+  Header set Cache-Control "no-cache"
+  <FilesMatch "\.(ttf|png|tsv|svg|ico)$">
+    Header set Cache-Control "public, max-age=604800"
+  </FilesMatch>
+</IfModule>
+
+# Correct type for streaming wasm compilation.
+AddType application/wasm .wasm
