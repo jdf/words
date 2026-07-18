@@ -15,6 +15,7 @@ function handle(msg) {
   switch (msg.type) {
     case 'rebuild': rebuild(msg); break;
     case 'resize': engine._wordsResize(msg.width, msg.height); break;
+    case 'camera': engine._wordsSetCamera(msg.zoom, msg.cx, msg.cy); break;
     case 'logScene': engine._wordsLogScene(); break;
     case 'exportSvg':
       reply(msg.id,

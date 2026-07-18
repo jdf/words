@@ -31,7 +31,10 @@
     [hidden] { display: none !important; }
     body { display: flex; flex-direction: row; }
     /* The canvas owns whatever the sidebar doesn't take. */
-    #canvas { display: block; flex: 1; min-width: 0; height: 100%; }
+    #canvas {
+      display: block; flex: 1; min-width: 0; height: 100%;
+      touch-action: none;  /* the camera owns drags on the canvas */
+    }
     #status {
       position: fixed; left: 12px; bottom: 10px;
       font: 12px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;

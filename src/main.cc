@@ -77,6 +77,11 @@ App* g_app = nullptr;
 uint32_t g_seed = 1447;  // the curated default (see CloudOptions::seed)
 int g_maxWords = 800;    // the word-count slider; benchmarked cap 2000
 std::string g_variance;  // variance slug; "" falls back to ?variance=
+// The view camera: pure render state (layout never sees it). Reset on
+// every rebuild; the page owns the interaction math.
+double g_zoom = 1.0;
+double g_camX = 0.0;
+double g_camY = 0.0;
 // UI override for the orientation strategy; empty = use the URL parameter.
 std::string g_orientation;
 // UI override for the placement strategy; empty = use the URL parameter.
@@ -205,7 +210,8 @@ void render() {
   glClearStencil(0);
   glClear(GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
-  g_app->wordRenderer.draw(g_app->scene, g_app->width, g_app->height);
+  g_app->wordRenderer.draw(g_app->scene, g_app->width, g_app->height, g_zoom,
+                           g_camX, g_camY);
 }
 
 }  // namespace
@@ -227,6 +233,10 @@ extern "C" EMSCRIPTEN_KEEPALIVE void wordsRebuild(int seed,
   g_seed = static_cast<uint32_t>(seed);
   if (maxWords > 0) g_maxWords = maxWords;
   g_variance = variance ? variance : "";
+  // A new cloud gets a fresh view.
+  g_zoom = 1.0;
+  g_camX = 0.0;
+  g_camY = 0.0;
   g_orientation = orientation ? orientation : "";
   g_placement = placement ? placement : "";
   g_palette = std::string(palette ? palette : "");
@@ -238,6 +248,19 @@ extern "C" EMSCRIPTEN_KEEPALIVE void wordsRebuild(int seed,
   render();
   std::printf("%s · seed %u\n", description.c_str(), g_seed);
   postIdle();
+}
+
+// The view camera: zoom magnifies around scene point (cx, cy). The page
+// computes the interaction (anchored wheel zoom, drag pan) and pushes
+// absolute state; rendering is a single cached-buffer draw, cheap enough
+// for wheel-rate updates.
+extern "C" EMSCRIPTEN_KEEPALIVE void wordsSetCamera(double zoom, double cx,
+                                                    double cy) {
+  if (!g_app) return;
+  g_zoom = zoom;
+  g_camX = cx;
+  g_camY = cy;
+  render();
 }
 
 // The page pushes drawing-buffer size changes (device pixels); no DOM in

@@ -112,14 +112,17 @@ bool WordRenderer::init(const Scene& scene) {
   return true;
 }
 
-void WordRenderer::draw(const Scene& scene, int width, int height) {
+void WordRenderer::draw(const Scene& scene, int width, int height,
+                        double zoom, double cx, double cy) {
   if (words_.empty()) return;
   glUseProgram(program_);
 
   // Scene px → NDC, uniform on screen; rotation/scale are baked into each
   // word's geometry, so the shared matrix is a pure (anisotropic-in-NDC,
   // shape-preserving-on-screen) scale and per-word state is a translation.
-  double s = std::min(width / scene.width(), height / scene.height());
+  // The camera scales by zoom and recenters on (cx, cy); at the defaults
+  // (1, 0, 0) every expression reduces bit-exactly to the fit view.
+  double s = std::min(width / scene.width(), height / scene.height()) * zoom;
   double ndcX = s * 2.0 / width;
   double ndcY = s * 2.0 / height;
   const float mat[4] = {static_cast<float>(ndcX), 0.0f, 0.0f,
@@ -133,8 +136,8 @@ void WordRenderer::draw(const Scene& scene, int width, int height) {
   for (size_t i = 0; i < n; ++i) {
     const Scene::Entry& e = entries[i];
     const PerWord& pw = words_[i];
-    glUniform2f(offsetLoc_, static_cast<float>(e.word.x() * ndcX),
-                static_cast<float>(e.word.y() * ndcY));
+    glUniform2f(offsetLoc_, static_cast<float>((e.word.x() - cx) * ndcX),
+                static_cast<float>((e.word.y() - cy) * ndcY));
 
     // Pass 1: even-odd coverage into the stencil buffer, no color writes.
     glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);

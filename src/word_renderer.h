@@ -26,8 +26,11 @@ class WordRenderer {
   void destroy();
 
   // Draws all words, then hit boxes. `width`/`height` are the framebuffer
-  // size in device pixels.
-  void draw(const Scene& scene, int width, int height);
+  // size in device pixels. The camera magnifies by `zoom` around scene
+  // point (cx, cy); the defaults reproduce the plain scene-fitting view
+  // exactly.
+  void draw(const Scene& scene, int width, int height, double zoom = 1.0,
+            double cx = 0.0, double cy = 0.0);
 
  private:
   struct Contour {

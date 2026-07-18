@@ -261,6 +261,7 @@ let stagedText = null;  // what the worker currently has
 const sendSpec = (s) => {
   busy = true;
   window.__wordsIdle = false;
+  resetCamera();  // the engine resets its copy on rebuild
   const msg = {
     type: 'rebuild',
     seed: s.seed,
@@ -320,6 +321,10 @@ worker.onmessage = (e) => {
     window.__wordsIdle = true;
     progress.style.opacity = 0;
     progress.style.width = '0';
+    // Fresh scene, fresh camera math (see the camera section below).
+    askWorker({ type: 'sceneSize' }).then((size) => {
+      if (size.width > 0) cameraScene = size;
+    });
     if (pendingSpec !== null) {
       const s = pendingSpec;
       pendingSpec = null;
@@ -345,6 +350,97 @@ window.addEventListener('resize', () => {
       height: Math.round(canvas.clientHeight * dpr),
     });
   });
+});
+
+// ---------------------------------------------------------------------------
+// View camera: wheel zooms around the cursor, drag pans, double-click
+// resets. The engine treats the camera as pure render state (and resets
+// it on rebuild); this side owns the interaction math, mirroring the
+// camera and the scene dimensions. Renders are one cached-buffer draw,
+// cheap enough for wheel-rate updates (rAF-coalesced anyway).
+
+const camera = { zoom: 1, cx: 0, cy: 0 };
+let cameraScene = null;  // {width, height}, refreshed at idle
+let cameraQueued = false;
+const pushCamera = () => {
+  if (cameraQueued) return;
+  cameraQueued = true;
+  requestAnimationFrame(() => {
+    cameraQueued = false;
+    worker.postMessage(
+        { type: 'camera', zoom: camera.zoom, cx: camera.cx, cy: camera.cy });
+  });
+};
+const resetCamera = () => {
+  Object.assign(camera, { zoom: 1, cx: 0, cy: 0 });
+  canvas.style.cursor = '';
+};
+
+// CSS pixels per scene unit at the current zoom (the fit letterboxes).
+const cameraScale = () => {
+  const rect = canvas.getBoundingClientRect();
+  const fit = Math.min(rect.width / cameraScene.width,
+                       rect.height / cameraScene.height);
+  return { rect, scale: fit * camera.zoom };
+};
+
+// Never let the view leave the scene: pan bounds shrink to zero at fit.
+const clampCamera = () => {
+  const { rect, scale } = cameraScale();
+  const boundX = Math.max(0, (cameraScene.width - rect.width / scale) / 2);
+  const boundY = Math.max(0, (cameraScene.height - rect.height / scale) / 2);
+  camera.cx = Math.min(boundX, Math.max(-boundX, camera.cx));
+  camera.cy = Math.min(boundY, Math.max(-boundY, camera.cy));
+};
+
+const updateCursor = () => {
+  canvas.style.cursor = camera.zoom > 1 ? 'grab' : '';
+};
+
+canvas.addEventListener('wheel', (e) => {
+  if (!cameraScene) return;
+  e.preventDefault();
+  const { rect, scale } = cameraScale();
+  // The scene point under the cursor stays put through the zoom change.
+  const px = e.clientX - rect.left - rect.width / 2;
+  const py = e.clientY - rect.top - rect.height / 2;
+  const sx = camera.cx + px / scale;
+  const sy = camera.cy - py / scale;  // scene y is up
+  camera.zoom =
+      Math.min(40, Math.max(1, camera.zoom * Math.exp(-e.deltaY * 0.002)));
+  const after = cameraScale().scale;
+  camera.cx = sx - px / after;
+  camera.cy = sy + py / after;
+  clampCamera();
+  updateCursor();
+  pushCamera();
+}, { passive: false });
+
+let cameraDrag = null;
+canvas.addEventListener('pointerdown', (e) => {
+  if (!cameraScene || camera.zoom <= 1) return;
+  canvas.setPointerCapture(e.pointerId);
+  cameraDrag = { x: e.clientX, y: e.clientY };
+  canvas.style.cursor = 'grabbing';
+});
+canvas.addEventListener('pointermove', (e) => {
+  if (!cameraDrag) return;
+  const { scale } = cameraScale();
+  camera.cx -= (e.clientX - cameraDrag.x) / scale;
+  camera.cy += (e.clientY - cameraDrag.y) / scale;
+  cameraDrag = { x: e.clientX, y: e.clientY };
+  clampCamera();
+  pushCamera();
+});
+const endCameraDrag = () => {
+  cameraDrag = null;
+  updateCursor();
+};
+canvas.addEventListener('pointerup', endCameraDrag);
+canvas.addEventListener('pointercancel', endCameraDrag);
+canvas.addEventListener('dblclick', () => {
+  resetCamera();
+  pushCamera();
 });
 
 // ---------------------------------------------------------------------------
