@@ -373,6 +373,7 @@ const pushCamera = () => {
 };
 const resetCamera = () => {
   Object.assign(camera, { zoom: 1, cx: 0, cy: 0 });
+  detenteHold = 0;
   canvas.style.cursor = '';
 };
 
@@ -397,6 +398,29 @@ const updateCursor = () => {
   canvas.style.cursor = camera.zoom > 1 ? 'grab' : '';
 };
 
+// Zoom bounds, with a detente at the fit view: crossing 1 latches there
+// until a little more gesture accumulates (log-zoom units), so the
+// natural resting point is easy to hit and takes intent to pass. The
+// latch only arms on a crossing — zooming away from rest is immediate.
+const MIN_ZOOM = 0.5;
+const MAX_ZOOM = 40;
+const DETENTE = 0.25;
+let detenteHold = 0;
+const applyZoomFactor = (factor) => {
+  if (camera.zoom === 1 && detenteHold > 0) {
+    detenteHold -= Math.abs(Math.log(factor));
+    if (detenteHold > 0) return;  // held at the detente
+    detenteHold = 0;
+  }
+  const before = camera.zoom;
+  let z = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, before * factor));
+  if ((before - 1) * (z - 1) < 0) {
+    z = 1;
+    detenteHold = DETENTE;
+  }
+  camera.zoom = z;
+};
+
 canvas.addEventListener('wheel', (e) => {
   if (!cameraScene) return;
   e.preventDefault();
@@ -406,8 +430,7 @@ canvas.addEventListener('wheel', (e) => {
   const py = e.clientY - rect.top - rect.height / 2;
   const sx = camera.cx + px / scale;
   const sy = camera.cy - py / scale;  // scene y is up
-  camera.zoom =
-      Math.min(40, Math.max(1, camera.zoom * Math.exp(-e.deltaY * 0.002)));
+  applyZoomFactor(Math.exp(-e.deltaY * 0.002));
   const after = cameraScale().scale;
   camera.cx = sx - px / after;
   camera.cy = sy + py / after;
@@ -449,8 +472,7 @@ canvas.addEventListener('pointermove', (e) => {
     const { rect, scale } = cameraScale();
     const sx = camera.cx + (oldMid.x - rect.left - rect.width / 2) / scale;
     const sy = camera.cy - (oldMid.y - rect.top - rect.height / 2) / scale;
-    camera.zoom = Math.min(
-        40, Math.max(1, camera.zoom * (oldDist > 0 ? newDist / oldDist : 1)));
+    applyZoomFactor(oldDist > 0 ? newDist / oldDist : 1);
     const after = cameraScale().scale;
     camera.cx = sx - (newMid.x - rect.left - rect.width / 2) / after;
     camera.cy = sy + (newMid.y - rect.top - rect.height / 2) / after;
@@ -609,6 +631,7 @@ window.words = {
   _wordsLogScene: () => worker.postMessage({ type: 'logScene' }),
   buildExport,
   build: BUILD,
+  camera,  // live view state, for console interrogation
 };
 
 // ---------------------------------------------------------------------------
