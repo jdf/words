@@ -187,7 +187,12 @@ Scene cloudFromCounts(const std::string& fontPath,
   if (laid.empty()) return Scene();
 
   auto layoutStart = std::chrono::steady_clock::now();
-  Box world = worldFor(laid, options.aspect);
+  // A center-seeded spiral fills its world like a disc, and any
+  // non-square world flattens the disc at its short sides — so the
+  // central layout always gets a square world, whatever the canvas.
+  double aspect =
+      options.placement == Placement::kCenter ? 1.0 : options.aspect;
+  Box world = worldFor(laid, aspect);
   LayoutParams params;
   params.placement = options.placement;
   params.seed = options.seed;
