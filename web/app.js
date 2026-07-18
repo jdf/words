@@ -552,13 +552,13 @@ const PLACEMENT_THUMBS = {
     [16, 23, 12], [31, 23, 14],
     [23, 30, 13],
   ],
-  // The blocky variant: rows stay full width to the corners.
+  // The blocky variant: even rows filling a square block edge to edge.
   'square': [
-    [15, 2, 14], [31, 2, 13],
-    [14, 9, 16], [32, 9, 14],
-    [14, 16, 13], [29, 16, 17],
-    [14, 23, 17], [33, 23, 12],
-    [15, 30, 12], [29, 30, 15],
+    [13, 2, 16], [31, 2, 16],
+    [13, 9, 14], [29, 9, 18],
+    [13, 16, 17], [32, 16, 15],
+    [13, 23, 15], [30, 23, 17],
+    [13, 30, 16], [31, 30, 16],
   ],
   // The A→Z lens: same wide band as center-line, with the reading order
   // spelled out beneath.
