@@ -76,6 +76,7 @@ struct App {
 App* g_app = nullptr;
 uint32_t g_seed = 1447;  // the curated default (see CloudOptions::seed)
 int g_maxWords = 800;    // the word-count slider; benchmarked cap 2000
+std::string g_variance;  // variance slug; "" falls back to ?variance=
 // UI override for the orientation strategy; empty = use the URL parameter.
 std::string g_orientation;
 // UI override for the placement strategy; empty = use the URL parameter.
@@ -145,7 +146,8 @@ words::Scene buildScene(const std::string& fontPath,
   if (const words::NamedPalette* palette = words::findPalette(
           g_palette ? *g_palette : urlParam("palette"))) {
     scheme.palette = palette->palette;
-    if (auto v = words::findVariance(urlParam("variance"))) {
+    if (auto v = words::findVariance(
+            g_variance.empty() ? urlParam("variance") : g_variance)) {
       scheme.variance = *v;
     }
     options.colors = &scheme;
@@ -219,10 +221,12 @@ extern "C" EMSCRIPTEN_KEEPALIVE void wordsRebuild(int seed,
                                                   const char* palette,
                                                   const char* fontPath,
                                                   const char* textPath,
-                                                  int maxWords) {
+                                                  int maxWords,
+                                                  const char* variance) {
   if (!g_app) return;
   g_seed = static_cast<uint32_t>(seed);
   if (maxWords > 0) g_maxWords = maxWords;
+  g_variance = variance ? variance : "";
   g_orientation = orientation ? orientation : "";
   g_placement = placement ? placement : "";
   g_palette = std::string(palette ? palette : "");

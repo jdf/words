@@ -69,7 +69,8 @@
     #generate { text-align: left; }
     /* On desktop the pin/strip grouping is invisible to layout. */
     #panel .pin, #panel .strip { display: contents; }
-    #dd-words { display: none; }
+    #dd-words, #dd-variance { display: none; }
+    .var-val { color: #e0e0e8; }
     #panel .pair { display: flex; gap: 8px; }
     #panel .pair button { flex: 1; }
     #panel .slider-row {
@@ -196,9 +197,10 @@
       #panel .strip::-webkit-scrollbar { display: none; }
       #panel .strip > * { flex: none; }
       #panel button { white-space: nowrap; }
-      #panel #words-inline { display: none; }
-      #dd-words { display: block; }
-      #dd-words .dd-panel .slider-row { width: 240px; padding: 8px; }
+      #panel #words-inline, #panel #variance-inline { display: none; }
+      #dd-words, #dd-variance { display: block; }
+      #dd-words .dd-panel .slider-row,
+      #dd-variance .dd-panel .slider-row { width: 240px; padding: 8px; }
       .dd-btn { width: auto; }
       #panel .divider {
         border-top: none; border-left: 1px solid #2c2c34;
@@ -256,6 +258,25 @@
     <div class="dd" id="dd-palette">
       <button class="dd-btn"><span class="dd-cur"></span><span class="tri">▸</span></button>
       <div class="dd-panel" hidden></div>
+    </div>
+    <label class="slider-row" id="variance-inline"
+           title="How far word colors may wander from the palette">
+      <span>Variance <span class="var-val">A Little</span></span>
+      <input type="range" class="var-input" min="0" max="4" step="1"
+             value="1">
+    </label>
+    <!-- Phone-portrait replacement: a button naming the level, slider in
+         a pop-down. -->
+    <div class="dd" id="dd-variance"
+         title="How far word colors may wander from the palette">
+      <button class="dd-btn"><span class="dd-cur" id="variance-btn-label">A Little Variance</span><span class="tri">▸</span></button>
+      <div class="dd-panel" hidden>
+        <label class="slider-row">
+          <span>Variance <span class="var-val">A Little</span></span>
+          <input type="range" class="var-input" min="0" max="4" step="1"
+                 value="1">
+        </label>
+      </div>
     </div>
     <hr class="divider">
     <button id="use-words" title="Cloud your own text">Use My Words</button>

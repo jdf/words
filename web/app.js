@@ -107,6 +107,18 @@ const PALETTES = [
 // What 🎲 draws from. Orientation keeps a curated pool (the wilder
 // strategies are opt-in); palettes exclude App Colors so Generate always
 // shows an original palette.
+// The original's Color Variance menu: how far each word's color may
+// wander from its palette color (hue for chromatic colors, brightness
+// for achromatic; saturation never moves). Slider index = table order;
+// [slug, short label, full original menu label].
+const VARIANCES = [
+  ['exact', 'Exact', 'Exact Palette Colors'],
+  ['little', 'A Little', 'A Little Variance'],
+  ['some', 'Some', 'Some Variance'],
+  ['lots', 'Lots', 'Lots of Variance'],
+  ['wild', 'Wild', 'Wild Variance'],
+];
+
 const POOLS = {
   font: FONTS.map(([slug]) => slug),
   orientation: ['mostly-horizontal', 'horizontal', 'any-which-way'],
@@ -162,6 +174,9 @@ const clampWords = (n) =>
 const spec = {
   seed: parseInt(params.get('seed'), 10) || 1447,
   maxWords: clampWords(parseInt(params.get('max'), 10) || DEFAULT_WORDS),
+  // 'little' is the engine default, so a bare URL looks unchanged.
+  variance: VARIANCES.some(([slug]) => slug === params.get('variance'))
+      ? params.get('variance') : 'little',
   text: '',
 };
 for (const dim of ['font', 'orientation', 'placement', 'palette']) {
@@ -176,6 +191,7 @@ function specUrl(forEngine) {
   const url = new URL(location);
   url.searchParams.set('seed', spec.seed);
   url.searchParams.set('max', spec.maxWords);
+  url.searchParams.set('variance', spec.variance);
   for (const dim of ['font', 'orientation', 'placement', 'palette']) {
     const encode = dim === 'palette' ? paletteToToken : (x) => x;
     const tilde =
@@ -253,6 +269,7 @@ const sendSpec = (s) => {
     palette: s.palette,
     font: s.font,
     maxWords: s.maxWords,
+    variance: s.variance,
     useText: s.text !== '',
   };
   if (s.text !== '' && s.text !== stagedText) {
@@ -733,6 +750,15 @@ function refreshUi() {
   }
   document.getElementById('words-btn-label').textContent =
       `${spec.maxWords} words`;
+  const vIndex = VARIANCES.findIndex(([slug]) => slug === spec.variance);
+  const [, vShort, vFull] = VARIANCES[vIndex < 0 ? 1 : vIndex];
+  for (const s of document.querySelectorAll('.var-input')) {
+    s.value = vIndex < 0 ? 1 : vIndex;
+  }
+  for (const v of document.querySelectorAll('.var-val')) {
+    v.textContent = vShort;
+  }
+  document.getElementById('variance-btn-label').textContent = vFull;
   for (const menuName of Object.keys(MENUS)) {
     const cur = document.querySelector(`#dd-${menuName} .dd-cur`);
     cur.textContent = menuLabel(menuName);
@@ -789,21 +815,45 @@ if (showUi) {
     });
   }
 
-  // The phone-portrait words button: pop down the slider panel.
-  const wordsRoot = document.getElementById('dd-words');
-  const wordsBtn = wordsRoot.querySelector('.dd-btn');
-  const wordsPanel = wordsRoot.querySelector('.dd-panel');
-  wordsBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    const wasHidden = wordsPanel.hidden;
-    closeMenus();
-    if (wasHidden) {
-      wordsPanel.hidden = false;
-      positionMenuPanel(wordsBtn, wordsPanel);
-    }
-  });
-  // Slider drags end with a click that must not dismiss the panel.
-  wordsPanel.addEventListener('click', (e) => e.stopPropagation());
+  // Variance sliders (inline on desktop, pop-down on phone): index into
+  // VARIANCES; the labels track the drag live, the rebuild fires on
+  // release as one undoable action.
+  for (const slider of document.querySelectorAll('.var-input')) {
+    slider.addEventListener('input', () => {
+      const [, short] = VARIANCES[+slider.value];
+      for (const v of document.querySelectorAll('.var-val')) {
+        v.textContent = short;
+      }
+    });
+    slider.addEventListener('change', () => {
+      const [variance] = VARIANCES[+slider.value];
+      if (variance === spec.variance) return;
+      apply({
+        label: 'Variance',
+        before: { ...spec },
+        after: { ...spec, variance },
+      });
+    });
+  }
+
+  // The phone-portrait pop-down buttons (word count, variance): a
+  // dd-style button whose panel holds the slider.
+  for (const rootId of ['dd-words', 'dd-variance']) {
+    const root = document.getElementById(rootId);
+    const btn = root.querySelector('.dd-btn');
+    const panel = root.querySelector('.dd-panel');
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const wasHidden = panel.hidden;
+      closeMenus();
+      if (wasHidden) {
+        panel.hidden = false;
+        positionMenuPanel(btn, panel);
+      }
+    });
+    // Slider drags end with a click that must not dismiss the panel.
+    panel.addEventListener('click', (e) => e.stopPropagation());
+  }
   window.addEventListener('keydown', (e) => {
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z' &&
         !dialog.open && !exportDialog.open && !creditsDialog.open &&
