@@ -2,7 +2,11 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- maximum-scale pins WebKit's automatic rotate-to-landscape zoom
+       (which otherwise scales the page instead of reflowing); iOS still
+       allows user pinch-zoom for accessibility regardless. -->
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1, maximum-scale=1">
   <title>words</title>
   <link rel="icon" href="data:,"><!-- no favicon; silence the 404 -->
   <!-- Link-preview snippet (Open Graph + Twitter Card): what Slack,

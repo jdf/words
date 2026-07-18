@@ -488,6 +488,12 @@ canvas.addEventListener('pointercancel', endCameraPointer);
 for (const type of ['gesturestart', 'gesturechange', 'gestureend']) {
   canvas.addEventListener(type, (e) => e.preventDefault());
 }
+// Belt for WKWebView-wrapped browsers (iOS Chrome et al.) whose own
+// gesture recognizers can swallow the pinch before pointer events
+// settle: refusing multi-touch touchmove keeps the gesture ours.
+canvas.addEventListener('touchmove', (e) => {
+  if (e.touches.length > 1) e.preventDefault();
+}, { passive: false });
 canvas.addEventListener('dblclick', () => {
   resetCamera();
   pushCamera();
@@ -1173,7 +1179,7 @@ if (showUi) {
   // navigator.platform is frozen ("MacIntel" even on Apple Silicon), as
   // is the userAgent's OS version; ask Client Hints for the real
   // platform and architecture where supported.
-  const envReport = async () => {
+  const envReport = (platform) => {
     // visualViewport catches page-level pinch zoom (scale != 1), which
     // masquerades as rendering bugs in reports.
     const vv = window.visualViewport;
@@ -1181,15 +1187,6 @@ if (showUi) {
         ? `${Math.round(vv.width)}x${Math.round(vv.height)} ` +
           `@scale ${vv.scale.toFixed(2)}`
         : 'n/a';
-    let platform = navigator.platform;
-    try {
-      if (navigator.userAgentData) {
-        const hints = await navigator.userAgentData.getHighEntropyValues(
-            ['platformVersion', 'architecture', 'bitness']);
-        platform = `${navigator.userAgentData.platform} ` +
-            `${hints.platformVersion} ${hints.architecture}${hints.bitness}`;
-      }
-    } catch (err) { /* keep the legacy value */ }
     return [
       `build: ${BUILD.id} (${BUILD.date})`,
       `url: ${location.href}`,
@@ -1201,7 +1198,24 @@ if (showUi) {
           `${canvas.width}x${canvas.height} buffer`,
     ].join('\n');
   };
+  // The report is prepared when the dialog opens, never in the option
+  // click: an await between click and window.open expires the user
+  // activation, and the popup gets blocked (iOS Chrome exposes
+  // userAgentData where Safari doesn't — which is why only one of them
+  // ever hit it).
+  let envText = envReport(navigator.platform);
   document.getElementById('feedback-btn').addEventListener('click', () => {
+    envText = envReport(navigator.platform);
+    if (navigator.userAgentData) {
+      navigator.userAgentData
+          .getHighEntropyValues(['platformVersion', 'architecture', 'bitness'])
+          .then((hints) => {
+            envText = envReport(
+                `${navigator.userAgentData.platform} ${hints.platformVersion} ` +
+                `${hints.architecture}${hints.bitness}`);
+          })
+          .catch(() => { /* keep the legacy value */ });
+    }
     feedbackDialog.showModal();
   });
   document.getElementById('feedback-cancel').addEventListener('click', () => {
@@ -1214,11 +1228,12 @@ if (showUi) {
     }
   });
   for (const b of document.querySelectorAll('.fb-opt')) {
-    b.addEventListener('click', async () => {
+    b.addEventListener('click', () => {
       feedbackDialog.close();
+      // Synchronous from click to window.open — see envText above.
       const url = 'https://github.com/jdf/words/issues/new?template=' +
           b.dataset.template +
-          '&environment=' + encodeURIComponent(await envReport());
+          '&environment=' + encodeURIComponent(envText);
       window.open(url, '_blank', 'noopener');
     });
   }
