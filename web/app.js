@@ -481,6 +481,13 @@ const endCameraPointer = (e) => {
 };
 canvas.addEventListener('pointerup', endCameraPointer);
 canvas.addEventListener('pointercancel', endCameraPointer);
+// iOS Safari runs its own page pinch-zoom through proprietary gesture
+// events and doesn't reliably honor touch-action for it; a page stuck
+// half-zoomed looks exactly like a broken camera. Claim gestures that
+// start on the canvas.
+for (const type of ['gesturestart', 'gesturechange', 'gestureend']) {
+  canvas.addEventListener(type, (e) => e.preventDefault());
+}
 canvas.addEventListener('dblclick', () => {
   resetCamera();
   pushCamera();
@@ -1167,6 +1174,13 @@ if (showUi) {
   // is the userAgent's OS version; ask Client Hints for the real
   // platform and architecture where supported.
   const envReport = async () => {
+    // visualViewport catches page-level pinch zoom (scale != 1), which
+    // masquerades as rendering bugs in reports.
+    const vv = window.visualViewport;
+    const view = vv
+        ? `${Math.round(vv.width)}x${Math.round(vv.height)} ` +
+          `@scale ${vv.scale.toFixed(2)}`
+        : 'n/a';
     let platform = navigator.platform;
     try {
       if (navigator.userAgentData) {
@@ -1182,6 +1196,9 @@ if (showUi) {
       `platform: ${platform}`,
       `userAgent: ${navigator.userAgent}`,
       `viewport: ${innerWidth}x${innerHeight} @${devicePixelRatio}x`,
+      `visualViewport: ${view}`,
+      `canvas: ${canvas.clientWidth}x${canvas.clientHeight} css, ` +
+          `${canvas.width}x${canvas.height} buffer`,
     ].join('\n');
   };
   document.getElementById('feedback-btn').addEventListener('click', () => {

@@ -29,7 +29,9 @@
     html, body { margin: 0; height: 100%; background: #17171c; }
     /* The hidden attribute always wins, even over display:flex rules. */
     [hidden] { display: none !important; }
-    body { display: flex; flex-direction: row; }
+    /* 100dvh tracks iOS Safari's collapsing toolbar; older browsers
+       ignore it and keep the 100% above. */
+    body { display: flex; flex-direction: row; height: 100dvh; }
     /* The canvas owns whatever the sidebar doesn't take. */
     #canvas {
       display: block; flex: 1; min-width: 0; height: 100%;
