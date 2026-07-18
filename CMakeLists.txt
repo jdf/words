@@ -164,17 +164,22 @@ else()
   # approval-tests-cpp is header-only and ships no CMake config; vcpkg puts
   # ApprovalTests.hpp on the toolchain include path.
 
+  # Unit tests are colocated: every src/foo.h has a src/foo_test.cc.
+  # (Exceptions: gl_util.h and word_renderer.h are GL/wasm-only — the e2e
+  # goldens exercise them — and main.cc is the app shell.) The
+  # integration/approval suite stays in tests/.
+  file(GLOB WORDS_UNIT_TESTS CONFIGURE_DEPENDS src/*_test.cc)
   add_executable(words_tests
     tests/geometry_approval_test.cc
-    tests/orientation_test.cc
-    tests/palette_test.cc
     tests/test_main.cc
-    tests/text_test.cc
+    tests/text_approval_test.cc
+    ${WORDS_UNIT_TESTS}
   )
   target_link_libraries(words_tests PRIVATE
     words_core
     Catch2::Catch2WithMain
   )
+
   target_compile_definitions(words_tests PRIVATE
     WORDS_ASSETS_DIR="${CMAKE_SOURCE_DIR}/assets"
   )
@@ -187,4 +192,18 @@ else()
   # word model. Driven by tools/make-corpus.py.
   add_executable(word_counts tools/word_counts_main.cc)
   target_link_libraries(word_counts PRIVATE words_core)
+
+  # Coverage instrumentation (clang source-based); driven by
+  # tools/coverage.sh via the host-coverage preset.
+  option(WORDS_COVERAGE "Instrument the host build for llvm-cov" OFF)
+  if(WORDS_COVERAGE)
+    foreach(t words_core words_tests)
+      target_compile_options(${t} PRIVATE
+        -fprofile-instr-generate -fcoverage-mapping)
+    endforeach()
+    # Everything that links the instrumented core needs the runtime.
+    foreach(t words_tests word_counts)
+      target_link_options(${t} PRIVATE -fprofile-instr-generate)
+    endforeach()
+  endif()
 endif()

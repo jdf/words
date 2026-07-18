@@ -14,11 +14,8 @@
 #include <sstream>
 #include <string>
 
-#include <cstdio>
-
 #include "box.h"
 #include "demo_scene.h"
-#include "pdf.h"
 #include "text.h"
 #include "layout.h"
 #include "scene.h"
@@ -112,20 +109,6 @@ TEST_CASE("text cloud in coolvetica") {
   verifySvg(words::toSvg(scene));
 }
 
-TEST_CASE("placement lookup by slug") {
-  CHECK(words::findPlacement("center-line") == words::Placement::kCenterLine);
-  CHECK(words::findPlacement("center") == words::Placement::kCenter);
-  CHECK(words::findPlacement("square") == words::Placement::kSquare);
-  CHECK(words::findPlacement("vertical-center-line") ==
-        words::Placement::kVerticalCenterLine);
-  CHECK_FALSE(words::findPlacement("edge").has_value());
-  CHECK(words::placementName(words::Placement::kCenterLine) == "Center Line");
-  CHECK(words::placementName(words::Placement::kCenter) == "Center");
-  CHECK(words::placementName(words::Placement::kSquare) == "Square");
-  CHECK(words::placementName(words::Placement::kVerticalCenterLine) ==
-        "Vertical Center Line");
-}
-
 TEST_CASE("any-which-way cloud properties") {
   // Arbitrary rotations through the whole pipeline: every pairwise HBB
   // collision here runs at angles the 0/90 clouds never exercise.
@@ -188,45 +171,6 @@ TEST_CASE("alphabetical cloud properties") {
       REQUIRE_FALSE(entries[i].word.intersectsWord(entries[j].word));
     }
   }
-}
-
-TEST_CASE("transparent svg omits the background") {
-  words::Scene scene = words::buildCloudScene(kFont);
-  std::string opaque = words::toSvg(scene);
-  std::string transparent = words::toSvg(scene, false);
-  CHECK(opaque.find("<rect") != std::string::npos);
-  CHECK(transparent.find("<rect") == std::string::npos);
-  // Same geometry either way: the background rect is the only difference.
-  CHECK(transparent.find("<path") != std::string::npos);
-}
-
-TEST_CASE("pdf export is a well-formed vector document") {
-  words::Scene scene = words::buildCloudScene(kFont);
-  std::string pdf = words::toPdf(scene, 11 * 72.0);
-  CHECK(pdf.compare(0, 8, "%PDF-1.4") == 0);
-  CHECK(pdf.find("/Filter /FlateDecode") != std::string::npos);
-  // Page preserves the scene aspect: MediaBox [0 0 792 H].
-  CHECK(pdf.find("/MediaBox [0 0 792.00 ") != std::string::npos);
-  double expectH = 792.0 * scene.height() / scene.width();
-  char h[32];
-  std::snprintf(h, sizeof h, "%.2f", expectH);
-  CHECK(pdf.find(std::string("792.00 ") + h + "]") != std::string::npos);
-  CHECK(pdf.rfind("%%EOF\n") == pdf.size() - 6);
-  // No producer given: no Info dictionary.
-  CHECK(pdf.find("/Info") == std::string::npos);
-}
-
-TEST_CASE("exports carry the build identifier as metadata") {
-  words::Scene scene = words::buildCloudScene(kFont);
-  std::string svg = words::toSvg(scene, true, "words build abc123def456");
-  CHECK(svg.find("<desc>words build abc123def456</desc>") !=
-        std::string::npos);
-  CHECK(words::toSvg(scene).find("<desc>") == std::string::npos);
-  std::string pdf =
-      words::toPdf(scene, 11 * 72.0, "words build abc123def456");
-  CHECK(pdf.find("<< /Producer (words build abc123def456) >>") !=
-        std::string::npos);
-  CHECK(pdf.find("/Info 5 0 R") != std::string::npos);
 }
 
 TEST_CASE("cloud layout properties") {

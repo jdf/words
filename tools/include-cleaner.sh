@@ -42,14 +42,21 @@ H_FILES=()
 if [ "$#" -gt 0 ]; then
   for f in "$@"; do
     case "$f" in
-      tests/*.cc|tools/*.cc) HOST_CC_FILES+=("$f") ;;
+      # Colocated unit tests compile only in the host build.
+      tests/*.cc|tools/*.cc|*_test.cc) HOST_CC_FILES+=("$f") ;;
       *.cc) CC_FILES+=("$f") ;;
       *.h) H_FILES+=("$f") ;;
     esac
   done
 else
-  CC_FILES=(src/*.cc bench/*.cc)
-  HOST_CC_FILES=(tests/*.cc tools/*.cc)
+  for f in src/*.cc; do
+    case "$f" in
+      *_test.cc) HOST_CC_FILES+=("$f") ;;
+      *) CC_FILES+=("$f") ;;
+    esac
+  done
+  CC_FILES+=(bench/*.cc)
+  HOST_CC_FILES+=(tests/*.cc tools/*.cc)
   H_FILES=(src/*.h)
 fi
 

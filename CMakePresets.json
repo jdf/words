@@ -55,6 +55,22 @@
       "environment": {
         "VCPKG_ROOT": "$penv{VCPKG_ROOT}"
       }
+    },
+    {
+      "name": "host-coverage",
+      "displayName": "Host tests with coverage instrumentation",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": true,
+        "VCPKG_MANIFEST_FEATURES": "tests",
+        "WORDS_COVERAGE": "ON"
+      },
+      "environment": {
+        "VCPKG_ROOT": "$penv{VCPKG_ROOT}"
+      }
     }
   ],
   "buildPresets": [
@@ -69,12 +85,23 @@
     {
       "name": "host-test",
       "configurePreset": "host-test"
+    },
+    {
+      "name": "host-coverage",
+      "configurePreset": "host-coverage"
     }
   ],
   "testPresets": [
     {
       "name": "host-test",
       "configurePreset": "host-test",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "host-coverage",
+      "configurePreset": "host-coverage",
       "output": {
         "outputOnFailure": true
       }
