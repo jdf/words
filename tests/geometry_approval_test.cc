@@ -116,10 +116,14 @@ TEST_CASE("placement lookup by slug") {
   CHECK(words::findPlacement("center-line") == words::Placement::kCenterLine);
   CHECK(words::findPlacement("center") == words::Placement::kCenter);
   CHECK(words::findPlacement("square") == words::Placement::kSquare);
+  CHECK(words::findPlacement("vertical-center-line") ==
+        words::Placement::kVerticalCenterLine);
   CHECK_FALSE(words::findPlacement("edge").has_value());
   CHECK(words::placementName(words::Placement::kCenterLine) == "Center Line");
   CHECK(words::placementName(words::Placement::kCenter) == "Center");
   CHECK(words::placementName(words::Placement::kSquare) == "Square");
+  CHECK(words::placementName(words::Placement::kVerticalCenterLine) ==
+        "Vertical Center Line");
 }
 
 TEST_CASE("any-which-way cloud properties") {

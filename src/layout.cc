@@ -21,6 +21,7 @@ std::optional<Placement> findPlacement(std::string_view name) {
   if (name == "center-line") return Placement::kCenterLine;
   if (name == "center") return Placement::kCenter;
   if (name == "square") return Placement::kSquare;
+  if (name == "vertical-center-line") return Placement::kVerticalCenterLine;
   if (name == "alphabetical") return Placement::kAlphabetical;
   return std::nullopt;
 }
@@ -30,6 +31,7 @@ std::string_view placementName(Placement placement) {
     case Placement::kCenterLine: return "Center Line";
     case Placement::kCenter: return "Center";
     case Placement::kSquare: return "Square";
+    case Placement::kVerticalCenterLine: return "Vertical Center Line";
     case Placement::kAlphabetical: return "Alphabetical";
   }
   return "?";
@@ -62,10 +64,15 @@ void layoutWords(std::vector<Word>& wordList, const Box& bounds,
   // for the alphabetical one), and placement runs biggest-area first —
   // early words claim their spots, later ones fill in around them.
   std::vector<double> startXs(wordList.size(), bounds.centerX());
+  std::vector<double> startYs(wordList.size(), bounds.centerY());
   if (params.placement == Placement::kCenterLine ||
       params.placement == Placement::kSquare) {
     for (double& x : startXs) {
       x = bounds.minX + unit(rng) * bounds.width();
+    }
+  } else if (params.placement == Placement::kVerticalCenterLine) {
+    for (double& y : startYs) {
+      y = bounds.minY + unit(rng) * bounds.height();
     }
   } else if (params.placement == Placement::kAlphabetical) {
     std::vector<std::string> keys(wordList.size());
@@ -104,30 +111,42 @@ void layoutWords(std::vector<Word>& wordList, const Box& bounds,
     // instead, and only the last attempt is allowed to run to infinity.
     constexpr int kMaxSeeds = 5;
     bool placed = false;
+    // The vertical strategy is a straight transpose: seeds spread along
+    // y, retries reseed y, and the jitter lands on x.
+    bool vertical = params.placement == Placement::kVerticalCenterLine;
     for (int attempt = 0; !placed; ++attempt) {
       bool lastAttempt = attempt + 1 >= kMaxSeeds;
       double startX = startXs[idx];
-      double startY = bounds.centerY();
-      // Retries reseed x uniformly — except under alphabetical placement,
-      // where a word's x IS its meaning; it keeps its slice and only the
-      // y jitter varies.
+      double startY = startYs[idx];
+      // Retries reseed the spread axis uniformly — except under
+      // alphabetical placement, where a word's x IS its meaning; it
+      // keeps its slice and only the jitter varies.
       if (attempt > 0 && params.placement != Placement::kAlphabetical) {
-        startX = bounds.minX + unit(rng) * bounds.width();
+        if (vertical) {
+          startY = bounds.minY + unit(rng) * bounds.height();
+        } else {
+          startX = bounds.minX + unit(rng) * bounds.width();
+        }
       }
-      // place(): y jittered near the horizontal center line, jitter scale
-      // proportional to the word's own smaller dimension. The original's
-      // alphabetical strategy seeds the exact center line for small
-      // clouds and jitters only past 100 words.
-      bool jitterY =
+      // place(): the cross axis jittered near the center line, jitter
+      // scale proportional to the word's own smaller dimension. The
+      // original's alphabetical strategy seeds the exact center line
+      // for small clouds and jitters only past 100 words.
+      bool jitter =
           params.placement == Placement::kCenterLine ||
-          params.placement == Placement::kSquare ||
+          params.placement == Placement::kSquare || vertical ||
           (params.placement == Placement::kAlphabetical &&
            wordList.size() > 100) ||
           attempt > 0;
-      if (jitterY) {
+      if (jitter) {
         double sign = unit(rng) < 0.5 ? -1.0 : 1.0;
-        startY += derriere(rng, 1.4) * 1.25 *
-                  std::min(b.width(), b.height()) * sign;
+        double off = derriere(rng, 1.4) * 1.25 *
+                     std::min(b.width(), b.height()) * sign;
+        if (vertical) {
+          startX += off;
+        } else {
+          startY += off;
+        }
       }
       w.moveTo(startX, startY);
       if (traced) debug->trail.push_back({w.x(), w.y()});

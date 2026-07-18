@@ -75,6 +75,7 @@ const ORIENTATIONS = [
 
 const PLACEMENTS = [
   ['center-line', 'Center Line'],
+  ['vertical-center-line', 'Vertical Center Line'],
   ['center', 'Center'],
   ['square', 'Square'],
   ['alphabetical', 'Alphabetical'],
@@ -533,6 +534,16 @@ const PLACEMENT_THUMBS = {
     [2, 16, 13], [18, 16, 17], [38, 16, 13], [53, 16, 6],
     [9, 23, 13], [26, 23, 14], [44, 23, 9],
     [24, 30, 11],
+  ],
+  // The transpose: a tall lens hugging the vertical midline.
+  'vertical-center-line': [
+    [26, 1, 9],
+    [22, 6, 15],
+    [18, 11, 24],
+    [16, 16, 28],
+    [19, 21, 22],
+    [23, 26, 14],
+    [27, 31, 8],
   ],
   'center': [
     [24, 2, 13],

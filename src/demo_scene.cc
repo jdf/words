@@ -249,6 +249,10 @@ Scene cloudFromCounts(const std::string& fontPath,
     aspect = kHeightPad / kWidthPad;
   } else if (options.placement == Placement::kSquare) {
     aspect = kHeightPad / kWidthPad / 1.4;
+  } else if (options.placement == Placement::kVerticalCenterLine) {
+    // The tall orientation of the canvas ratio: a column on desktop,
+    // and on a portrait phone simply the canvas shape itself.
+    aspect = std::min(options.aspect, 1.0 / options.aspect);
   }
   LayoutParams params;
   params.placement = options.placement;
