@@ -20,6 +20,7 @@ namespace words {
 std::optional<Placement> findPlacement(std::string_view name) {
   if (name == "center-line") return Placement::kCenterLine;
   if (name == "center") return Placement::kCenter;
+  if (name == "square") return Placement::kSquare;
   if (name == "alphabetical") return Placement::kAlphabetical;
   return std::nullopt;
 }
@@ -28,6 +29,7 @@ std::string_view placementName(Placement placement) {
   switch (placement) {
     case Placement::kCenterLine: return "Center Line";
     case Placement::kCenter: return "Center";
+    case Placement::kSquare: return "Square";
     case Placement::kAlphabetical: return "Alphabetical";
   }
   return "?";
@@ -60,7 +62,8 @@ void layoutWords(std::vector<Word>& wordList, const Box& bounds,
   // for the alphabetical one), and placement runs biggest-area first —
   // early words claim their spots, later ones fill in around them.
   std::vector<double> startXs(wordList.size(), bounds.centerX());
-  if (params.placement == Placement::kCenterLine) {
+  if (params.placement == Placement::kCenterLine ||
+      params.placement == Placement::kSquare) {
     for (double& x : startXs) {
       x = bounds.minX + unit(rng) * bounds.width();
     }
@@ -117,6 +120,7 @@ void layoutWords(std::vector<Word>& wordList, const Box& bounds,
       // clouds and jitters only past 100 words.
       bool jitterY =
           params.placement == Placement::kCenterLine ||
+          params.placement == Placement::kSquare ||
           (params.placement == Placement::kAlphabetical &&
            wordList.size() > 100) ||
           attempt > 0;

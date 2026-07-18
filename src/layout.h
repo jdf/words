@@ -32,6 +32,7 @@ struct LayoutDebug {
 enum class Placement {
   kCenterLine,  // random x across the width, y jittered near the center line
   kCenter,      // everything starts at the exact center
+  kSquare,      // center-line seeding, but in a square world
   // x by alphabetical rank (collation-keyed) across the width, y near the
   // center line — the cloud reads A→Z. Placement order stays biggest-
   // first, so important words claim their alphabetical spots early.

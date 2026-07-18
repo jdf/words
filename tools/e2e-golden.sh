@@ -35,7 +35,7 @@ ORIENTATIONS="horizontal mostly-horizontal long-horizontal-likely
 for o in $ORIENTATIONS; do
   CASES+=("orientation-$o|?corpus=moby-dick&orientation=$o&placement=center-line&palette=blue-meets-orange&variance=little&no-ui")
 done
-PLACEMENTS="center-line center alphabetical"
+PLACEMENTS="center-line center square alphabetical"
 for p in $PLACEMENTS; do
   CASES+=("placement-$p|?corpus=moby-dick&placement=$p&orientation=mostly-horizontal&palette=chilled-summer&variance=little&no-ui")
 done

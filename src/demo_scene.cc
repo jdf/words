@@ -190,14 +190,19 @@ Scene cloudFromCounts(const std::string& fontPath,
   if (laid.empty()) return Scene();
 
   auto layoutStart = std::chrono::steady_clock::now();
-  // A center-seeded spiral fills its world like a disc, and any
-  // non-square world flattens the disc at its short sides — so the
-  // central layout always gets a square world, whatever the canvas.
-  // "Square" must cancel the asymmetric pads: kHeightPad/kWidthPad
-  // makes width and height come out equal.
-  double aspect = options.placement == Placement::kCenter
-                      ? kHeightPad / kWidthPad
-                      : options.aspect;
+  // Shape-driven layouts ignore the canvas aspect. The central disc
+  // needs an equal-sided world (a non-square world flattens its short
+  // sides): kHeightPad/kWidthPad cancels worldFor's asymmetric pads.
+  // The square layout wants square *content*, which is different:
+  // center-line seeding spreads to the world's full width immediately
+  // while height only grows under density pressure, so an equal-sided
+  // world comes out ~1.15 wide — the extra divisor compensates.
+  double aspect = options.aspect;
+  if (options.placement == Placement::kCenter) {
+    aspect = kHeightPad / kWidthPad;
+  } else if (options.placement == Placement::kSquare) {
+    aspect = kHeightPad / kWidthPad / 1.15;
+  }
   Box world = worldFor(laid, aspect);
   LayoutParams params;
   params.placement = options.placement;

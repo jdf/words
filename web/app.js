@@ -76,6 +76,7 @@ const ORIENTATIONS = [
 const PLACEMENTS = [
   ['center-line', 'Center Line'],
   ['center', 'Center'],
+  ['square', 'Square'],
   ['alphabetical', 'Alphabetical'],
 ];
 
@@ -539,6 +540,14 @@ const PLACEMENT_THUMBS = {
     [12, 16, 17], [31, 16, 18],
     [16, 23, 12], [31, 23, 14],
     [23, 30, 13],
+  ],
+  // The blocky variant: rows stay full width to the corners.
+  'square': [
+    [15, 2, 14], [31, 2, 13],
+    [14, 9, 16], [32, 9, 14],
+    [14, 16, 13], [29, 16, 17],
+    [14, 23, 17], [33, 23, 12],
+    [15, 30, 12], [29, 30, 15],
   ],
   // The A→Z lens: same wide band as center-line, with the reading order
   // spelled out beneath.
