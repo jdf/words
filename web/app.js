@@ -416,14 +416,50 @@ canvas.addEventListener('wheel', (e) => {
   pushCamera();
 }, { passive: false });
 
+// Pointers on the canvas: one (mouse or finger) drags to pan; two
+// pinch-zoom around their moving midpoint. The map holds live pointer
+// positions; pinch geometry recomputes from it on every move.
+const pointers = new Map();
 let cameraDrag = null;
 canvas.addEventListener('pointerdown', (e) => {
-  if (!cameraScene || camera.zoom <= 1) return;
-  canvas.setPointerCapture(e.pointerId);
-  cameraDrag = { x: e.clientX, y: e.clientY };
-  canvas.style.cursor = 'grabbing';
+  if (!cameraScene) return;
+  try {
+    canvas.setPointerCapture(e.pointerId);
+  } catch (err) { /* synthetic events have no active pointer */ }
+  pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (pointers.size === 2) {
+    cameraDrag = null;  // the pinch owns both pointers now
+  } else if (camera.zoom > 1) {
+    cameraDrag = { x: e.clientX, y: e.clientY };
+    canvas.style.cursor = 'grabbing';
+  }
 });
 canvas.addEventListener('pointermove', (e) => {
+  if (!pointers.has(e.pointerId)) return;
+  if (pointers.size === 2) {
+    const [a, b] = [...pointers.values()];
+    const oldDist = Math.hypot(a.x - b.x, a.y - b.y);
+    const oldMid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+    pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    const [a2, b2] = [...pointers.values()];
+    const newDist = Math.hypot(a2.x - b2.x, a2.y - b2.y);
+    const newMid = { x: (a2.x + b2.x) / 2, y: (a2.y + b2.y) / 2 };
+    // The scene point under the old midpoint follows the new midpoint
+    // through the zoom change — pinch zooms and pans in one gesture.
+    const { rect, scale } = cameraScale();
+    const sx = camera.cx + (oldMid.x - rect.left - rect.width / 2) / scale;
+    const sy = camera.cy - (oldMid.y - rect.top - rect.height / 2) / scale;
+    camera.zoom = Math.min(
+        40, Math.max(1, camera.zoom * (oldDist > 0 ? newDist / oldDist : 1)));
+    const after = cameraScale().scale;
+    camera.cx = sx - (newMid.x - rect.left - rect.width / 2) / after;
+    camera.cy = sy + (newMid.y - rect.top - rect.height / 2) / after;
+    clampCamera();
+    updateCursor();
+    pushCamera();
+    return;
+  }
+  pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
   if (!cameraDrag) return;
   const { scale } = cameraScale();
   camera.cx -= (e.clientX - cameraDrag.x) / scale;
@@ -432,12 +468,19 @@ canvas.addEventListener('pointermove', (e) => {
   clampCamera();
   pushCamera();
 });
-const endCameraDrag = () => {
-  cameraDrag = null;
-  updateCursor();
+const endCameraPointer = (e) => {
+  pointers.delete(e.pointerId);
+  if (pointers.size === 1 && camera.zoom > 1) {
+    // A pinch releasing one finger hands off to a pan with the other.
+    const p = [...pointers.values()][0];
+    cameraDrag = { x: p.x, y: p.y };
+  } else {
+    cameraDrag = null;
+    updateCursor();
+  }
 };
-canvas.addEventListener('pointerup', endCameraDrag);
-canvas.addEventListener('pointercancel', endCameraDrag);
+canvas.addEventListener('pointerup', endCameraPointer);
+canvas.addEventListener('pointercancel', endCameraPointer);
 canvas.addEventListener('dblclick', () => {
   resetCamera();
   pushCamera();
