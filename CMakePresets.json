@@ -50,7 +50,8 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "CMAKE_EXPORT_COMPILE_COMMANDS": true,
-        "VCPKG_MANIFEST_FEATURES": "tests"
+        "VCPKG_MANIFEST_FEATURES": "tests",
+        "CMAKE_OSX_SYSROOT": "macosx"
       },
       "environment": {
         "VCPKG_ROOT": "$penv{VCPKG_ROOT}"
@@ -66,7 +67,8 @@
         "CMAKE_BUILD_TYPE": "Debug",
         "CMAKE_EXPORT_COMPILE_COMMANDS": true,
         "VCPKG_MANIFEST_FEATURES": "tests",
-        "WORDS_COVERAGE": "ON"
+        "WORDS_COVERAGE": "ON",
+        "CMAKE_OSX_SYSROOT": "macosx"
       },
       "environment": {
         "VCPKG_ROOT": "$penv{VCPKG_ROOT}"

@@ -39,6 +39,10 @@ if [ ! -f "build/$PRESET/build.ninja" ]; then
 fi
 cmake --build --preset "$PRESET"
 
+# Refresh the merged clangd database (wasm entries + host-only files like
+# the colocated unit tests) so the editor resolves every TU.
+python3 tools/merge-compile-db.py >/dev/null || true
+
 PORT=8787
 DIST="$PWD/build/$PRESET/dist"
 

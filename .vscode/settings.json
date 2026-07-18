@@ -4,8 +4,11 @@
 
   // clangd owns C++ IntelliSense; keep cpptools' engine out of the way.
   "C_Cpp.intelliSenseEngine": "disabled",
+  // build/clangd holds a merged database (tools/merge-compile-db.py,
+  // refreshed by ./dev): wasm-debug entries for the engine, host-test
+  // entries for the colocated *_test.cc / tests/ / tools/ files.
   "clangd.arguments": [
-    "--compile-commands-dir=${workspaceFolder}/build/wasm-debug",
+    "--compile-commands-dir=${workspaceFolder}/build/clangd",
     "--query-driver=**/emscripten/em++,**/emscripten/emcc"
   ]
 }
