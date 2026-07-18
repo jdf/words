@@ -83,6 +83,49 @@ Box worldFor(const std::vector<Word>& wordList, double aspect) {
   return {-width / 2, -height / 2, width / 2, height / 2};
 }
 
+// The laid-out ink's width:height ratio, robust to far-flung strays: a
+// word's box contributes half its area at each edge, and the compared
+// spans hold the central 90% of total area per axis.
+double inkAspect(const std::vector<Word>& laid) {
+  struct Edge {
+    double v, weight;
+  };
+  std::vector<Edge> xs, ys;
+  xs.reserve(2 * laid.size());
+  ys.reserve(2 * laid.size());
+  double total = 0;
+  for (const Word& w : laid) {
+    Box b = w.worldBounds();
+    double a = b.width() * b.height() / 2;
+    xs.push_back({b.minX, a});
+    xs.push_back({b.maxX, a});
+    ys.push_back({b.minY, a});
+    ys.push_back({b.maxY, a});
+    total += 2 * a;
+  }
+  if (total <= 0) return 1.0;
+  auto span = [total](std::vector<Edge>& edges) {
+    std::sort(edges.begin(), edges.end(),
+              [](const Edge& a, const Edge& b) { return a.v < b.v; });
+    double acc = 0, lo = edges.front().v, hi = edges.back().v;
+    bool loSet = false;
+    for (const Edge& e : edges) {
+      acc += e.weight;
+      if (!loSet && acc >= 0.05 * total) {
+        lo = e.v;
+        loSet = true;
+      }
+      if (acc >= 0.95 * total) {
+        hi = e.v;
+        break;
+      }
+    }
+    return hi - lo;
+  };
+  double sx = span(xs), sy = span(ys);
+  return sy > 0 ? sx / sy : 1.0;
+}
+
 // The original renderer fit its viewport to the laid-out content, not the
 // layout world — initial placements can legitimately fall outside the
 // world (a big word's center-line jitter scales with its own size), and
@@ -195,18 +238,30 @@ Scene cloudFromCounts(const std::string& fontPath,
   // sides): kHeightPad/kWidthPad cancels worldFor's asymmetric pads.
   // The square layout wants square *content*, which is different:
   // center-line seeding spreads to the world's full width immediately
-  // while height only grows under density pressure, so an equal-sided
-  // world comes out ~1.15 wide — the extra divisor compensates.
+  // while height only grows under density pressure, so the world must
+  // be narrower than square — by a factor that depends on density,
+  // font, and orientation mix. Rather than model all that, measure it:
+  // a sizing pass lays out in a near-square world, the ink's actual
+  // width:height ratio corrects the world, and the real pass lands
+  // square. Both passes are deterministic (same seed).
   double aspect = options.aspect;
   if (options.placement == Placement::kCenter) {
     aspect = kHeightPad / kWidthPad;
   } else if (options.placement == Placement::kSquare) {
-    aspect = kHeightPad / kWidthPad / 1.15;
+    aspect = kHeightPad / kWidthPad / 1.4;
   }
-  Box world = worldFor(laid, aspect);
   LayoutParams params;
   params.placement = options.placement;
   params.seed = options.seed;
+  if (options.placement == Placement::kSquare) {
+    LayoutParams sizing = params;  // no progress: it's a throwaway pass
+    layoutWords(laid, worldFor(laid, aspect), sizing);
+    // Word boxes overreport width vs rendered ink by ~5% (AABBs carry
+    // whitespace, most of all for rotated words); 1.05 calibrates the
+    // box measure to the pixel measure.
+    aspect /= std::clamp(inkAspect(laid) / 1.05, 0.5, 2.0);
+  }
+  Box world = worldFor(laid, aspect);
   if (options.progress) {
     params.progress = [&options](size_t done, size_t total) {
       options.progress("layout", done, total);
