@@ -66,7 +66,10 @@ constexpr double kAspect = 1.6;
 
 // The original's world sizing: barely more than the words' total area,
 // which is where the packed look comes from — the world is grown to fit
-// the words, not the words shrunk to fit a fixed world.
+// the words, not the words shrunk to fit a fixed world. Note the pads
+// are asymmetric, so the world's true ratio is aspect * 1.2/1.5.
+constexpr double kWidthPad = 1.2;
+constexpr double kHeightPad = 1.5;
 Box worldFor(const std::vector<Word>& wordList, double aspect) {
   double totalArea = 0, maxW = 0, maxH = 0;
   for (const Word& w : wordList) {
@@ -75,8 +78,8 @@ Box worldFor(const std::vector<Word>& wordList, double aspect) {
     maxW = std::max(maxW, b.width());
     maxH = std::max(maxH, b.height());
   }
-  double width = std::max(maxW, std::sqrt(aspect * totalArea)) * 1.2;
-  double height = std::max(maxH, std::sqrt(totalArea / aspect)) * 1.5;
+  double width = std::max(maxW, std::sqrt(aspect * totalArea)) * kWidthPad;
+  double height = std::max(maxH, std::sqrt(totalArea / aspect)) * kHeightPad;
   return {-width / 2, -height / 2, width / 2, height / 2};
 }
 
@@ -190,8 +193,11 @@ Scene cloudFromCounts(const std::string& fontPath,
   // A center-seeded spiral fills its world like a disc, and any
   // non-square world flattens the disc at its short sides — so the
   // central layout always gets a square world, whatever the canvas.
-  double aspect =
-      options.placement == Placement::kCenter ? 1.0 : options.aspect;
+  // "Square" must cancel the asymmetric pads: kHeightPad/kWidthPad
+  // makes width and height come out equal.
+  double aspect = options.placement == Placement::kCenter
+                      ? kHeightPad / kWidthPad
+                      : options.aspect;
   Box world = worldFor(laid, aspect);
   LayoutParams params;
   params.placement = options.placement;
