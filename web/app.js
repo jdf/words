@@ -1,15 +1,16 @@
 // The page is pure UI: the engine (wasm + WebGL) lives in a worker with an
 // OffscreenCanvas, so layout never blocks this thread. The engine posts
-// progress/idle; we relay prints, gate inputs, and keep the URL naming
-// what's on screen.
+// progress/idle; we relay prints and gate inputs.
 //
 // Interactivity model: the cloud spec has four style dimensions (font,
 // layout, orientation, palette), each either *fixed* (locked — Generate
 // keeps it) or *random* (Generate rolls it). The dropdown menus are the
 // locks: choosing a specific value locks the dimension, choosing 🎲
-// Random unlocks it. URL convention: `font=kenyan` is locked,
-// `font=~kenyan` is random-mode currently showing kenyan — either way
-// the URL reproduces the exact cloud on screen.
+// Random unlocks it. URL parameters are read at boot — `font=kenyan` is
+// locked, `font=~kenyan` is random-mode currently showing kenyan — so a
+// deep link reproduces a cloud exactly, but the address bar is never
+// rewritten: a bare visit stays bare and the site rolls its own choices.
+// (Feedback reports carry a specUrl() repro link instead.)
 'use strict';
 
 const status = document.getElementById('status');
@@ -186,7 +187,7 @@ for (const dim of ['font', 'orientation', 'placement', 'palette']) {
 }
 
 // forEngine drops the ~ markers: the engine wants plain, parseable
-// values, while the address bar records mode as well.
+// values, while the feedback repro URL records mode as well.
 function specUrl(forEngine) {
   const url = new URL(location);
   url.searchParams.set('seed', spec.seed);
@@ -201,16 +202,11 @@ function specUrl(forEngine) {
   return url;
 }
 
-// In UI mode the resolved boot spec goes into the URL *before* the worker
-// starts, so the engine (which reads URL parameters) and the address bar
-// both name exactly what's on screen. Under ?no-ui the URL is left
-// untouched.
-if (showUi) {
-  history.replaceState(null, '', specUrl());
-}
-
 // ---------------------------------------------------------------------------
-// Worker boot.
+// Worker boot. The engine reads URL parameters, but in UI mode it gets
+// the *resolved* boot spec (random dims rolled, ~ markers dropped) via
+// the init message rather than the real query string; the address bar is
+// left exactly as the user arrived at it.
 
 // moby-dick is the default corpus; ?text= (or an explicit ?corpus=)
 // overrides it.
@@ -644,7 +640,6 @@ const undoStack = [];
 const redoStack = [];
 
 const submitSpec = () => {
-  if (showUi) history.replaceState(null, '', specUrl());
   busy ? pendingSpec = { ...spec } : sendSpec({ ...spec });
 };
 const apply = (action) => {
@@ -1213,6 +1208,7 @@ if (showUi) {
     return [
       `build: ${BUILD.id} (${BUILD.date})`,
       `url: ${location.href}`,
+      `spec: ${specUrl().href}`,
       `platform: ${platform}`,
       `userAgent: ${navigator.userAgent}`,
       `viewport: ${innerWidth}x${innerHeight} @${devicePixelRatio}x`,

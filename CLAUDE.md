@@ -42,12 +42,8 @@ tools/include-cleaner.sh --fix # fix include-hygiene failures (misc-include-clea
 
 ## Toolchain
 
-CMake ≥ 3.25 + Ninja via `CMakePresets.json` (`wasm-debug`, `wasm-release`,
-`host-test`, `host-coverage`). vcpkg manifest mode; emsdk expected at `~/emsdk`
-(`$EMSDK`), vcpkg at `~/vcpkg` (`$VCPKG_ROOT`). Local vcpkg workarounds:
-`triplets/` (chainload toolchain that preserves `VCPKG_CXX_FLAGS`; defines
-`HB_NO_PRAGMA_GCC_DIAGNOSTIC_ERROR`) and `ports/harfbuzz`
-(`-Dutilities=disabled`) — revisit both on toolchain updates.
+Toolchain details (presets, emsdk/vcpkg paths, local vcpkg workarounds): README
+§§ Toolchain, Dependencies.
 
 clangd reads `build/clangd/compile_commands.json`, a **merged** database
 (`tools/merge-compile-db.py`, refreshed by `./dev`): wasm entries win overlaps,
@@ -80,10 +76,11 @@ The engine is a deterministic function of its spec
 (`wordsRebuild(seed, orientation, placement, palette, fontPath, textPath, maxWords, variance)`);
 the worker stages fonts and user text into MEMFS on demand. Camera
 (zoom/pan/pinch) is pure render state — invisible to layout, exports, and
-goldens. The URL serializes the settings (`font=goudy` = locked, `font=~goudy` =
-random-mode; `?no-ui` = fixed legacy defaults, used by goldens). Every UI
-mutation flows through `apply()` as an undo/redo action — everything must be
-undoable.
+goldens. URL parameters are read at boot (`font=goudy` = locked, `font=~goudy` =
+random-mode; `?no-ui` = fixed legacy defaults, used by goldens) but never
+written back — the address bar stays as the user arrived; feedback reports carry
+a `specUrl()` repro link instead. Every UI mutation flows through `apply()` as
+an undo/redo action — everything must be undoable.
 
 ## Testing conventions
 
