@@ -685,7 +685,10 @@ const dialog = document.getElementById('words-dialog');
 const MENUS = {
   font: { title: 'Font', options: FONTS },
   layout: { title: 'Layout', dim: 'placement', options: PLACEMENTS },
-  orientation: { title: 'Orientation', options: ORIENTATIONS },
+  // 'Angle', not 'Orientation': the shorter word keeps the sidebar's
+  // disclosure triangles aligned. (The engine dimension and URL
+  // parameter remain 'orientation'.)
+  orientation: { title: 'Angle', options: ORIENTATIONS },
   palette: { title: 'Palette', options: PALETTES },
 };
 
