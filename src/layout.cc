@@ -174,7 +174,14 @@ void layoutWords(std::vector<Word>& wordList, const Box& bounds,
           if (traced) debug->trail.push_back({w.x(), w.y()});
           theta += params.dTheta;
           radius += params.dRadius;
-          if (radius > bounds.width() || radius > bounds.height()) {
+          // Outgrown means bigger than the world's LARGER dimension: the
+          // containment check above already skips positions that stick
+          // out, so a spiral in a tall narrow world must be free to keep
+          // growing past the width to reach the vertical space — cutting
+          // it off at the smaller dimension declared saturation exactly
+          // when the only remaining room (the tall axis) was about to be
+          // explored, and the strays it scattered were github issue #1.
+          if (radius > std::max(bounds.width(), bounds.height())) {
             saturated = true;
           }
         } while (!saturated && !bounds.contains(w.worldBounds()));
