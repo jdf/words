@@ -45,11 +45,14 @@ function reply(id, payload) {
 }
 
 // Rebuild the cloud from a spec {seed, orientation, palette, font,
-// useText, text?}. Fonts are staged into MEMFS on first use (the page
-// only ever names them); on a failed fetch the engine keeps its current
-// font ("" path). User text arrives in `text` only when it changed —
-// once staged, `useText` alone selects it.
+// corpus, useText, text?}. Fonts and corpus TSVs are staged into MEMFS
+// on first use (the page only ever names them); on a failed fetch the
+// engine keeps its current font ("" path) / corpus. User text arrives
+// in `text` only when it changed — once staged, `useText` alone
+// selects it.
 const kUserTextPath = '/user-text.txt';
+const kCorpusTsvPath = '/corpus.tsv';
+let stagedCorpus = null;  // slug of the TSV at kCorpusTsvPath
 async function rebuild(msg) {
   let path = '/fonts/' + msg.font + '.ttf';
   if (!engine.FS.analyzePath(path).exists) {
@@ -60,6 +63,19 @@ async function rebuild(msg) {
     } catch (err) {
       postMessage({ type: 'printErr', text: 'font ' + msg.font + ': ' + err });
       path = '';
+    }
+  }
+  if (!msg.useText && msg.corpus && msg.corpus !== stagedCorpus) {
+    try {
+      const r =
+          await fetch('corpus/' + encodeURIComponent(msg.corpus) + '.tsv');
+      if (!r.ok) throw new Error(r.status);
+      engine.FS.writeFile(kCorpusTsvPath,
+                          new Uint8Array(await r.arrayBuffer()));
+      stagedCorpus = msg.corpus;
+    } catch (err) {
+      postMessage(
+          { type: 'printErr', text: 'corpus ' + msg.corpus + ': ' + err });
     }
   }
   if (msg.text !== undefined) {
@@ -77,6 +93,7 @@ function init(msg) {
   // The engine reads URL parameters from here (a worker's own location is
   // the script URL, not the page's).
   self.__wordsSearch = msg.search;
+  stagedCorpus = msg.corpus || null;  // what preRun stages below
   importScripts('words.js');
   // createWordsModule adopts this object as the Module, so the exported
   // runtime methods (FS, add/removeRunDependency) appear on it by the

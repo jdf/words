@@ -74,7 +74,7 @@
       align-self: stretch;
     }
     /* Green, to invite discovery. */
-    #panel #use-words { color: #7ed99a; }
+    #panel #use-words, #panel #use-book { color: #7ed99a; }
     #generate { text-align: left; }
     /* On desktop the pin/strip grouping is invisible to layout. */
     #panel .pin, #panel .strip { display: contents; }
@@ -181,6 +181,35 @@
     }
     .ex-section input[type="number"] { width: 6em; }
     .ex-dim { color: #8a8a96; }
+    /* Book picker: search box, sortable column headers, scrolling list.
+       Top edge pinned so the list growing/shrinking under the filter
+       doesn't move the search box. */
+    #book-dialog { width: min(480px, 90vw); margin-top: 12vh; margin-bottom: auto; }
+    #book-search {
+      width: 100%; box-sizing: border-box;
+      background: #101014; color: #d8d8e0; border: 1px solid #444;
+      border-radius: 4px; padding: 8px; font: inherit; font-size: 13px;
+    }
+    .book-head { display: flex; margin-top: 8px; }
+    .book-head button {
+      background: none; border: none !important; border-radius: 6px;
+      padding: 4px 10px !important; color: #8a8a96; text-align: left;
+    }
+    .book-head button:first-child { flex: 1; }
+    .book-head button.selected { color: #cfe6ff; }
+    #book-list {
+      display: flex; flex-direction: column; gap: 2px;
+      height: min(55vh, 480px); overflow-y: auto;
+    }
+    .book-row {
+      display: flex; gap: 12px; align-items: baseline; text-align: left;
+      background: none; border: 1px solid transparent !important;
+      border-radius: 8px; padding: 6px 10px !important; flex: none;
+    }
+    .book-row:hover { background: #26262e; }
+    .book-row.selected { border-color: #4aa3ff !important; }
+    .book-title { flex: 1; color: #d8d8e0; }
+    .book-author { flex: none; color: #8a8a96; }
     /* Phone in portrait: controls become a top bar — 🔄/↩/↪ icon-only
        and pinned left, the rest a horizontally scrolling strip; menus
        pop down below the bar (see positionMenuPanel in app.js). Last in
@@ -289,6 +318,7 @@
     </div>
     <hr class="divider">
     <button id="use-words" title="Cloud your own text">Use My Words</button>
+    <button id="use-book" title="Cloud a book from the library">Use a Book</button>
     <hr class="divider">
     <button id="export-btn" title="Save as PNG, SVG, or PDF">Export…</button>
     <span class="spacer"></span>
@@ -308,6 +338,23 @@
         <button id="use-cancel">Cancel</button>
         <button id="use-go" class="go">Make Cloud</button>
       </span>
+    </div>
+  </dialog>
+  <!-- "Use a Book": the bundled public-domain library (word-count TSVs
+       in dist/corpus/, manifest in corpus/index.tsv; see
+       tests/corpus/README.md). -->
+  <dialog id="book-dialog">
+    <h3>Use a Book</h3>
+    <input type="search" id="book-search" autocomplete="off"
+           placeholder="Search titles and authors…">
+    <div class="book-head">
+      <button data-key="title" data-label="Title">Title</button>
+      <button data-key="author" data-label="Author">Author</button>
+    </div>
+    <div id="book-list"></div>
+    <div class="row">
+      <span></span>
+      <button id="book-cancel">Cancel</button>
     </div>
   </dialog>
   <!-- Export: everything derives from the engine's vector output — SVG

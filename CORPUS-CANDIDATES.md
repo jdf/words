@@ -68,7 +68,6 @@ pre-modern spellings will dominate the cloud.
 | 541   | The Age of Innocence                        | Wharton    |                                           |
 | 284   | The House of Mirth                          | Wharton    |                                           |
 | 4517  | Ethan Frome                                 | Wharton    |                                           |
-| 160   | The Awakening                               | Chopin     | PG edition bundles selected short stories |
 | 242   | My Antonia                                  | Cather     |                                           |
 | 24    | O Pioneers!                                 | Cather     |                                           |
 | 233   | Sister Carrie                               | Dreiser    |                                           |
@@ -230,13 +229,6 @@ pre-modern spellings will dominate the cloud.
 | 16389 | The Enchanted April                          | von Arnim  |                       |
 | 6133  | The Extraordinary Adventures of Arsène Lupin | Leblanc    | tr                    |
 | 8492  | The King in Yellow                           | Chambers   |                       |
-
-## Wanted but not on PG (US)
-
-- Woolf, _To the Lighthouse_ / _A Room of One's Own_ — US-PD since 2023/2025 but
-  PG has not posted them.
-- Tolstoy, _The Death of Ivan Ilyitch_ — no standalone English etext.
-- Saint-Exupéry, _The Little Prince_ — not US-PD until 2039.
 
 ## Handling notes (implementation phase)
 

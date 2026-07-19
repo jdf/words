@@ -11,6 +11,16 @@ Regenerate or extend with `tools/make-corpus.py` (downloads are cached under
 `~/.cache/words/`). Sources are Project Gutenberg, plus Wikisource where
 Gutenberg has no holdings (Arabic).
 
+Two tiers live here side by side:
+
+- **Fixtures** (the multilingual dozen in the script's `BOOKS` list): full
+  distinct-word tables, kept byte-stable — tests depend on them.
+- **Library** (driven by `CORPUS-CANDIDATES.md` at the repo root): the works
+  bundled for the site’s "Use a Book" picker. Truncated to the top 4000 rows
+  (`# truncated:` header) since the engine lays out at most 2000 words; each
+  carries a `# category:` header. Plays come in two flavors: `<slug>.tsv` with
+  speaker headers / stage directions stripped, `<slug>-full.tsv` verbatim.
+
 Caveat: the word model has no CJK segmentation (neither did the original
 Wordle), so the Japanese and Chinese entries tokenize as punctuation- delimited
 clause-runs — they document that limitation rather than provide meaningful

@@ -193,6 +193,8 @@ function specUrl(forEngine) {
   url.searchParams.set('seed', spec.seed);
   url.searchParams.set('max', spec.maxWords);
   url.searchParams.set('variance', spec.variance);
+  if (spec.corpus) url.searchParams.set('corpus', spec.corpus);
+  else url.searchParams.delete('corpus');
   for (const dim of ['font', 'orientation', 'placement', 'palette']) {
     const encode = dim === 'palette' ? paletteToToken : (x) => x;
     const tilde =
@@ -209,9 +211,11 @@ function specUrl(forEngine) {
 // left exactly as the user arrived at it.
 
 // moby-dick is the default corpus; ?text= (or an explicit ?corpus=)
-// overrides it.
+// overrides it. The corpus is part of the spec — "Use a Book" swaps it
+// at runtime (the worker stages the TSV on demand).
 const corpus =
     params.get('corpus') || (params.has('text') ? '' : 'moby-dick');
+spec.corpus = corpus;
 const lazyFiles = [];
 if (corpus) {
   lazyFiles.push({
@@ -244,6 +248,7 @@ worker.postMessage(
       canvas: offscreen,
       search: showUi ? specUrl(true).search : location.search,
       lazyFiles,
+      corpus,
       build: BUILD.id,
     },
     [offscreen]);
@@ -267,6 +272,7 @@ const sendSpec = (s) => {
     font: s.font,
     maxWords: s.maxWords,
     variance: s.variance,
+    corpus: s.corpus,
     useText: s.text !== '',
   };
   if (s.text !== '' && s.text !== stagedText) {
@@ -1026,8 +1032,8 @@ if (showUi) {
   }
   window.addEventListener('keydown', (e) => {
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z' &&
-        !dialog.open && !exportDialog.open && !creditsDialog.open &&
-        !feedbackDialog.open) {
+        !dialog.open && !bookDialog.open && !exportDialog.open &&
+        !creditsDialog.open && !feedbackDialog.open) {
       e.preventDefault();
       e.shiftKey ? redo() : undo();
     }
@@ -1035,7 +1041,7 @@ if (showUi) {
 
   // "Use My Words": paste or load a local file (FileReader — the file
   // never leaves the machine), then cloud it. An empty textarea returns
-  // to the default corpus. Undoable like everything else.
+  // to the current corpus. Undoable like everything else.
   const useBtn = document.getElementById('use-words');
   const userText = document.getElementById('user-text');
   const userFile = document.getElementById('user-file');
@@ -1063,6 +1069,89 @@ if (showUi) {
       before: { ...spec },
       after: { ...spec, text },
     });
+  });
+
+  // ----- "Use a Book": the bundled public-domain library
+  // (tests/corpus/, built by tools/make-corpus.py). The manifest is
+  // fetched once, on first open; the list filters as you type and sorts
+  // by either column. Picking a book is one undoable action — the
+  // worker stages the TSV on demand.
+  const bookDialog = document.getElementById('book-dialog');
+  const bookList = document.getElementById('book-list');
+  const bookSearch = document.getElementById('book-search');
+  let bookIndex = null;  // [{slug, title, author, category}]
+  let bookSort = { key: 'title', asc: true };
+  const fold = (s) =>
+      s.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
+  async function loadBookIndex() {
+    if (bookIndex) return;
+    const r = await fetch('corpus/index.tsv');
+    if (!r.ok) throw new Error(r.status);
+    bookIndex = (await r.text()).split('\n')
+        .filter((line) => line && !line.startsWith('#'))
+        .map((line) => {
+          const [slug, title, author, category] = line.split('\t');
+          return { slug, title, author, category };
+        });
+  }
+  function renderBookList() {
+    const q = fold(bookSearch.value.trim());
+    const rows = bookIndex
+        .filter((b) => !q || fold(b.title + ' ' + b.author).includes(q))
+        .sort((a, b) => {
+          const cmp = a[bookSort.key].localeCompare(b[bookSort.key]) ||
+              a.title.localeCompare(b.title);
+          return bookSort.asc ? cmp : -cmp;
+        });
+    bookList.replaceChildren(...rows.map((b) => {
+      const row = document.createElement('button');
+      row.className = 'book-row';
+      row.classList.toggle('selected',
+          spec.text === '' && b.slug === spec.corpus);
+      const title = document.createElement('span');
+      title.className = 'book-title';
+      title.textContent = b.title;
+      const author = document.createElement('span');
+      author.className = 'book-author';
+      author.textContent = b.author;
+      row.append(title, author);
+      row.addEventListener('click', () => {
+        bookDialog.close();
+        if (spec.text === '' && spec.corpus === b.slug) return;
+        apply({
+          label: 'Use a Book',
+          before: { ...spec },
+          after: { ...spec, corpus: b.slug, text: '' },
+        });
+      });
+      return row;
+    }));
+    for (const h of document.querySelectorAll('.book-head button')) {
+      const on = h.dataset.key === bookSort.key;
+      h.textContent =
+          h.dataset.label + (on ? (bookSort.asc ? ' ▲' : ' ▼') : '');
+      h.classList.toggle('selected', on);
+    }
+  }
+  document.getElementById('use-book').addEventListener('click', () => {
+    loadBookIndex().then(() => {
+      renderBookList();
+      bookDialog.showModal();
+      bookSearch.select();
+    }).catch((err) => console.error('book index: ' + err));
+  });
+  bookSearch.addEventListener('input', renderBookList);
+  for (const h of document.querySelectorAll('.book-head button')) {
+    h.addEventListener('click', () => {
+      bookSort = {
+        key: h.dataset.key,
+        asc: bookSort.key === h.dataset.key ? !bookSort.asc : true,
+      };
+      renderBookList();
+    });
+  }
+  document.getElementById('book-cancel').addEventListener('click', () => {
+    bookDialog.close();
   });
 
   // ----- Export dialog.

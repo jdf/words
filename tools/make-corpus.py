@@ -1,15 +1,22 @@
 #!/usr/bin/env python3
 """Builds tests/corpus/: word-count tables for public-domain texts.
 
-For each configured book: download (cached in ~/.cache/words/gutenberg/ or
-~/.cache/words/wikisource/), strip site boilerplate, count words with the
-app's exact word model (the word_counts host tool), and write
-tests/corpus/<slug>.tsv with provenance headers. Stop words are not
-removed; the guessed language is recorded so consumers can apply the right
-stop list.
+Two tiers share the pipeline (download, cached in ~/.cache/words/; strip
+site boilerplate; count words with the app's exact word model via the
+word_counts host tool; write tests/corpus/<slug>.tsv with provenance
+headers). Stop words are not removed; the guessed language is recorded so
+consumers can apply the right stop list.
 
-Sources: Project Gutenberg (plain-text cache editions) and, where
-Gutenberg has no holdings (Arabic), Wikisource via the TextExtracts API.
+- BOOKS below: the multilingual test fixtures. Written in full and kept
+  byte-stable — golden tests depend on them.
+- CORPUS-CANDIDATES.md: the bundled library, one table row per work.
+  Library TSVs are truncated to the top MAX_ROWS rows (the engine never
+  lays out more than 2000 words); plays get a speaker-stripped <slug>.tsv
+  plus an untouched <slug>-full.tsv.
+
+Sources: Project Gutenberg (plain-text cache editions, fetched through a
+PG mirror per their robot policy) and, where Gutenberg has no holdings
+(Arabic), Wikisource via the TextExtracts API.
 
 Usage: tools/make-corpus.py   (builds build/host-test/word_counts if needed)
 """
@@ -21,6 +28,9 @@ import re
 import subprocess
 import sys
 import tempfile
+import time
+import unicodedata
+import urllib.error
 import urllib.parse
 import urllib.request
 
@@ -61,17 +71,46 @@ BOOKS = [
 START_RE = re.compile(r"\*\*\* ?START OF (THE|THIS) PROJECT GUTENBERG EBOOK")
 END_RE = re.compile(r"\*\*\* ?END OF (THE|THIS) PROJECT GUTENBERG EBOOK")
 
+# Bulk fetches go through a mirror per PG's robot policy; www is the
+# fallback when the mirror lacks a file.
+GUTENBERG_HOSTS = ["https://gutenberg.pglaf.org", "https://www.gutenberg.org"]
+FETCH_DELAY_S = 1.0
+
+CANDIDATES_MD = REPO / "CORPUS-CANDIDATES.md"
+MAX_ROWS = 4000  # library truncation; engine tops out at 2000 words
+EXTRA_VOLUMES = {2833: [2834]}  # The Portrait of a Lady
+SLUG_OVERRIDES = {
+    100: "shakespeare-complete",
+    2147: "poe-works",
+    10: "king-james-bible",
+    7986: "chekhov-plays",
+    128: "arabian-nights",
+    6133: "arsene-lupin",
+    6593: "tom-jones",
+}
+
 
 def fetch_gutenberg(gid: int) -> pathlib.Path:
     cache = CACHE / "gutenberg"
     cache.mkdir(parents=True, exist_ok=True)
     path = cache / f"pg{gid}.txt"
-    if not path.exists():
-        url = f"https://www.gutenberg.org/cache/epub/{gid}/pg{gid}.txt"
+    if path.exists():
+        return path
+    for host in GUTENBERG_HOSTS:
+        url = f"{host}/cache/epub/{gid}/pg{gid}.txt"
         print(f"  fetching {url}")
-        with urllib.request.urlopen(url) as r:
-            path.write_bytes(r.read())
-    return path
+        try:
+            req = urllib.request.Request(
+                url, headers={"User-Agent":
+                              "words-corpus-builder/1.0 "
+                              "(https://github.com/jdf/words)"})
+            with urllib.request.urlopen(req, timeout=120) as r:
+                path.write_bytes(r.read())
+            time.sleep(FETCH_DELAY_S)
+            return path
+        except urllib.error.URLError as e:
+            print(f"  ({e}; trying next host)")
+    raise RuntimeError(f"could not fetch pg{gid} from any host")
 
 
 def wikisource_api(lang: str, **params) -> dict:
@@ -195,6 +234,102 @@ def count_words(body: str) -> str:
         pathlib.Path(tmp).unlink()
 
 
+def parse_candidates() -> list[dict]:
+    """The library: one entry per `| id | work | author | notes |` table
+    row of CORPUS-CANDIDATES.md, categorized by the enclosing heading."""
+    entries, category = [], ""
+    for line in CANDIDATES_MD.read_text().splitlines():
+        if line.startswith("## "):
+            category = re.sub(r"\s*\(.*", "", line[3:].strip())
+        m = re.match(r"\|\s*(\d+)\s*\|([^|]+)\|([^|]+)\|([^|]*)\|", line)
+        if m and "Handling notes" not in category:
+            entries.append({
+                "gutenberg": int(m.group(1)),
+                "work": m.group(2).strip(),
+                "author": m.group(3).strip(),
+                "notes": m.group(4).strip(),
+                "category": category,
+                "play": category == "Plays",
+            })
+    return entries
+
+
+def slugify(work: str) -> str:
+    s = unicodedata.normalize("NFD", work)
+    s = "".join(c for c in s if not unicodedata.combining(c))
+    s = re.sub(r"['’]", "", s)
+    s = re.split(r"[:;,]", s)[0].lower()
+    s = re.sub(r"^(the|a|an) ", "", s.strip())
+    return re.sub(r"[^a-z0-9]+", "-", s).strip("-")
+
+
+# Speaker headers in PG plays are ALL-CAPS lines ending in a period
+# ("HAMLET.", "LADY MACBETH.", also "ACT I." / "SCENE II."); stage
+# directions are bracketed (possibly multiline) or Enter/Exit lines.
+SPEAKER_RE = re.compile(r"^[ \t]*[A-Z][A-Z'’ .\-]*\.\s*$", re.MULTILINE)
+DIRECTION_RE = re.compile(r"\[[^\]]*\]", re.DOTALL)
+STAGE_RE = re.compile(
+    r"^[ \t]*(ACT\b|SCENE\b|PROLOGUE\b|EPILOGUE\b|DRAMATIS PERSON|"
+    r"Enter |Exit |Exeunt|Re-enter )[^\n]*$", re.MULTILINE)
+
+
+def strip_play_apparatus(body: str) -> str:
+    body = DIRECTION_RE.sub(" ", body)
+    body = SPEAKER_RE.sub("", body)
+    return STAGE_RE.sub("", body)
+
+
+# Per-book cleanups, keyed by ebook id.
+SPECIAL_CLEAN = {
+    10: lambda body: re.sub(r"\b\d+:\d+\b", " ", body),  # KJV verse refs
+}
+
+
+def truncate_counts(counts: str) -> str:
+    """Top MAX_ROWS data rows of a word_counts table (comment headers
+    kept) — far beyond the engine's 2000-word ceiling, at a fraction of
+    the payload."""
+    lines = counts.splitlines()
+    headers = [l for l in lines if l.startswith("#")]
+    data = [l for l in lines if not l.startswith("#")]
+    if len(data) <= MAX_ROWS:
+        return counts
+    headers.append(f"# truncated: top {MAX_ROWS} of {len(data)} rows")
+    return "\n".join(headers + data[:MAX_ROWS]) + "\n"
+
+
+def build_library_book(entry: dict) -> list[str]:
+    """Fetches, cleans, counts, writes; returns the slugs written."""
+    gid = entry["gutenberg"]
+    slug = SLUG_OVERRIDES.get(gid, slugify(entry["work"]))
+    raw = fetch_gutenberg(gid).read_text(encoding="utf-8-sig")
+    header, body = strip_boilerplate(raw)
+    for extra in EXTRA_VOLUMES.get(gid, []):
+        extra_raw = fetch_gutenberg(extra).read_text(encoding="utf-8-sig")
+        body += "\n\n" + strip_boilerplate(extra_raw)[1]
+    if gid in SPECIAL_CLEAN:
+        body = SPECIAL_CLEAN[gid](body)
+    title = header_field(header, "Title").replace("\n", " — ")
+    source = (f"Project Gutenberg #{gid} "
+              f"(https://www.gutenberg.org/ebooks/{gid})")
+    variants = ([(slug, strip_play_apparatus(body)), (f"{slug}-full", body)]
+                if entry["play"] else [(slug, body)])
+    written = []
+    for vslug, vbody in variants:
+        counts = truncate_counts(count_words(vbody))
+        guessed = re.search(r"# language-guess: (\S+)", counts).group(1)
+        (CORPUS / f"{vslug}.tsv").write_text(
+            f"# {title}\n"
+            f"# source: {source}, public domain\n"
+            f"# generator: tools/make-corpus.py (word_counts host tool)\n"
+            f"# category: {entry['category']}\n"
+            + counts)
+        note = "" if guessed == "english" else f"  (guess: {guessed})"
+        print(f"  {vslug}: {title}{note}")
+        written.append(vslug)
+    return written
+
+
 def main() -> int:
     if not TOOL.exists():
         subprocess.run(["cmake", "--build", "--preset", "host-test",
@@ -233,6 +368,38 @@ def main() -> int:
             note = f"  *** GUESS != EXPECTED ({expected_guess})"
             failures += 1
         print(f"  {title}: guess={guessed}{note}")
+
+    # The bundled library. Slugs must not collide with each other or
+    # with the fixtures above.
+    seen = {b["slug"] for b in BOOKS}
+    entries = parse_candidates()
+    print(f"library: {len(entries)} works from {CANDIDATES_MD.name}")
+    # The picker manifest: slug, display title/author (from the
+    # candidates doc, not PG's long-form titles), category. moby-dick is
+    # a fixture but belongs in the picker too.
+    index = [("moby-dick", "Moby Dick", "Melville", "American")]
+    for i, entry in enumerate(entries):
+        print(f"[{i + 1}/{len(entries)}] {entry['work']} "
+              f"(pg{entry['gutenberg']})")
+        try:
+            slugs = build_library_book(entry)
+        except Exception as e:  # keep going; report at the end
+            print(f"  *** FAILED: {e}")
+            failures += 1
+            continue
+        index.append(
+            (slugs[0], entry["work"], entry["author"], entry["category"]))
+        for slug in slugs:
+            if slug in seen:
+                print(f"  *** SLUG COLLISION: {slug}")
+                failures += 1
+            seen.add(slug)
+    index.sort(key=lambda r: r[1].lower())
+    (CORPUS / "index.tsv").write_text(
+        "# corpus picker manifest: slug\ttitle\tauthor\tcategory\n"
+        "# generator: tools/make-corpus.py from CORPUS-CANDIDATES.md\n"
+        + "".join("\t".join(row) + "\n" for row in index))
+    print(f"index.tsv: {len(index)} works")
     return 1 if failures else 0
 
 

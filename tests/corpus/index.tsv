@@ -1,0 +1,169 @@
+# corpus picker manifest: slug	title	author	category
+# generator: tools/make-corpus.py from CORPUS-CANDIDATES.md
+christmas-carol	A Christmas Carol	Dickens	English novels
+connecticut-yankee-in-king-arthurs-court	A Connecticut Yankee in King Arthur's Court	Twain	American
+dolls-house	A Doll's House	Ibsen	Plays
+farewell-to-arms	A Farewell to Arms	Hemingway	Worth considering
+journey-to-the-centre-of-the-earth	A Journey to the Centre of the Earth	Verne	Adventure & SF
+little-princess	A Little Princess	Burnett	Children's
+midsummer-nights-dream	A Midsummer Night's Dream	Shakespeare	Plays
+portrait-of-the-artist-as-a-young-man	A Portrait of the Artist as a Young Man	Joyce	Modernists
+room-with-a-view	A Room with a View	Forster	Worth considering
+study-in-scarlet	A Study in Scarlet	Doyle	Worth considering
+tale-of-two-cities	A Tale of Two Cities	Dickens	English novels
+adventures-of-huckleberry-finn	Adventures of Huckleberry Finn	Twain	American
+aesops-fables	Aesop's Fables	Aesop	Children's
+alices-adventures-in-wonderland	Alice's Adventures in Wonderland	Carroll	Children's
+andersens-fairy-tales	Andersen's Fairy Tales	Andersen	Children's
+anna-karenina	Anna Karenina	Tolstoy	In translation
+anne-of-green-gables	Anne of Green Gables	Montgomery	Children's
+around-the-world-in-eighty-days	Around the World in Eighty Days	Verne	Adventure & SF
+autobiography-of-benjamin-franklin	Autobiography of Benjamin Franklin	Franklin	Nonfiction
+beowulf	Beowulf	—	Verse
+black-beauty	Black Beauty	Sewell	Children's
+bleak-house	Bleak House	Dickens	English novels
+candide	Candide	Voltaire	In translation
+cranford	Cranford	Gaskell	Worth considering
+crime-and-punishment	Crime and Punishment	Dostoyevsky	In translation
+cyrano-de-bergerac	Cyrano de Bergerac	Rostand	Plays
+david-copperfield	David Copperfield	Dickens	English novels
+dead-souls	Dead Souls	Gogol	In translation
+don-quixote	Don Quixote	Cervantes	In translation
+dracula	Dracula	Stoker	English novels
+dubliners	Dubliners	Joyce	Modernists
+emma	Emma	Austen	English novels
+ethan-frome	Ethan Frome	Wharton	American
+fathers-and-sons	Fathers and Sons	Turgenev	In translation
+faust	Faust	Goethe	Plays
+flatland	Flatland	Abbott	Adventure & SF
+frankenstein	Frankenstein	Shelley	English novels
+great-expectations	Great Expectations	Dickens	English novels
+grimms-fairy-tales	Grimms' Fairy Tales	Grimm	Children's
+gullivers-travels	Gulliver's Travels	Swift	English novels
+hamlet	Hamlet, Prince of Denmark	Shakespeare	Plays
+heart-of-darkness	Heart of Darkness	Conrad	English novels
+heidi	Heidi	Spyri	Children's
+incidents-in-the-life-of-a-slave-girl	Incidents in the Life of a Slave Girl	Jacobs	Nonfiction
+ivanhoe	Ivanhoe	Scott	English novels
+jane-eyre	Jane Eyre	Bronte	English novels
+julius-caesar	Julius Caesar	Shakespeare	Plays
+just-so-stories	Just So Stories	Kipling	Children's
+kidnapped	Kidnapped	Stevenson	English novels
+king-lear	King Lear	Shakespeare	Plays
+leaves-of-grass	Leaves of Grass	Whitman	Verse
+les-miserables	Les Miserables	Hugo	In translation
+life-on-the-mississippi	Life on the Mississippi	Twain	Worth considering
+little-women	Little Women	Alcott	American
+lord-jim	Lord Jim	Conrad	English novels
+macbeth	Macbeth	Shakespeare	Plays
+madame-bovary	Madame Bovary	Flaubert	In translation
+medea	Medea	Euripides	Plays
+meditations	Meditations	Aurelius	Nonfiction
+metamorphosis	Metamorphosis	Kafka	In translation
+middlemarch	Middlemarch	Eliot	English novels
+moby-dick	Moby Dick	Melville	American
+mrs-dalloway	Mrs Dalloway	Woolf	Modernists
+much-ado-about-nothing	Much Ado about Nothing	Shakespeare	Plays
+my-antonia	My Antonia	Cather	American
+narrative-of-the-life-of-frederick-douglass	Narrative of the Life of Frederick Douglass	Douglass	Nonfiction
+north-and-south	North and South	Gaskell	English novels
+notes-from-the-underground	Notes from the Underground	Dostoyevsky	In translation
+o-pioneers	O Pioneers!	Cather	American
+oedipus-king-of-thebes	Oedipus King of Thebes	Sophocles	Plays
+oliver-twist	Oliver Twist	Dickens	English novels
+on-the-origin-of-species	On the Origin of Species	Darwin	Nonfiction
+arabian-nights	One Thousand and One Nights	Arabian	In translation
+othello	Othello	Shakespeare	Plays
+paradise-lost	Paradise Lost	Milton	Verse
+persuasion	Persuasion	Austen	English novels
+peter-pan	Peter Pan	Barrie	Children's
+pinocchio	Pinocchio	Collodi	Children's
+poems-by-emily-dickinson	Poems by Emily Dickinson	Dickinson	Verse
+pride-and-prejudice	Pride and Prejudice	Austen	English novels
+pygmalion	Pygmalion	Shaw	Plays
+robinson-crusoe	Robinson Crusoe	Defoe	English novels
+romeo-and-juliet	Romeo and Juliet	Shakespeare	Plays
+sense-and-sensibility	Sense and Sensibility	Austen	English novels
+shakespeares-sonnets	Shakespeare's Sonnets	Shakespeare	Verse
+siddhartha	Siddhartha	Hesse	In translation
+sister-carrie	Sister Carrie	Dreiser	American
+strange-case-of-dr-jekyll-and-mr-hyde	Strange Case of Dr. Jekyll and Mr. Hyde	Stevenson	English novels
+tess-of-the-durbervilles	Tess of the d'Urbervilles	Hardy	English novels
+adventures-of-sherlock-holmes	The Adventures of Sherlock Holmes	Doyle	Adventure & SF
+adventures-of-tom-sawyer	The Adventures of Tom Sawyer	Twain	American
+aeneid	The Aeneid	Virgil	Verse
+age-of-innocence	The Age of Innocence	Wharton	American
+art-of-war	The Art of War	Sunzi	Nonfiction
+blue-castle	The Blue Castle	Montgomery	Worth considering
+brothers-karamazov	The Brothers Karamazov	Dostoyevsky	In translation
+call-of-the-wild	The Call of the Wild	London	American
+canterbury-tales	The Canterbury Tales	Chaucer	Verse
+chekhov-plays	The Cherry Orchard	Chekhov	Plays
+shakespeare-complete	The Complete Works of William Shakespeare	Shakespeare	Plays
+confessions-of-st-augustine	The Confessions of St. Augustine	Augustine	Worth considering
+count-of-monte-cristo	The Count of Monte Cristo	Dumas	Adventure & SF
+divine-comedy	The Divine Comedy	Dante Longfellow	Verse
+enchanted-april	The Enchanted April	von Arnim	Worth considering
+arsene-lupin	The Extraordinary Adventures of Arsène Lupin	Leblanc	Worth considering
+federalist-papers	The Federalist Papers	Hamilton	Nonfiction
+great-gatsby	The Great Gatsby	Fitzgerald	American
+tom-jones	The History of Tom Jones, a Foundling	Fielding	Worth considering
+hound-of-the-baskervilles	The Hound of the Baskervilles	Doyle	Adventure & SF
+house-of-mirth	The House of Mirth	Wharton	American
+house-of-the-seven-gables	The House of the Seven Gables	Hawthorne	American
+hunchback-of-notre-dame	The Hunchback of Notre Dame	Hugo	In translation
+idiot	The Idiot	Dostoyevsky	In translation
+iliad	The Iliad	Homer	Verse
+importance-of-being-earnest	The Importance of Being Earnest	Wilde	Plays
+invisible-man	The Invisible Man	Wells	Adventure & SF
+island-of-doctor-moreau	The Island of Doctor Moreau	Wells	Adventure & SF
+jungle	The Jungle	Sinclair	American
+jungle-book	The Jungle Book	Kipling	Children's
+king-in-yellow	The King in Yellow	Chambers	Worth considering
+king-james-bible	The King James Version of the Bible	—	Nonfiction
+last-of-the-mohicans	The Last of the Mohicans	Cooper	American
+lost-world	The Lost World	Doyle	Adventure & SF
+man-who-was-thursday	The Man Who Was Thursday	Chesterton	Worth considering
+mayor-of-casterbridge	The Mayor of Casterbridge	Hardy	English novels
+merchant-of-venice	The Merchant of Venice	Shakespeare	Plays
+moonstone	The Moonstone	Collins	English novels
+odyssey	The Odyssey	Homer	Verse
+picture-of-dorian-gray	The Picture of Dorian Gray	Wilde	English novels
+portrait-of-a-lady	The Portrait of a Lady	James	English novels
+prince	The Prince	Machiavelli	Nonfiction
+prophet	The Prophet	Gibran	Modernists
+raven	The Raven	Poe	Verse
+red-badge-of-courage	The Red Badge of Courage	Crane	American
+republic	The Republic	Plato	Nonfiction
+rubaiyat-of-omar-khayyam	The Rubaiyat of Omar Khayyam	Fitzgerald	Verse
+scarlet-letter	The Scarlet Letter	Hawthorne	American
+scarlet-pimpernel	The Scarlet Pimpernel	Orczy	Adventure & SF
+secret-garden	The Secret Garden	Burnett	Children's
+sorrows-of-young-werther	The Sorrows of Young Werther	Goethe	In translation
+souls-of-black-folk	The Souls of Black Folk	Du Bois	Nonfiction
+sun-also-rises	The Sun Also Rises	Hemingway	American
+tempest	The Tempest	Shakespeare	Plays
+three-musketeers	The Three Musketeers	Dumas	Adventure & SF
+time-machine	The Time Machine	Wells	Adventure & SF
+turn-of-the-screw	The Turn of the Screw	James	English novels
+velveteen-rabbit	The Velveteen Rabbit	Williams	Children's
+war-of-the-worlds	The War of the Worlds	Wells	Adventure & SF
+wind-in-the-willows	The Wind in the Willows	Grahame	Children's
+woman-in-white	The Woman in White	Collins	English novels
+wonderful-wizard-of-oz	The Wonderful Wizard of Oz	Baum	Children's
+poe-works	The Works of Edgar Allan Poe, Volume 1	Poe	American
+yellow-wallpaper	The Yellow Wallpaper	Gilman	American
+through-the-looking-glass	Through the Looking-Glass	Carroll	Children's
+thus-spake-zarathustra	Thus Spake Zarathustra	Nietzsche	In translation
+treasure-island	Treasure Island	Stevenson	English novels
+twelfth-night	Twelfth Night	Shakespeare	Plays
+twenty-thousand-leagues-under-the-sea	Twenty Thousand Leagues under the Sea	Verne	Adventure & SF
+ulysses	Ulysses	Joyce	Modernists
+uncle-toms-cabin	Uncle Tom's Cabin	Stowe	American
+up-from-slavery	Up from Slavery	Washington	Nonfiction
+vanity-fair	Vanity Fair	Thackeray	English novels
+walden	Walden	Thoreau	Nonfiction
+war-and-peace	War and Peace	Tolstoy	In translation
+white-fang	White Fang	London	American
+winnie-the-pooh	Winnie-the-Pooh	Milne	Children's
+wuthering-heights	Wuthering Heights	Bronte	English novels
