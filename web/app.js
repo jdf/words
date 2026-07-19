@@ -918,6 +918,9 @@ function buildMenu(menuName) {
 function refreshUi() {
   undoBtn.disabled = undoStack.length === 0;
   redoBtn.disabled = redoStack.length === 0;
+  // A book cloud is exactly reproducible from its URL; a user-text
+  // cloud isn't, so the share button hides.
+  document.getElementById('copy-link').hidden = spec.text !== '';
   for (const s of document.querySelectorAll('.max-input')) {
     s.value = spec.maxWords;
   }
@@ -1152,6 +1155,24 @@ if (showUi) {
   }
   document.getElementById('book-cancel').addEventListener('click', () => {
     bookDialog.close();
+  });
+
+  // ----- Copy Link: the full-state URL for the current book cloud
+  // (corpus, seed, every dimension with its lock/random mode, words,
+  // variance). Only visible in book mode — see refreshUi.
+  const copyLinkBtn = document.getElementById('copy-link');
+  let copyLinkTimer = 0;
+  copyLinkBtn.addEventListener('click', () => {
+    navigator.clipboard.writeText(specUrl().href).then(() => {
+      copyLinkBtn.querySelector('.btn-label').textContent = ' Copied!';
+      clearTimeout(copyLinkTimer);
+      copyLinkTimer = setTimeout(() => {
+        copyLinkBtn.querySelector('.btn-label').textContent = ' Copy Link';
+      }, 1500);
+    }).catch((err) => {
+      console.error('copy link: ' + err);
+      status.textContent = 'Could not copy: ' + specUrl().href;
+    });
   });
 
   // ----- Export dialog.
