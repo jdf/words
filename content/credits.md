@@ -41,6 +41,9 @@ books free for everyone. If this little library pleases you, consider
 A few of the multilingual sample texts come from
 [Wikisource](https://wikisource.org/), with equal gratitude.
 
+Thank you, Jon Orwant, for the suggestion that became **Use a Book**: that a
+shelf of well-loved public-domain books belongs right in the app.
+
 ## Fonts
 
 The typefaces are the original Wordle's font collection:
