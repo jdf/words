@@ -34,6 +34,18 @@ xcrun llvm-cov report "$BUILD/words_tests" \
   -instr-profile="$BUILD/coverage.profdata" \
   -ignore-filename-regex="$IGNORE"
 
+# Regenerate the committed COVERAGE.md from the same data. No timestamp,
+# so the file only changes when the numbers do; prettier keeps it in the
+# repo's markdown format (presubmit checks all .md).
+xcrun llvm-cov export "$BUILD/words_tests" \
+  -instr-profile="$BUILD/coverage.profdata" \
+  -ignore-filename-regex="$IGNORE" \
+  -summary-only | python3 tools/coverage-md.py > COVERAGE.md
+if [ ! -d node_modules/prettier ]; then
+  npm install >/dev/null
+fi
+npx prettier --write COVERAGE.md >/dev/null
+
 if [ "${1:-}" = "--html" ]; then
   xcrun llvm-cov show "$BUILD/words_tests" \
     -instr-profile="$BUILD/coverage.profdata" \

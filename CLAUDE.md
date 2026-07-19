@@ -24,7 +24,7 @@ ctest --preset host-test                   # all 71+ tests
 ctest --preset host-test -R <regex>        # single test by name
 build/host-test/words_tests "<test name>"  # or run the binary directly
 
-tools/coverage.sh [--html]     # clang source-based line coverage (baseline ~89%)
+tools/coverage.sh [--html]     # clang source-based line coverage; regenerates COVERAGE.md
 tools/e2e-golden.sh [--bless]  # byte-exact PNG goldens, pinned Chrome-for-Testing + SwiftShader
 tools/bench.sh [--benchmark_filter=...]  # google-benchmark under node (wasm-release)
 tools/include-cleaner.sh --fix # fix include-hygiene failures (misc-include-cleaner)
