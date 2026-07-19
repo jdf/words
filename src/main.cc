@@ -195,6 +195,15 @@ words::Scene buildScene(const std::string& fontPath,
   }
   std::string tsv = slurp(kCorpusTsvPath);
   if (!tsv.empty()) {
+    // The TSV's first header line is the book's title ("# Moby Dick; Or,
+    // The Whale") — lead the status line with it.
+    if (tsv.starts_with("# ")) {
+      const size_t eol = tsv.find('\n');
+      *description = tsv.substr(2, eol == std::string::npos
+                                       ? std::string::npos
+                                       : eol - 2) +
+                     " · " + *description;
+    }
     return words::buildCloudFromCountsTsv(fontPath, kStopWordsDir, tsv,
                                           options);
   }
