@@ -28,9 +28,18 @@ The stop-word lists come from
 [cue.language](https://github.com/vcl/cue.language), copyright 2009 IBM Corp.,
 under the Apache License 2.0.
 
-The built-in sample texts are word counts of public-domain books, courtesy of
-[Project Gutenberg](https://www.gutenberg.org/) and
-[Wikisource](https://wikisource.org/).
+## The Library
+
+Every book behind **Use a Book** — and the built-in sample texts — is a word
+count of a public-domain work digitized, transcribed, and proofread by the
+volunteers of [Project Gutenberg](https://www.gutenberg.org/), the oldest
+digital library: founded by Michael S. Hart, who invented the ebook in 1971, and
+sustained by volunteers ever since. Thank you for keeping tens of thousands of
+books free for everyone. If this little library pleases you, consider
+[donating to Project Gutenberg](https://www.gutenberg.org/donate/).
+
+A few of the multilingual sample texts come from
+[Wikisource](https://wikisource.org/), with equal gratitude.
 
 ## Fonts
 
