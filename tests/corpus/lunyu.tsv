@@ -2,6 +2,7 @@
 # source: Project Gutenberg #23839 (https://www.gutenberg.org/ebooks/23839), public domain
 # generator: tools/make-corpus.py (word_counts host tool)
 # language-guess: unknown
+# case: as-written
 # tokens: 4495
 # distinct: 3134
 子曰	400

@@ -147,3 +147,54 @@ TEST_CASE("display form uses the majority casing") {
   CHECK(display("nasa") == "NASA");    // 2 upper beat Nasa/nasa
   CHECK(display("ahab") == "Ahab");    // lone casing kept as-is
 }
+
+TEST_CASE("case folds: as-written, lower, upper") {
+  constexpr std::string_view kText = "Whale whale WHALE whale déjà DÉJÀ";
+
+  SECTION("as-written keeps distinct spellings distinct") {
+    auto counts =
+        words::countWords(kText, nullptr, words::CaseFold::kAsWritten);
+    REQUIRE(counts.size() == 5);
+    CHECK(counts[0].display == "whale");  // 2, the only repeat
+    CHECK(counts[0].count == 2);
+    CHECK(counts[1].display == "Whale");
+    CHECK(counts[1].count == 1);
+  }
+
+  SECTION("lower merges and lowercases, beyond ASCII") {
+    auto counts = words::countWords(kText, nullptr, words::CaseFold::kLower);
+    REQUIRE(counts.size() == 2);
+    CHECK(counts[0].display == "whale");
+    CHECK(counts[0].count == 4);
+    CHECK(counts[1].display == "déjà");
+    CHECK(counts[1].count == 2);
+  }
+
+  SECTION("upper merges and uppercases, beyond ASCII") {
+    auto counts = words::countWords(kText, nullptr, words::CaseFold::kUpper);
+    REQUIRE(counts.size() == 2);
+    CHECK(counts[0].display == "WHALE");
+    CHECK(counts[1].display == "DÉJÀ");
+  }
+}
+
+TEST_CASE("case fold slugs") {
+  CHECK(words::findCaseFold("guess") == words::CaseFold::kGuess);
+  CHECK(words::findCaseFold("as-written") == words::CaseFold::kAsWritten);
+  CHECK(words::findCaseFold("lower") == words::CaseFold::kLower);
+  CHECK(words::findCaseFold("upper") == words::CaseFold::kUpper);
+  CHECK_FALSE(words::findCaseFold("majority").has_value());
+  CHECK_FALSE(words::findCaseFold("").has_value());
+}
+
+TEST_CASE("foldDisplay handles Greek final sigma") {
+  // ΟΔΥΣΣΕΥΣ lowercases with a word-final ς; round-tripping to upper
+  // restores Σ (utf8proc maps ς -> Σ).
+  const std::string lower =
+      words::foldDisplay("ΟΔΥΣΣΕΥΣ", words::CaseFold::kLower);
+  CHECK(lower == "οδυσσευς");
+  CHECK(words::foldDisplay(lower, words::CaseFold::kUpper) == "ΟΔΥΣΣΕΥΣ");
+  // kGuess and kAsWritten are identity transforms.
+  CHECK(words::foldDisplay("MiXeD", words::CaseFold::kGuess) == "MiXeD");
+  CHECK(words::foldDisplay("MiXeD", words::CaseFold::kAsWritten) == "MiXeD");
+}

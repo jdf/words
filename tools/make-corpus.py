@@ -223,12 +223,15 @@ def clean_body(body: str) -> str:
 
 
 def count_words(body: str) -> str:
+    """Every corpus counts as-written — one row per exact spelling — so
+    the app can apply any case fold at load (the engine case-merges for
+    Guess/lower/UPPER and uses rows verbatim for As Written)."""
     with tempfile.NamedTemporaryFile("w", suffix=".txt", delete=False) as f:
         f.write(body)
         tmp = f.name
     try:
         return subprocess.run(
-            [TOOL, tmp, REPO / "assets" / "stopwords"],
+            [TOOL, tmp, REPO / "assets" / "stopwords", "--case=as-written"],
             capture_output=True, text=True, check=True).stdout
     finally:
         pathlib.Path(tmp).unlink()

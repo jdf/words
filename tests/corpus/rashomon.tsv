@@ -2,27 +2,27 @@
 # source: Project Gutenberg #1982 (https://www.gutenberg.org/ebooks/1982), public domain
 # generator: tools/make-corpus.py (word_counts host tool)
 # language-guess: english
+# case: as-written
 # tokens: 830
-# distinct: 732
+# distinct: 734
 下人は	20
 そうして	7
 勿論	6
 老婆は	6
 それから	5
-the	4
 そこで	4
 唯	4
 が	4
 しかし	4
 た	4
 すると	4
+the	3
 in	3
 それが	3
 る	3
 と	3
 饑死	3
 すれば	3
-A	2
 from	2
 is	2
 taken	2
@@ -52,6 +52,7 @@ RASHOMON	1
 By	1
 AKUTAGAWA	1
 Ryunosuke	1
+A	1
 note	1
 digitizer	1
 This	1
@@ -66,8 +67,10 @@ Japanese-capable	1
 to	1
 read	1
 it	1
+The	1
 text	1
 was	1
+a	1
 1917	1
 edition	1
 which	1

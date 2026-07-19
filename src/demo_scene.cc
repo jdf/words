@@ -12,6 +12,7 @@
 #include <random>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -293,7 +294,8 @@ Scene buildCloudFromText(const std::string& fontPath,
                          std::string_view text, const CloudOptions& options) {
   StopWordsSet stopSets(stopWordsDir);
   const StopWords* language = stopSets.guess(text);
-  std::vector<WordCount> counts = countWords(text, language);
+  std::vector<WordCount> counts =
+      countWords(text, language, options.caseFold);
   LOG(INFO) << "text: " << text.size() << " bytes, language "
             << (language ? language->name() : "(none)") << ", "
             << counts.size() << " distinct words after stop-word removal";
@@ -306,6 +308,12 @@ Scene buildCloudFromCountsTsv(const std::string& fontPath,
                               const CloudOptions& options) {
   StopWordsSet stopSets(stopWordsDir);
   const StopWords* language = nullptr;
+  // Corpus files carry "# case: as-written" and one row per exact
+  // spelling, so every fold can be applied here. A legacy case-merged
+  // file (no header) still loads: kLower / kUpper transform its stored
+  // display forms, and kAsWritten shows the stored majority casing —
+  // the per-spelling counts are unrecoverable.
+  bool asWrittenRows = false;
   std::vector<WordCount> counts;
   size_t pos = 0;
   while (pos < tsv.size()) {
@@ -320,6 +328,7 @@ Scene buildCloudFromCountsTsv(const std::string& fontPath,
       if (line.starts_with(kGuess)) {
         language = stopSets.find(line.substr(kGuess.size()));
       }
+      if (line == "# case: as-written") asWrittenRows = true;
       continue;
     }
     size_t tab = line.find('\t');
@@ -333,6 +342,38 @@ Scene buildCloudFromCountsTsv(const std::string& fontPath,
     // pipeline does after its language guess.
     if (language && language->isStopWord(word)) continue;
     counts.push_back({std::string(word), count});
+  }
+  if (asWrittenRows && options.caseFold != CaseFold::kAsWritten) {
+    // Case-merge at load, reproducing countWords' choices: rows arrive
+    // count-descending with first-appearance ties, so the first row per
+    // folded key is the majority casing (countWords keeps the earliest
+    // of the max-count forms).
+    std::vector<WordCount> merged;
+    std::unordered_map<std::string, size_t> byKey;  // fold key -> merged idx
+    merged.reserve(counts.size());
+    for (WordCount& wc : counts) {
+      auto [it, fresh] =
+          byKey.try_emplace(foldForMatch(wc.display), merged.size());
+      if (fresh) {
+        merged.push_back(std::move(wc));
+      } else {
+        merged[it->second].count += wc.count;
+      }
+    }
+    // Summing can reorder; the layout sizes from counts[0] and truncates
+    // by position, so restore count-descending order (stable: ties keep
+    // majority-row order).
+    std::stable_sort(merged.begin(), merged.end(),
+                     [](const WordCount& a, const WordCount& b) {
+                       return a.count > b.count;
+                     });
+    counts = std::move(merged);
+  }
+  if (options.caseFold == CaseFold::kLower ||
+      options.caseFold == CaseFold::kUpper) {
+    for (WordCount& wc : counts) {
+      wc.display = foldDisplay(wc.display, options.caseFold);
+    }
   }
   return cloudFromCounts(fontPath, std::move(counts), options);
 }

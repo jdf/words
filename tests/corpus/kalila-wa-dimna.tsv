@@ -2,6 +2,7 @@
 # source: Wikisource (https://ar.wikisource.org/wiki/%D9%83%D9%84%D9%8A%D9%84%D8%A9_%D9%88%D8%AF%D9%85%D9%86%D8%A9), public domain
 # generator: tools/make-corpus.py (word_counts host tool)
 # language-guess: arabic
+# case: as-written
 # tokens: 45317
 # distinct: 12581
 من	1323

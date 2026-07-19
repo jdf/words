@@ -20,6 +20,7 @@
 //   ?palette=<name>      color with an original Wordle palette ("wordly",
 //                        "heat", ...; see src/palette.cc)
 //   ?variance=<name>     color variance: exact|little|some|lots|wild
+//   ?case=<name>         case fold: guess|as-written|lower|upper
 //   ?orientation=<name>  horizontal|mostly-horizontal|half-and-half|...
 //                        (see src/orientation.h)
 //   ?placement=<name>    center-line|center
@@ -52,6 +53,7 @@
 #include "pdf.h"
 #include "scene.h"
 #include "svg.h"
+#include "text.h"
 #include "word.h"
 #include "word_renderer.h"
 
@@ -77,6 +79,7 @@ App* g_app = nullptr;
 uint32_t g_seed = 1447;  // the curated default (see CloudOptions::seed)
 int g_maxWords = 800;    // the word-count slider; benchmarked cap 2000
 std::string g_variance;  // variance slug; "" falls back to ?variance=
+std::string g_caseFold;  // case-fold slug; "" falls back to ?case=
 // The view camera: pure render state (layout never sees it). Reset on
 // every rebuild; the page owns the interaction math.
 double g_zoom = 1.0;
@@ -158,6 +161,10 @@ words::Scene buildScene(const std::string& fontPath,
     options.colors = &scheme;
     paletteLabel = palette->displayName;
   }
+  if (auto f = words::findCaseFold(
+          g_caseFold.empty() ? urlParam("case") : g_caseFold)) {
+    options.caseFold = *f;
+  }
   std::string orientation =
       g_orientation.empty() ? urlParam("orientation") : g_orientation;
   if (auto o = words::findOrientation(orientation)) {
@@ -237,11 +244,13 @@ extern "C" EMSCRIPTEN_KEEPALIVE void wordsRebuild(int seed,
                                                   const char* fontPath,
                                                   const char* textPath,
                                                   int maxWords,
-                                                  const char* variance) {
+                                                  const char* variance,
+                                                  const char* caseFold) {
   if (!g_app) return;
   g_seed = static_cast<uint32_t>(seed);
   if (maxWords > 0) g_maxWords = maxWords;
   g_variance = variance ? variance : "";
+  g_caseFold = caseFold ? caseFold : "";
   // A new cloud gets a fresh view.
   g_zoom = 1.0;
   g_camX = 0.0;

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -89,15 +90,34 @@ class StopWordsSet {
   std::vector<StopWords> languages_;
 };
 
+// How case variants of a word combine — the original's Case menu.
+enum class CaseFold {
+  kGuess,      // merge case-insensitively; show the most frequent casing
+  kAsWritten,  // distinct spellings stay distinct words
+  kLower,      // merge; show lowercase
+  kUpper,      // merge; show UPPERCASE
+};
+
+// Slug -> value for URL/UI plumbing: "guess", "as-written", "lower",
+// "upper"; nullopt for anything else.
+std::optional<CaseFold> findCaseFold(std::string_view slug);
+
+// The fold's display transform for one word: Unicode-lowercases or
+// -uppercases for kLower/kUpper (full per-code-point mapping, word-final
+// sigma handled); identity for kGuess/kAsWritten.
+std::string foldDisplay(std::string_view word, CaseFold fold);
+
 // Tokenizes `text` and counts every word, optionally skipping the given
-// stop words. The counting key is the folded (lowercased) form; the most
-// frequent casing (ties to the first seen) is kept as the display form,
-// like the original's "Guess Case for Each Word".
+// stop words. Under every fold but kAsWritten the counting key is the
+// folded (lowercased) form; kGuess keeps the most frequent casing (ties
+// to the first seen) as the display form, like the original's "Guess
+// Case for Each Word".
 struct WordCount {
   std::string display;
   int count;
 };
 std::vector<WordCount> countWords(std::string_view text,
-                                  const StopWords* reject = nullptr);
+                                  const StopWords* reject = nullptr,
+                                  CaseFold fold = CaseFold::kGuess);
 
 }  // namespace words

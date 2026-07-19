@@ -2,6 +2,7 @@
 # source: Project Gutenberg #45252 (https://www.gutenberg.org/ebooks/45252), public domain
 # generator: tools/make-corpus.py (word_counts host tool)
 # language-guess: hebrew
+# case: as-written
 # tokens: 7330
 # distinct: 3498
 כי	156

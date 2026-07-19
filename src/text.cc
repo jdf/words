@@ -8,6 +8,7 @@
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
+#include <optional>
 #include <sstream>
 #include <system_error>
 #include <string>
@@ -283,17 +284,52 @@ const StopWords* StopWordsSet::guess(std::string_view text) const {
   return guess(counter);
 }
 
+std::optional<CaseFold> findCaseFold(std::string_view slug) {
+  if (slug == "guess") return CaseFold::kGuess;
+  if (slug == "as-written") return CaseFold::kAsWritten;
+  if (slug == "lower") return CaseFold::kLower;
+  if (slug == "upper") return CaseFold::kUpper;
+  return std::nullopt;
+}
+
+std::string foldDisplay(std::string_view word, CaseFold fold) {
+  if (fold != CaseFold::kLower && fold != CaseFold::kUpper) {
+    return std::string(word);
+  }
+  const bool upper = fold == CaseFold::kUpper;
+  std::string out;
+  out.reserve(word.size());
+  size_t i = 0;
+  while (i < word.size()) {
+    int32_t cp = decodeAt(word, i);
+    if (upper) {
+      encodeTo(utf8proc_toupper(cp), out);
+    } else if (cp == 0x03A3 && i >= word.size()) {
+      encodeTo(0x03C2, out);  // word-final sigma, as in foldForMatch
+    } else {
+      encodeTo(utf8proc_tolower(cp), out);
+    }
+  }
+  return out;
+}
+
 std::vector<WordCount> countWords(std::string_view text,
-                                  const StopWords* reject) {
+                                  const StopWords* reject, CaseFold fold) {
   Counter counter;
   // Every distinct casing seen per folded key, with its own count, in
-  // first-seen order. The display form is the most frequent casing, ties
-  // to the earliest — the original's "Guess Case for Each Word" fold, so
-  // "Que" from chapter headings can't outrank the ordinary "que".
+  // first-seen order. Under kGuess the display form is the most frequent
+  // casing, ties to the earliest — the original's "Guess Case for Each
+  // Word" fold, so "Que" from chapter headings can't outrank the
+  // ordinary "que". Under kAsWritten each spelling is its own key.
   std::unordered_map<std::string, std::vector<std::pair<std::string, int>>>
       casings;
+  const bool merge = fold != CaseFold::kAsWritten;
   for (const std::string& w : wordsOf(text)) {
     if (reject && reject->isStopWord(w)) continue;
+    if (!merge) {
+      counter.note(w);
+      continue;
+    }
     std::string key = foldForMatch(w);
     counter.note(key);
     auto& forms = casings[key];
@@ -309,12 +345,16 @@ std::vector<WordCount> countWords(std::string_view text,
   }
   std::vector<WordCount> result;
   for (auto& [key, count] : counter.byFrequency()) {
+    if (!merge) {
+      result.push_back({key, count});
+      continue;
+    }
     const auto& forms = casings[key];
     const std::pair<std::string, int>* best = &forms.front();
     for (const auto& form : forms) {
       if (form.second > best->second) best = &form;
     }
-    result.push_back({best->first, count});
+    result.push_back({foldDisplay(best->first, fold), count});
   }
   return result;
 }

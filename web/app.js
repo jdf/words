@@ -120,6 +120,15 @@ const VARIANCES = [
   ['wild', 'Wild', 'Wild Variance'],
 ];
 
+// The original's Case menu: how case variants of a word combine. Always
+// a fixed choice — Generate never rolls it (no 🎲 entry).
+const CASE_FOLDS = [
+  ['guess', 'Guess Case'],
+  ['as-written', 'As Written'],
+  ['lower', 'lowercase'],
+  ['upper', 'UPPERCASE'],
+];
+
 const POOLS = {
   font: FONTS.map(([slug]) => slug),
   orientation: ['mostly-horizontal', 'horizontal', 'any-which-way'],
@@ -178,6 +187,10 @@ const spec = {
   // 'little' is the engine default, so a bare URL looks unchanged.
   variance: VARIANCES.some(([slug]) => slug === params.get('variance'))
       ? params.get('variance') : 'little',
+  // 'guess' is the engine default. Always fixed-mode: case never rolls.
+  caseFold: CASE_FOLDS.some(([slug]) => slug === params.get('case'))
+      ? params.get('case') : 'guess',
+  caseFoldMode: 'fixed',
   text: '',
 };
 for (const dim of ['font', 'orientation', 'placement', 'palette']) {
@@ -193,6 +206,8 @@ function specUrl(forEngine) {
   url.searchParams.set('seed', spec.seed);
   url.searchParams.set('max', spec.maxWords);
   url.searchParams.set('variance', spec.variance);
+  if (spec.caseFold !== 'guess') url.searchParams.set('case', spec.caseFold);
+  else url.searchParams.delete('case');
   if (spec.corpus) url.searchParams.set('corpus', spec.corpus);
   else url.searchParams.delete('corpus');
   for (const dim of ['font', 'orientation', 'placement', 'palette']) {
@@ -272,6 +287,7 @@ const sendSpec = (s) => {
     font: s.font,
     maxWords: s.maxWords,
     variance: s.variance,
+    caseFold: s.caseFold,
     corpus: s.corpus,
     useText: s.text !== '',
   };
@@ -690,6 +706,8 @@ const MENUS = {
   // parameter remain 'orientation'.)
   orientation: { title: 'Angle', options: ORIENTATIONS },
   palette: { title: 'Palette', options: PALETTES },
+  case: { title: 'Case', dim: 'caseFold', options: CASE_FOLDS,
+          noRandom: true },
 };
 
 // Tiny inline-SVG thumbnails: word-bars at representative angles for the
@@ -818,8 +836,12 @@ function optionContent(menuName, slug, label, extra) {
   if (menuName === 'layout') {
     return scatterThumb(slug) + `<span class="opt-label">${label}</span>`;
   }
-  return paletteThumb(extra[0], extra[1]) +
-         `<span class="opt-label">${label}</span>`;
+  if (menuName === 'palette') {
+    return paletteThumb(extra[0], extra[1]) +
+           `<span class="opt-label">${label}</span>`;
+  }
+  return `<span class="opt-label">${label}</span>`;  // case: the label is
+                                                     // its own thumbnail
 }
 
 function menuLabel(menuName) {
@@ -883,13 +905,15 @@ function buildMenu(menuName) {
   const btn = root.querySelector('.dd-btn');
   const panel = root.querySelector('.dd-panel');
 
-  const randomOpt = document.createElement('button');
-  randomOpt.className = 'dd-opt dd-random';
-  randomOpt.innerHTML =
-      `<span class="opt-label">🎲 Random ${menu.title}</span>`;
-  randomOpt.addEventListener('click', () =>
-      choose(menuName, 'random', pick(POOLS[dim])));
-  panel.appendChild(randomOpt);
+  if (!menu.noRandom) {
+    const randomOpt = document.createElement('button');
+    randomOpt.className = 'dd-opt dd-random';
+    randomOpt.innerHTML =
+        `<span class="opt-label">🎲 Random ${menu.title}</span>`;
+    randomOpt.addEventListener('click', () =>
+        choose(menuName, 'random', pick(POOLS[dim])));
+    panel.appendChild(randomOpt);
+  }
 
   for (const [slug, label, ...extra] of menu.options) {
     const opt = document.createElement('button');
@@ -910,8 +934,11 @@ function buildMenu(menuName) {
         opt.classList.toggle('selected',
             spec[dim + 'Mode'] === 'fixed' && opt.dataset.slug === spec[dim]);
       }
-      panel.querySelector('.dd-random').classList.toggle('selected',
-          spec[dim + 'Mode'] === 'random');
+      const randomBtn = panel.querySelector('.dd-random');
+      if (randomBtn) {
+        randomBtn.classList.toggle('selected',
+            spec[dim + 'Mode'] === 'random');
+      }
       panel.hidden = false;
       positionMenuPanel(btn, panel);
     }

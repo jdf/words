@@ -10,6 +10,7 @@
 #include "orientation.h"
 #include "palette.h"
 #include "scene.h"
+#include "text.h"
 
 namespace words {
 
@@ -38,6 +39,11 @@ struct CloudOptions {
   // portrait clouds. 1.6 is the original's landscape default.
   double aspect = 1.6;
   const ColorScheme* colors = nullptr;  // null = built-in dark scheme
+  // The original's Case menu. Corpus TSVs are counted as-written (one
+  // row per exact spelling), so every fold applies to them at load; on
+  // a legacy case-merged TSV (no "# case:" header) kAsWritten is
+  // unrecoverable and shows the stored majority casing.
+  CaseFold caseFold = CaseFold::kGuess;
   LayoutDebug* debug = nullptr;
   // Pipeline progress: phase is "shaping" or "layout"; (done, total)
   // within the phase. Called from whatever thread runs the pipeline.
