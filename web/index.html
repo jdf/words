@@ -46,20 +46,25 @@
       font: 12px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
       color: #8a8a96; pointer-events: none; white-space: pre;
     }
-    body.with-ui #status { left: 236px; }
+    body.with-ui #status { left: 248px; }
     #progress {
       position: fixed; left: 0; top: 0; height: 3px; width: 0;
       background: #4aa3ff; opacity: 0; transition: opacity 0.2s;
       pointer-events: none;
     }
     /* Sidebar: in-flow down the left (never overlays the canvas), shown
-       by default; ?no-ui hides it. */
+       by default; ?no-ui hides it. Short windows scroll it: the gutter
+       is reserved up front (scrollbar-gutter) so a classic scrollbar
+       appearing never squeezes the buttons, and the width includes that
+       gutter's allowance. */
     #panel {
       display: none; flex-direction: column; align-items: stretch;
-      gap: 10px; width: 200px; flex: none; padding: 12px;
+      gap: 10px; width: 212px; flex: none; padding: 12px;
       background: #101014; border-right: 1px solid #333;
       font: 14px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
       color: #b8b8c4; overflow-y: auto;
+      scrollbar-gutter: stable;
+      scrollbar-width: thin; scrollbar-color: #37373f transparent;
     }
     #panel button {
       background: #1c1c22; color: #b8b8c4; border: 1px solid #444;
