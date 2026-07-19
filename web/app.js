@@ -1160,19 +1160,51 @@ if (showUi) {
   // ----- Copy Link: the full-state URL for the current book cloud
   // (corpus, seed, every dimension with its lock/random mode, words,
   // variance). Only visible in book mode — see refreshUi.
+  // navigator.clipboard exists only in secure contexts (https or
+  // literal localhost) — a LAN-IP dev session needs the textarea +
+  // execCommand fallback. Feedback swaps the icon too, since the text
+  // label is hidden in the phone-portrait bar.
   const copyLinkBtn = document.getElementById('copy-link');
+  const copyLinkIcon = document.getElementById('copy-link-icon');
+  const copyLinkLabel = copyLinkBtn.querySelector('.btn-label');
   let copyLinkTimer = 0;
+  const copyLinkFlash = (icon, label) => {
+    copyLinkIcon.textContent = icon;
+    copyLinkLabel.textContent = label;
+    clearTimeout(copyLinkTimer);
+    copyLinkTimer = setTimeout(() => {
+      copyLinkIcon.textContent = '🔗';
+      copyLinkLabel.textContent = ' Copy Link';
+    }, 1500);
+  };
+  const legacyCopy = (text) => {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.append(ta);
+    ta.select();
+    ta.setSelectionRange(0, text.length);  // iOS needs the explicit range
+    let ok = false;
+    try { ok = document.execCommand('copy'); } catch { /* fall through */ }
+    ta.remove();
+    return ok;
+  };
   copyLinkBtn.addEventListener('click', () => {
-    navigator.clipboard.writeText(specUrl().href).then(() => {
-      copyLinkBtn.querySelector('.btn-label').textContent = ' Copied!';
-      clearTimeout(copyLinkTimer);
-      copyLinkTimer = setTimeout(() => {
-        copyLinkBtn.querySelector('.btn-label').textContent = ' Copy Link';
-      }, 1500);
-    }).catch((err) => {
-      console.error('copy link: ' + err);
-      status.textContent = 'Could not copy: ' + specUrl().href;
-    });
+    const link = specUrl().href;
+    const done = () => copyLinkFlash('✓', ' Copied!');
+    const fail = () => {
+      copyLinkFlash('✗', ' Copy failed');
+      console.error('copy link failed; the link is: ' + link);
+      status.textContent = link;  // last resort: copy it from here
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(link)
+          .then(done)
+          .catch(() => legacyCopy(link) ? done() : fail());
+    } else {
+      legacyCopy(link) ? done() : fail();
+    }
   });
 
   // ----- Export dialog.
