@@ -50,6 +50,11 @@ FONTS="sexsmith goudy boopee"
 for f in $FONTS; do
   CASES+=("font-$f|?corpus=moby-dick&font=$f&placement=center-line&orientation=mostly-horizontal&palette=yramirp&variance=little&no-ui")
 done
+# The saturated regime: 2000 words drive the central disc's packing
+# frontier far past where the original's 150-word cap ever went. Before
+# the issue #2 fix this configuration flattened against the world walls;
+# the golden pins the disc staying circular under maximum pressure.
+CASES+=("saturated-center|?corpus=moby-dick&max=2000&placement=center&orientation=any-which-way&palette=wb&variance=little&no-ui")
 
 # Build the release dist directly (not via ./dev, which would also point
 # the dev server at the release build).

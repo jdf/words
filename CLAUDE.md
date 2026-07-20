@@ -87,8 +87,8 @@ an undo/redo action — everything must be undoable.
 Every `src/foo.h` has a colocated `src/foo_test.cc`, globbed into `words_tests`
 (exceptions: `gl_util`/`word_renderer` are wasm-GL-only, `main.cc` is the
 shell). The text approval lives in `tests/text_approval_test.cc` so its golden
-path resolves. E2e matrix: 25 byte-exact PNGs over moby-dick (orientations ×
-placements × palettes × fonts).
+path resolves. E2e matrix: 26 byte-exact PNGs over moby-dick (orientations ×
+placements × palettes × fonts + a 2000-word saturated center disc).
 
 ## Gotchas
 
