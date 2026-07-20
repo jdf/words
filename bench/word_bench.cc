@@ -5,12 +5,14 @@
 #include <benchmark/benchmark.h>
 
 #include <clipper2/clipper.h>
+
+#include <absl/container/flat_hash_map.h>
 #include <cstddef>
 
 #include <algorithm>
 #include <cmath>
+#include <cstdint>
 #include <cstdlib>
-#include <unordered_map>
 #include <fstream>
 #include <numbers>
 #include <random>
@@ -237,7 +239,7 @@ const std::vector<words::WordCount>& mobyCounts() {
     words::StopWordsSet stopSets("assets/stopwords");
     const words::StopWords* english = stopSets.find("english");
     std::vector<words::WordCount> merged;
-    std::unordered_map<std::string, size_t> byKey;
+    absl::flat_hash_map<std::string, size_t> byKey;
     std::string line;
     while (std::getline(in, line)) {
       if (line.empty() || line[0] == '#') continue;

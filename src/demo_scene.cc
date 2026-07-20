@@ -1,5 +1,6 @@
 #include "demo_scene.h"
 
+#include <absl/container/flat_hash_map.h>
 #include <absl/log/log.h>
 
 #include <algorithm>
@@ -12,7 +13,6 @@
 #include <random>
 #include <string>
 #include <string_view>
-#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -210,7 +210,7 @@ namespace {
 const ShapedText& shapedFor(const std::string& fontPath,
                             const std::string& display) {
   static std::string cachedFontPath;
-  static std::unordered_map<std::string, ShapedText> cache;
+  static absl::flat_hash_map<std::string, ShapedText> cache;
   if (fontPath != cachedFontPath) {
     cache.clear();
     cachedFontPath = fontPath;
@@ -391,7 +391,7 @@ Scene buildCloudFromCountsTsv(const std::string& fontPath,
     // folded key is the majority casing (countWords keeps the earliest
     // of the max-count forms).
     std::vector<WordCount> merged;
-    std::unordered_map<std::string, size_t> byKey;  // fold key -> merged idx
+    absl::flat_hash_map<std::string, size_t> byKey;  // fold key -> merged idx
     merged.reserve(counts.size());
     for (WordCount& wc : counts) {
       auto [it, fresh] =

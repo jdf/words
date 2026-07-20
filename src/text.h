@@ -1,10 +1,11 @@
 #pragma once
 
+#include <absl/container/flat_hash_map.h>
+
 #include <cstddef>
 #include <optional>
 #include <string>
 #include <string_view>
-#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -47,7 +48,7 @@ class Counter {
 
  private:
   std::vector<std::pair<std::string, int>> items_;      // insertion order
-  std::unordered_map<std::string, size_t> indexByKey_;  // into items_
+  absl::flat_hash_map<std::string, size_t> indexByKey_;  // into items_
   int total_ = 0;
 };
 

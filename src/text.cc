@@ -2,6 +2,8 @@
 
 #include <utf8proc.h>
 
+#include <absl/container/flat_hash_map.h>
+
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
@@ -13,7 +15,6 @@
 #include <system_error>
 #include <string>
 #include <string_view>
-#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -171,7 +172,7 @@ std::string collationKey(std::string_view word) {
 }
 
 void Counter::note(std::string_view item, int count) {
-  auto it = indexByKey_.find(std::string(item));
+  auto it = indexByKey_.find(item);  // heterogeneous string_view lookup
   if (it == indexByKey_.end()) {
     indexByKey_.emplace(std::string(item), items_.size());
     items_.emplace_back(std::string(item), count);
@@ -182,7 +183,7 @@ void Counter::note(std::string_view item, int count) {
 }
 
 int Counter::count(std::string_view item) const {
-  auto it = indexByKey_.find(std::string(item));
+  auto it = indexByKey_.find(item);
   return it == indexByKey_.end() ? 0 : items_[it->second].second;
 }
 
@@ -321,7 +322,7 @@ std::vector<WordCount> countWords(std::string_view text,
   // casing, ties to the earliest — the original's "Guess Case for Each
   // Word" fold, so "Que" from chapter headings can't outrank the
   // ordinary "que". Under kAsWritten each spelling is its own key.
-  std::unordered_map<std::string, std::vector<std::pair<std::string, int>>>
+  absl::flat_hash_map<std::string, std::vector<std::pair<std::string, int>>>
       casings;
   const bool merge = fold != CaseFold::kAsWritten;
   for (const std::string& w : wordsOf(text)) {
