@@ -80,6 +80,9 @@
     }
     /* Green, to invite discovery. */
     #panel #use-words, #panel #use-book { color: #7ed99a; }
+    /* The color group (palette + variance): gentle extra air above, so
+       the pair reads as one unit apart from the shape controls. */
+    #dd-palette { margin-top: 10px; }
     #generate { text-align: left; }
     /* On desktop the pin/strip grouping is invisible to layout. */
     #panel .pin, #panel .strip { display: contents; }
@@ -258,6 +261,7 @@
         height: 24px; margin: 0; align-self: center;
       }
       #panel .spacer { display: none; }
+      #dd-palette { margin-top: 0; }  /* the row layout has no group air */
     }
   </style>
 </head>
@@ -306,11 +310,14 @@
       <button class="dd-btn"><span class="dd-cur"></span><span class="tri">▸</span></button>
       <div class="dd-panel" hidden></div>
     </div>
-    <div class="dd" id="dd-palette">
+    <div class="dd" id="dd-case" title="How case variants of a word combine">
       <button class="dd-btn"><span class="dd-cur"></span><span class="tri">▸</span></button>
       <div class="dd-panel" hidden></div>
     </div>
-    <div class="dd" id="dd-case" title="How case variants of a word combine">
+    <!-- The color group: the palette and how far word colors wander
+         from it. Extra air above (see #dd-palette's margin) sets the
+         pair off from the shape controls; the divider below closes it. -->
+    <div class="dd" id="dd-palette">
       <button class="dd-btn"><span class="dd-cur"></span><span class="tri">▸</span></button>
       <div class="dd-panel" hidden></div>
     </div>
