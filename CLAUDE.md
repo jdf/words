@@ -8,8 +8,10 @@ code in this repository.
 Wordle word clouds reimplemented in C++20 → WebAssembly → WebGL2, by the
 original Wordle author. The original Java source lives at
 `/Users/jdf/wordle-master` for consultation — **reproduce outcomes, not
-idioms**. Live at https://mrfeinberg.com/words/ (Dreamhost via `./deploy`) and
-GitHub Pages (CI on push to `main`).
+idioms**. Live at https://mrfeinberg.com/words/ (via `./deploy`: the release
+dist is staged into the ~/mrfeinberg.com site repo at `words/`, committed there,
+then rsynced — the site repo is the versioned deploy artifact) and GitHub Pages
+(CI on push to `main`).
 
 ## Commands
 
@@ -98,8 +100,10 @@ placements × palettes × fonts + a 2000-word saturated center disc).
 - Chrome-for-Testing screenshot hangs (even on about:blank): either an invisible
   macOS Keychain prompt (user must Allow) or stale OS trust on the cached binary
   (`rm -rf ~/.cache/words/chrome`, re-download the same pin).
-- **Never run ssh/rsync to the deploy host from Claude's shell** — agent auth
-  fails and repeated failures trip Dreamhost's IP block. The user deploys.
+- ssh/rsync to the deploy host goes **only** through the `mrfeinberg-claude`
+  alias (dedicated key; `./deploy` uses it, dry-run with `-n`). Never use the
+  user's own ssh identity from Claude's shell — auth fails and repeated failures
+  trip Dreamhost's IP block.
 - Comment on GitHub issues as the bot via `tools/bot-comment.py <N>` (body on
   stdin) — never `gh issue comment`, which posts as the user.
 - `buildCloudFromCountsTsv` takes TSV _content_, not a path (a path silently

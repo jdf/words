@@ -1,34 +1,31 @@
 #!/usr/bin/env bash
-# Build the release dist and rsync it to the web host.
+# Build the release dist, stage it into the site repo
+# (~/mrfeinberg.com/words/), commit that repo, and rsync the words/
+# subtree to the web host.
 #
-#   ./deploy           build, then upload
-#   ./deploy -n        build, then rsync dry run (shows what would change)
+#   ./deploy           build, stage, commit the site repo, upload
+#   ./deploy -n        build, stage (no commit), rsync dry run
 #
-# The destination is private config, read from the environment or from
-# .deploy.env in the repo root (gitignored; KEY=value lines):
-#
-#   WORDS_DEPLOY_USER=dh_xxxxxx
-#   WORDS_DEPLOY_HOST=example.com
-#   WORDS_DEPLOY_PATH=example.com/words/
-#
-# WORDS_DEPLOY_SSH overrides the ssh command (default: system ssh,
-# restricted to explicitly configured identities and no interactive
-# prompts, so a bad key setup fails once instead of spiraling into the
-# host's brute-force IP block).
+# The site repo is the deployed artifact: all of mrfeinberg.com is
+# versioned there, words/ included, so every deploy is a commit with
+# history and rollback. The remote sync uses the mrfeinberg-claude ssh
+# alias (a dedicated key; see ~/.ssh/config) and --delete scoped to
+# words/ only — that subtree is fully generated from this repo, so
+# deletions in it are always safe. (The site-wide deploy never uses
+# --delete; see commands/deploy-mrfeinberg-dot-com.md.)
 set -euo pipefail
 cd "$(dirname "$0")"
 
-if [ -f .deploy.env ]; then
-  set -a
-  # shellcheck source=/dev/null
-  source .deploy.env
-  set +a
-fi
-: "${WORDS_DEPLOY_USER:?set WORDS_DEPLOY_USER in the environment or .deploy.env}"
-: "${WORDS_DEPLOY_HOST:?set WORDS_DEPLOY_HOST in the environment or .deploy.env}"
-: "${WORDS_DEPLOY_PATH:?set WORDS_DEPLOY_PATH in the environment or .deploy.env}"
+SITE="${WORDS_SITE_DIR:-$HOME/mrfeinberg.com}"
+REMOTE="${WORDS_REMOTE:-mrfeinberg-claude:mrfeinberg.com/words/}"
 
-# Make sure what we upload is the current release build.
+DRY=""
+if [ "${1:-}" = "-n" ]; then
+  DRY="-n"
+  shift
+fi
+
+# Make sure what we stage is the current release build.
 export VCPKG_ROOT="${VCPKG_ROOT:-$HOME/vcpkg}"
 export EMSDK="${EMSDK:-$HOME/emsdk}"
 export PATH="$EMSDK/upstream/emscripten:$PATH"
@@ -38,13 +35,34 @@ fi
 cmake --build --preset wasm-release
 
 DIST="$PWD/build/wasm-release/dist"
-for f in index.html app.js worker.js words.js words.wasm words.data credits.html; do
+for f in index.html app.js worker.js words.js words.wasm words.data \
+         credits.html .htaccess; do
   if [ ! -f "$DIST/$f" ]; then
     echo "deploy: $DIST/$f missing after build" >&2
     exit 1
   fi
 done
+if [ ! -d "$SITE/.jj" ]; then
+  echo "deploy: $SITE is not the site repo" >&2
+  exit 1
+fi
 
-DEPLOY_SSH="${WORDS_DEPLOY_SSH:-/usr/bin/ssh -o IdentitiesOnly=yes -o BatchMode=yes}"
-exec rsync -e "$DEPLOY_SSH" -av --delete "$@" \
-  "$DIST/" "$WORDS_DEPLOY_USER@$WORDS_DEPLOY_HOST:$WORDS_DEPLOY_PATH"
+# Stage: the site repo's words/ mirrors dist exactly. (.DS_Store is
+# Finder droppings — excluded here and below, and excluded from
+# deletion by the same flag, so it never dirties commits or uploads.)
+rsync -a --delete --exclude .DS_Store "$DIST/" "$SITE/words/"
+
+BUILD_ID=$(sed -n "s/.*id: '\([^']*\)'.*/\1/p" "$DIST/build-info.js")
+if [ -z "$DRY" ]; then
+  # Commit the site repo, scoped to words/ (a re-deploy of an unchanged
+  # build stages nothing and commits nothing). Run from inside the
+  # repo: jj filesets resolve against the cwd.
+  if [ -n "$(cd "$SITE" && jj diff --summary words)" ]; then
+    (cd "$SITE" && jj commit words -m "words build $BUILD_ID")
+  else
+    echo "deploy: site repo already at words build $BUILD_ID"
+  fi
+fi
+
+exec rsync -rlptDv --delete --exclude .DS_Store $DRY "$@" \
+  "$SITE/words/" "$REMOTE"
