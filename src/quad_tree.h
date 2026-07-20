@@ -44,8 +44,12 @@ class QuadTree {
   // Index of the child quadrant wholly containing `b`, or -1 if it
   // straddles a split line of `n`.
   static int quadrantOf(const Node& n, const Box& b);
+  bool rootContains(const Box& b) const;
   Node* descend(Node* n, const Box& b, bool createChildren);
-  const Word* firstInSubtree(const Node& n, const Word& candidate) const;
+  // `b` is the candidate's collision box, hoisted by the caller; kids
+  // whose regions are strictly disjoint from it are pruned.
+  const Word* firstInSubtree(const Node& n, const Word& candidate,
+                             const Box& b) const;
 
   double minCellWidth_;
   int maxDepth_;
