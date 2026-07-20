@@ -29,6 +29,10 @@ build/host-test/words_tests "<test name>"  # or run the binary directly
 tools/coverage.sh [--html]     # clang source-based line coverage; regenerates COVERAGE.md
 tools/e2e-golden.sh [--bless]  # byte-exact PNG goldens, pinned Chrome-for-Testing + SwiftShader
 tools/bench.sh [--benchmark_filter=...]  # google-benchmark under node (wasm-release)
+node --prof build/wasm-release/words_bench.js --benchmark_filter=... \
+  && node --prof-process isolate*.log   # symbolized wasm own-time profile
+node tools/profile-rebuild.mjs "$(tools/get-chrome.sh)" http://localhost:8787/
+                               # in-browser per-stage rebuild timings
 tools/include-cleaner.sh --fix # fix include-hygiene failures (misc-include-cleaner)
 ./presubmit.sh                 # markdown format + include hygiene + both golden tiers
 ```

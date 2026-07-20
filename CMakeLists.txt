@@ -159,6 +159,9 @@ if(EMSCRIPTEN)
     -sNODERAWFS=1
     -sALLOW_MEMORY_GROWTH=1
     -sEXIT_RUNTIME=1
+    # Keep the wasm name section so sampling profilers (node --prof,
+    # DevTools) can symbolize hot spots; names only, no runtime cost.
+    --profiling-funcs
   )
 else()
   # Native host build: geometry tests (Catch2 + ApprovalTests golden files).
