@@ -166,6 +166,14 @@ void layoutWords(std::vector<Word>& wordList, const Box& bounds,
         }
         lastHit = hit;
 
+        // (A leaf-pair Minkowski skip-ahead — fast-forwarding through
+        // steps provably still colliding with `hit` — was implemented
+        // and benched 2026-07-20: outcome-preserving, but a wash at
+        // every density. A colliding sample usually sits near the edge
+        // of its leaf-overlap region, so the certified skip is a step
+        // or two, while naming the certificate costs an extra HBB
+        // descent per fresh collision.)
+        //
         // Advance along the spiral; skip positions that stick out of the
         // world until the spiral is bigger than the world itself.
         do {
