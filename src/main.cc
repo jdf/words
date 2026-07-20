@@ -21,6 +21,7 @@
 //                        "heat", ...; see src/palette.cc)
 //   ?variance=<name>     color variance: exact|little|some|lots|wild
 //   ?case=<name>         case fold: guess|as-written|lower|upper
+//   ?exclude=<w1,w2>     removed words (comma-separated, folded keys)
 //   ?orientation=<name>  horizontal|mostly-horizontal|half-and-half|...
 //                        (see src/orientation.h)
 //   ?placement=<name>    center-line|center
@@ -35,7 +36,9 @@
 
 #include <absl/log/log.h>
 #include <absl/strings/str_cat.h>
+#include <absl/strings/str_split.h>
 
+#include <algorithm>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
@@ -43,6 +46,7 @@
 #include <optional>
 #include <sstream>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "box.h"
@@ -81,6 +85,11 @@ uint32_t g_seed = 1447;  // the curated default (see CloudOptions::seed)
 int g_maxWords = 800;    // the word-count slider; benchmarked cap 2000
 std::string g_variance;  // variance slug; "" falls back to ?variance=
 std::string g_caseFold;  // case-fold slug; "" falls back to ?case=
+// Removed words, comma-separated; "" falls back to ?exclude=. (Unlike
+// the style dimensions, an empty rebuild value means "none": the UI
+// always sends the whole list.)
+std::string g_exclude;
+bool g_excludeSet = false;
 // The view camera: pure render state (layout never sees it). Reset on
 // every rebuild; the page owns the interaction math.
 double g_zoom = 1.0;
@@ -166,6 +175,11 @@ words::Scene buildScene(const std::string& fontPath,
           g_caseFold.empty() ? urlParam("case") : g_caseFold)) {
     options.caseFold = *f;
   }
+  for (std::string_view word : absl::StrSplit(
+           g_excludeSet ? g_exclude : urlParam("exclude"), ',',
+           absl::SkipEmpty())) {
+    options.exclude.emplace_back(word);
+  }
   std::string orientation =
       g_orientation.empty() ? urlParam("orientation") : g_orientation;
   if (auto o = words::findOrientation(orientation)) {
@@ -246,12 +260,15 @@ extern "C" EMSCRIPTEN_KEEPALIVE void wordsRebuild(int seed,
                                                   const char* textPath,
                                                   int maxWords,
                                                   const char* variance,
-                                                  const char* caseFold) {
+                                                  const char* caseFold,
+                                                  const char* exclude) {
   if (!g_app) return;
   g_seed = static_cast<uint32_t>(seed);
   if (maxWords > 0) g_maxWords = maxWords;
   g_variance = variance ? variance : "";
   g_caseFold = caseFold ? caseFold : "";
+  g_exclude = exclude ? exclude : "";
+  g_excludeSet = true;
   // A new cloud gets a fresh view.
   g_zoom = 1.0;
   g_camX = 0.0;
@@ -273,6 +290,41 @@ extern "C" EMSCRIPTEN_KEEPALIVE void wordsRebuild(int seed,
 // computes the interaction (anchored wheel zoom, drag pan) and pushes
 // absolute state; rendering is a single cached-buffer draw, cheap enough
 // for wheel-rate updates.
+// The word under a canvas position (device pixels, y-down), for the
+// page's context menu: inverts the renderer's projection (fit scale x
+// zoom, camera recenter — see WordRenderer::draw), then picks the
+// smallest word AABB containing the point, so a small word tucked into
+// a big word's box gap stays pickable. Returns "" for a miss; the
+// pointer stays valid until the next call.
+extern "C" EMSCRIPTEN_KEEPALIVE const char* wordsHitTest(double px,
+                                                         double py) {
+  static std::string label;
+  label.clear();
+  if (!g_app || g_app->width <= 0 || g_app->height <= 0) return label.c_str();
+  const words::Scene& scene = g_app->scene;
+  if (scene.width() <= 0 || scene.height() <= 0) return label.c_str();
+  const double w = g_app->width;
+  const double h = g_app->height;
+  const double s =
+      std::min(w / scene.width(), h / scene.height()) * g_zoom;
+  const double sceneX = (2.0 * px / w - 1.0) * w / (2.0 * s) + g_camX;
+  const double sceneY = (1.0 - 2.0 * py / h) * h / (2.0 * s) + g_camY;
+  double bestArea = 0;
+  for (const words::Scene::Entry& e : scene.entries()) {
+    const words::Box b = e.word.worldBounds();
+    if (sceneX < b.minX || sceneX > b.maxX || sceneY < b.minY ||
+        sceneY > b.maxY) {
+      continue;
+    }
+    const double area = b.width() * b.height();
+    if (label.empty() || area < bestArea) {
+      label = e.word.label();
+      bestArea = area;
+    }
+  }
+  return label.c_str();
+}
+
 extern "C" EMSCRIPTEN_KEEPALIVE void wordsSetCamera(double zoom, double cx,
                                                     double cy) {
   if (!g_app) return;

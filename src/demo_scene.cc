@@ -1,6 +1,7 @@
 #include "demo_scene.h"
 
 #include <absl/container/flat_hash_map.h>
+#include <absl/container/flat_hash_set.h>
 #include <absl/log/log.h>
 
 #include <algorithm>
@@ -228,6 +229,17 @@ const ShapedText& shapedFor(const std::string& fontPath,
 Scene cloudFromCounts(const std::string& fontPath,
                       std::vector<WordCount>&& counts,
                       const CloudOptions& options) {
+  if (!options.exclude.empty()) {
+    // Removed words go before the maxWords cap so the cloud refills;
+    // folded-key matching drops every case variant of a nuisance word.
+    absl::flat_hash_set<std::string> excluded;
+    for (const std::string& word : options.exclude) {
+      excluded.insert(foldForMatch(word));
+    }
+    std::erase_if(counts, [&excluded](const WordCount& wc) {
+      return excluded.contains(foldForMatch(wc.display));
+    });
+  }
   if (counts.empty()) return Scene();
   if (counts.size() > options.maxWords) counts.resize(options.maxWords);
 

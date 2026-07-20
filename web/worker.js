@@ -17,6 +17,11 @@ function handle(msg) {
     case 'resize': engine._wordsResize(msg.width, msg.height); break;
     case 'camera': engine._wordsSetCamera(msg.zoom, msg.cx, msg.cy); break;
     case 'logScene': engine._wordsLogScene(); break;
+    case 'hitTest':
+      reply(msg.id,
+            engine.ccall('wordsHitTest', 'string', ['number', 'number'],
+                         [msg.x, msg.y]));
+      break;
     case 'exportSvg':
       reply(msg.id,
             engine.ccall('wordsSceneSvg', 'string', ['number'],
@@ -83,10 +88,10 @@ async function rebuild(msg) {
   }
   engine.ccall('wordsRebuild', null,
                ['number', 'string', 'string', 'string', 'string', 'string',
-                'number', 'string', 'string'],
+                'number', 'string', 'string', 'string'],
                [msg.seed, msg.orientation, msg.placement, msg.palette, path,
                 msg.useText ? kUserTextPath : '', msg.maxWords | 0,
-                msg.variance || '', msg.caseFold || '']);
+                msg.variance || '', msg.caseFold || '', msg.exclude || '']);
 }
 
 function init(msg) {

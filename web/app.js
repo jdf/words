@@ -191,6 +191,10 @@ const spec = {
   caseFold: CASE_FOLDS.some(([slug]) => slug === params.get('case'))
       ? params.get('case') : 'guess',
   caseFoldMode: 'fixed',
+  // Removed words ("nuisance words", via the right-click menu), folded
+  // keys. IMMUTABLE: undo snapshots share the array, so actions must
+  // replace it, never push into it.
+  exclude: (params.get('exclude') || '').split(',').filter(Boolean),
   text: '',
 };
 for (const dim of ['font', 'orientation', 'placement', 'palette']) {
@@ -208,6 +212,11 @@ function specUrl(forEngine) {
   url.searchParams.set('variance', spec.variance);
   if (spec.caseFold !== 'guess') url.searchParams.set('case', spec.caseFold);
   else url.searchParams.delete('case');
+  if (spec.exclude.length) {
+    url.searchParams.set('exclude', spec.exclude.join(','));
+  } else {
+    url.searchParams.delete('exclude');
+  }
   if (spec.corpus) url.searchParams.set('corpus', spec.corpus);
   else url.searchParams.delete('corpus');
   for (const dim of ['font', 'orientation', 'placement', 'palette']) {
@@ -288,6 +297,7 @@ const sendSpec = (s) => {
     maxWords: s.maxWords,
     variance: s.variance,
     caseFold: s.caseFold,
+    exclude: s.exclude.join(','),
     corpus: s.corpus,
     useText: s.text !== '',
   };
@@ -1186,6 +1196,74 @@ if (showUi) {
   document.getElementById('book-cancel').addEventListener('click', () => {
     bookDialog.close();
   });
+
+  // ----- Word context menu: right-click a word to remove it from the
+  // cloud (a nuisance word that means nothing to the text). The engine
+  // hit-tests in scene space (camera-aware); removal adds the folded
+  // key to spec.exclude — one undoable action, carried in copy links.
+  // The menu is a .dd-panel, so closeMenus / Escape / click-away all
+  // dismiss it for free.
+  const wordMenu = document.getElementById('word-menu');
+  function openWordMenu(word, clientX, clientY) {
+    wordMenu.replaceChildren();
+    if (word) {
+      const remove = document.createElement('button');
+      remove.className = 'dd-opt';
+      remove.textContent = `Remove “${word}”`;
+      remove.addEventListener('click', () => {
+        closeMenus();
+        const key = word.toLowerCase();
+        if (spec.exclude.includes(key)) return;
+        apply({
+          label: 'Remove Word',
+          before: { ...spec },
+          after: { ...spec, exclude: [...spec.exclude, key] },
+        });
+      });
+      wordMenu.appendChild(remove);
+    }
+    if (spec.exclude.length) {
+      const n = spec.exclude.length;
+      const restore = document.createElement('button');
+      restore.className = 'dd-opt';
+      restore.textContent =
+          `Restore ${n} removed ${n === 1 ? 'word' : 'words'}`;
+      restore.addEventListener('click', () => {
+        closeMenus();
+        apply({
+          label: 'Restore Removed Words',
+          before: { ...spec },
+          after: { ...spec, exclude: [] },
+        });
+      });
+      wordMenu.appendChild(restore);
+    }
+    if (!wordMenu.childElementCount) return;
+    wordMenu.hidden = false;
+    // At the cursor, clamped to the viewport.
+    const margin = 8;
+    wordMenu.style.left = '0px';
+    wordMenu.style.top = '0px';
+    const w = wordMenu.offsetWidth;
+    const h = wordMenu.offsetHeight;
+    wordMenu.style.left =
+        `${Math.min(clientX, window.innerWidth - w - margin)}px`;
+    wordMenu.style.top =
+        `${Math.min(clientY, window.innerHeight - h - margin)}px`;
+  }
+  canvas.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+    closeMenus();
+    if (busy) return;
+    const rect = canvas.getBoundingClientRect();
+    askWorker({
+      type: 'hitTest',
+      x: (e.clientX - rect.left) * dpr,
+      y: (e.clientY - rect.top) * dpr,
+    }).then((word) => openWordMenu(word, e.clientX, e.clientY));
+  });
+  // The click that opens the menu must not immediately close it.
+  wordMenu.addEventListener('click', (e) => e.stopPropagation());
 
   // ----- Copy Link: the full-state URL for the current book cloud
   // (corpus, seed, every dimension with its lock/random mode, words,

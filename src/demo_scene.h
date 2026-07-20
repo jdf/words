@@ -5,6 +5,7 @@
 #include <functional>
 #include <string>
 #include <string_view>
+#include <vector>
 
 #include "layout.h"
 #include "orientation.h"
@@ -44,6 +45,11 @@ struct CloudOptions {
   // a legacy case-merged TSV (no "# case:" header) kAsWritten is
   // unrecoverable and shows the stored majority casing.
   CaseFold caseFold = CaseFold::kGuess;
+  // Words the user has removed from the cloud ("nuisance words"): any
+  // count whose folded key matches drops out before sizing and the
+  // maxWords cap, so the cloud refills behind it. Entries are folded
+  // on the way in, so display forms are accepted too.
+  std::vector<std::string> exclude;
   LayoutDebug* debug = nullptr;
   // Pipeline progress: phase is "shaping" or "layout"; (done, total)
   // within the phase. Called from whatever thread runs the pipeline.

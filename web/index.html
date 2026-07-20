@@ -215,6 +215,14 @@
     .book-row.selected { border-color: #4aa3ff !important; }
     .book-title { flex: 1; color: #d8d8e0; }
     .book-author { flex: none; color: #8a8a96; }
+    /* Word context menu: a compact dd-panel at the cursor. It lives
+       outside #panel, so the sidebar's button color/font rules don't
+       reach it — restate them or the UA default paints black on black. */
+    .word-menu { min-width: 0; z-index: 30; }
+    .word-menu button {
+      color: #b8b8c4; cursor: pointer;
+      font: 14px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
     /* Phone in portrait: controls become a top bar — 🔄/↩/↪ icon-only
        and pinned left, the rest a horizontally scrolling strip; menus
        pop down below the bar (see positionMenuPanel in app.js). Last in
@@ -352,6 +360,9 @@
       </span>
     </div>
   </dialog>
+  <!-- Right-click-a-word menu (populated by app.js); a dd-panel so the
+       shared dismiss paths (click-away, Escape, closeMenus) apply. -->
+  <div class="dd-panel word-menu" id="word-menu" hidden></div>
   <!-- "Use a Book": the bundled public-domain library (word-count TSVs
        in dist/corpus/, manifest in corpus/index.tsv; see
        tests/corpus/README.md). -->

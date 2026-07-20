@@ -87,6 +87,31 @@ TEST_CASE("as-written corpus rows honor every case fold") {
         std::vector<std::string>{"Whale", "whale", "ship", "WHALE", "Ship"});
 }
 
+TEST_CASE("excluded words drop out and the cap refills behind them") {
+  words::CloudOptions options;
+  options.maxWords = 3;
+  options.exclude = {"whale"};
+  words::Scene scene =
+      words::buildCloudFromCountsTsv(kFont, kStops, kTsv, options);
+  REQUIRE(scene.entries().size() == 3);  // refilled to the cap
+  CHECK(scene.entries()[0].word.label() == "ship");
+  for (const words::Scene::Entry& e : scene.entries()) {
+    CHECK(e.word.label() != "whale");
+  }
+}
+
+TEST_CASE("exclusion matches by folded key across case variants") {
+  words::CloudOptions options;
+  options.exclude = {"WHALE"};  // display form accepted; folds to the key
+  options.caseFold = words::CaseFold::kAsWritten;
+  words::Scene scene = words::buildCloudFromCountsTsv(
+      kFont, kStops, kAsWrittenTsv, options);
+  REQUIRE(scene.entries().size() == 2);  // ship + Ship survive
+  for (const words::Scene::Entry& e : scene.entries()) {
+    CHECK(words::foldForMatch(e.word.label()) == "ship");
+  }
+}
+
 TEST_CASE("merged corpus rows still fold lower and upper") {
   // Fixture-style TSV (no "# case:" header): kLower / kUpper transform
   // the stored display forms; kAsWritten shows the stored casing.
