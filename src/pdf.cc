@@ -4,6 +4,8 @@
 
 #include <clipper2/clipper.h>
 
+#include <absl/strings/str_cat.h>
+
 #include <cstdio>
 #include <string>
 #include <vector>
@@ -33,19 +35,20 @@ std::string rgb(const Color& c) {
 std::string contentOps(const Scene& scene, double pageW, double pageH) {
   std::string ops;
   ops += "q\n";
-  ops += rgb(scene.background()) + "\n";
-  ops += "0 0 " + num(pageW) + " " + num(pageH) + " re f\n";
+  absl::StrAppend(&ops, rgb(scene.background()), "\n");
+  absl::StrAppend(&ops, "0 0 ", num(pageW), " ", num(pageH), " re f\n");
 
   double s = pageW / scene.width();
-  ops += num(s) + " 0 0 " + num(s) + " " + num(pageW / 2) + " " +
-         num(pageH / 2) + " cm\n";
+  absl::StrAppend(&ops, num(s), " 0 0 ", num(s), " ", num(pageW / 2), " ",
+                  num(pageH / 2), " cm\n");
 
   for (const Scene::Entry& e : scene.entries()) {
-    ops += rgb(e.color) + "\n";
+    absl::StrAppend(&ops, rgb(e.color), "\n");
     for (const auto& path : e.word.localPaths()) {
       for (size_t i = 0; i < path.size(); ++i) {
-        ops += num(path[i].x + e.word.x()) + " " +
-               num(path[i].y + e.word.y()) + (i == 0 ? " m\n" : " l\n");
+        absl::StrAppend(&ops, num(path[i].x + e.word.x()), " ",
+                        num(path[i].y + e.word.y()),
+                        i == 0 ? " m\n" : " l\n");
       }
       ops += "h\n";
     }
@@ -84,7 +87,7 @@ std::string toPdf(const Scene& scene, double pointWidth,
   std::vector<size_t> offsets;  // 1-based object offsets
   auto beginObj = [&](int n) {
     offsets.push_back(pdf.size());
-    pdf += std::to_string(n) + " 0 obj\n";
+    absl::StrAppend(&pdf, n, " 0 obj\n");
   };
 
   beginObj(1);
@@ -92,10 +95,11 @@ std::string toPdf(const Scene& scene, double pointWidth,
   beginObj(2);
   pdf += "<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n";
   beginObj(3);
-  pdf += "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 " + num(pageW) + " " +
-         num(pageH) + "] /Contents 4 0 R /Resources << >> >>\nendobj\n";
+  absl::StrAppend(&pdf, "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ",
+                  num(pageW), " ", num(pageH),
+                  "] /Contents 4 0 R /Resources << >> >>\nendobj\n");
   beginObj(4);
-  pdf += "<< /Length " + std::to_string(streamData.size());
+  absl::StrAppend(&pdf, "<< /Length ", streamData.size());
   if (compressed) pdf += " /Filter /FlateDecode";
   pdf += " >>\nstream\n";
   pdf += streamData;
@@ -107,21 +111,21 @@ std::string toPdf(const Scene& scene, double pointWidth,
       escaped += c;
     }
     beginObj(5);
-    pdf += "<< /Producer (" + escaped + ") >>\nendobj\n";
+    absl::StrAppend(&pdf, "<< /Producer (", escaped, ") >>\nendobj\n");
   }
 
   size_t xref = pdf.size();
-  pdf += "xref\n0 " + std::to_string(offsets.size() + 1) + "\n";
+  absl::StrAppend(&pdf, "xref\n0 ", offsets.size() + 1, "\n");
   pdf += "0000000000 65535 f \n";
   for (size_t off : offsets) {
     char line[24];
     std::snprintf(line, sizeof line, "%010zu 00000 n \n", off);
     pdf += line;
   }
-  pdf += "trailer\n<< /Size " + std::to_string(offsets.size() + 1) +
-         " /Root 1 0 R";
+  absl::StrAppend(&pdf, "trailer\n<< /Size ", offsets.size() + 1,
+                  " /Root 1 0 R");
   if (!producer.empty()) pdf += " /Info 5 0 R";
-  pdf += " >>\nstartxref\n" + std::to_string(xref) + "\n%%EOF\n";
+  absl::StrAppend(&pdf, " >>\nstartxref\n", xref, "\n%%EOF\n");
   return pdf;
 }
 

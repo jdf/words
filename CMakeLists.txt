@@ -34,6 +34,7 @@ target_link_libraries(words_core PUBLIC
   absl::log_initialize
   absl::log_sink
   absl::log_sink_registry
+  absl::strings
   Freetype::Freetype
   harfbuzz::harfbuzz
   Clipper2::Clipper2

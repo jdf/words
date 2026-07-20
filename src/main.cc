@@ -34,6 +34,7 @@
 #include <GLES3/gl3.h>
 
 #include <absl/log/log.h>
+#include <absl/strings/str_cat.h>
 
 #include <cstdint>
 #include <cstdio>
@@ -186,10 +187,10 @@ words::Scene buildScene(const std::string& fontPath,
   options.progress = postProgress;
   std::string fontLabel = words::fontFamilyName(fontPath);
   if (fontLabel.empty()) fontLabel = fontPath;
-  *description =
-      std::string(words::orientationName(options.orientation)) + " · " +
-      std::string(words::placementName(options.placement)) + " · " +
-      paletteLabel + " · " + fontLabel;
+  *description = absl::StrCat(
+      words::orientationName(options.orientation), " · ",
+      words::placementName(options.placement), " · ", paletteLabel, " · ",
+      fontLabel);
   LOG(INFO) << "build: font=" << fontPath
             << " corpus=" << urlParam("corpus") << " config=" << *description
             << " variance=" << urlParam("variance");
@@ -206,10 +207,10 @@ words::Scene buildScene(const std::string& fontPath,
     // The Whale") — lead the status line with it.
     if (tsv.starts_with("# ")) {
       const size_t eol = tsv.find('\n');
-      *description = tsv.substr(2, eol == std::string::npos
-                                       ? std::string::npos
-                                       : eol - 2) +
-                     " · " + *description;
+      *description = absl::StrCat(
+          tsv.substr(2, eol == std::string::npos ? std::string::npos
+                                                 : eol - 2),
+          " · ", *description);
     }
     return words::buildCloudFromCountsTsv(fontPath, kStopWordsDir, tsv,
                                           options);
@@ -304,7 +305,8 @@ extern "C" EMSCRIPTEN_KEEPALIVE void wordsSetBuildId(const char* id) {
   g_buildId = id;
 }
 static std::string buildTag() {
-  return g_buildId.empty() ? "" : "words build " + g_buildId;
+  return g_buildId.empty() ? std::string()
+                           : absl::StrCat("words build ", g_buildId);
 }
 
 // The scene as SVG for export (the source of every save format — the

@@ -4,6 +4,8 @@
 
 #include "pdf.h"
 
+#include <absl/strings/str_cat.h>
+
 #include <catch2/catch_test_macros.hpp>
 
 #include <cstdio>
@@ -33,7 +35,7 @@ TEST_CASE("pdf is a well-formed vector document") {
   double expectH = 792.0 * scene.height() / scene.width();
   char h[32];
   std::snprintf(h, sizeof h, "%.2f", expectH);
-  CHECK(pdf.find(std::string("/MediaBox [0 0 792.00 ") + h + "]") !=
+  CHECK(pdf.find(absl::StrCat("/MediaBox [0 0 792.00 ", h, "]")) !=
         std::string::npos);
   CHECK(pdf.rfind("%%EOF\n") == pdf.size() - 6);
   // No producer given: no Info dictionary.

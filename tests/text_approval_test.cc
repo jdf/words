@@ -6,6 +6,9 @@
 #include <ApprovalTests.hpp>
 #include <catch2/catch_test_macros.hpp>
 
+#include <absl/strings/str_cat.h>
+
+#include <cstddef>
 #include <string>
 
 #include "text.h"
@@ -39,7 +42,7 @@ TEST_CASE("word count report for a multilingual corpus") {
     size_t n = 0;
     for (const auto& wc : counts) {
       if (++n > 5) break;
-      report += "  " + wc.display + " x" + std::to_string(wc.count) + "\n";
+      absl::StrAppend(&report, "  ", wc.display, " x", wc.count, "\n");
     }
     report += "\n";
   }

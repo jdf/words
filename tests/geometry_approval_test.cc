@@ -5,6 +5,8 @@
 #include <ApprovalTests.hpp>
 #include <catch2/catch_test_macros.hpp>
 
+#include <absl/strings/str_cat.h>
+
 #include <algorithm>
 #include <cstddef>
 #include <numbers>
@@ -16,6 +18,7 @@
 
 #include "box.h"
 #include "demo_scene.h"
+#include "orientation.h"
 #include "text.h"
 #include "layout.h"
 #include "scene.h"
@@ -89,7 +92,7 @@ TEST_CASE("original font collection shapes text") {
                            "opensansbold"}) {
     INFO(font);
     words::ShapedText shaped = words::shapeText(
-        std::string(WORDS_ASSETS_DIR "/fonts/") + font + ".ttf", "Wordle");
+        absl::StrCat(WORDS_ASSETS_DIR "/fonts/", font, ".ttf"), "Wordle");
     CHECK_FALSE(shaped.empty());
     CHECK(shaped.upem > 0);
     CHECK(shaped.bounds.width() > 0);
