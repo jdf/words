@@ -198,6 +198,33 @@ namespace {
 
 // The shared tail of every text pipeline: frequency-ranked counts become
 // sized, oriented, colored, laid-out words.
+// The original's GlyphCache, at word granularity: shaping (FreeType
+// outlines + HarfBuzz + Clipper2 union) is the pipeline's dominant cost
+// — ~60% of a default rebuild — and every rebuild re-shapes the same
+// vocabulary. Scale and rotation bake downstream in Word, so (font,
+// display form) is the whole key: palette, seed, orientation,
+// placement, variance, and word-count changes all replay from here for
+// free, and only a font switch pays again (one font's geometry cached
+// at a time keeps the memo a few MB). Single-threaded by design, like
+// the rest of the pipeline (one engine per worker).
+const ShapedText& shapedFor(const std::string& fontPath,
+                            const std::string& display) {
+  static std::string cachedFontPath;
+  static std::unordered_map<std::string, ShapedText> cache;
+  if (fontPath != cachedFontPath) {
+    cache.clear();
+    cachedFontPath = fontPath;
+  }
+  // A runaway session (many pasted texts) is bounded too; well above
+  // any single text's vocabulary, so it never churns within one.
+  if (cache.size() > 16384) cache.clear();
+  auto it = cache.find(display);
+  if (it == cache.end()) {
+    it = cache.emplace(display, shapeText(fontPath, display)).first;
+  }
+  return it->second;
+}
+
 Scene cloudFromCounts(const std::string& fontPath,
                       std::vector<WordCount>&& counts,
                       const CloudOptions& options) {
@@ -216,7 +243,7 @@ Scene cloudFromCounts(const std::string& fontPath,
     if (options.progress && i % 32 == 0) {
       options.progress("shaping", i, counts.size());
     }
-    ShapedText shaped = shapeText(fontPath, wc.display);
+    const ShapedText& shaped = shapedFor(fontPath, wc.display);
     if (shaped.empty()) continue;
     // Type size proportional to frequency, like the original.
     double em = std::max(kMinEm, kMaxEm * wc.count / maxCount);
