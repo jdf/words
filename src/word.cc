@@ -11,8 +11,10 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <cstddef>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "box.h"
 #include "hbb.h"
@@ -83,6 +85,63 @@ struct OutlineSink {
     return 0;
   }
 };
+
+// Whether the raw glyph contours need the Clipper union to render
+// correctly under even-odd filling (see the call site). Safe pairs:
+// bbox-disjoint contours (independent ink), and containment with
+// opposite winding (the hole pattern — even-odd and nonzero agree).
+// Everything else — partial bbox overlap (a possible stroke crossing)
+// or same-winding containment (nonzero fills through, even-odd would
+// punch a hole) — must be unioned. O(contours^2) on bboxes: cheap next
+// to the union it usually avoids.
+bool unionRequired(const Clipper2Lib::PathsD& contours,
+                   const std::vector<size_t>& glyphOf) {
+  const size_t n = contours.size();
+  std::vector<Box> boxes(n);
+  std::vector<bool> positive(n);
+  for (size_t i = 0; i < n; ++i) {
+    Box b;
+    bool first = true;
+    double area2 = 0;  // twice the signed area (shoelace)
+    const auto& path = contours[i];
+    for (size_t k = 0; k < path.size(); ++k) {
+      const auto& p = path[k];
+      const auto& q = path[(k + 1) % path.size()];
+      area2 += p.x * q.y - q.x * p.y;
+      if (first) {
+        b = {p.x, p.y, p.x, p.y};
+        first = false;
+      } else {
+        b.minX = std::min(b.minX, p.x);
+        b.maxX = std::max(b.maxX, p.x);
+        b.minY = std::min(b.minY, p.y);
+        b.maxY = std::max(b.maxY, p.y);
+      }
+    }
+    boxes[i] = b;
+    positive[i] = area2 > 0;
+  }
+  for (size_t i = 0; i < n; ++i) {
+    for (size_t j = i + 1; j < n; ++j) {
+      const Box& a = boxes[i];
+      const Box& b = boxes[j];
+      // Touching counts as overlap: stay conservative at the boundary.
+      const bool overlap = a.maxX >= b.minX && b.maxX >= a.minX &&
+                           a.maxY >= b.minY && b.maxY >= a.minY;
+      if (!overlap) continue;
+      // The hole exemption holds only within one glyph: a font's
+      // winding convention is self-consistent there, while glyphs
+      // nesting into each other (or sloppy cross-glyph winding) get
+      // the conservative treatment.
+      if (glyphOf[i] == glyphOf[j] && (a.contains(b) || b.contains(a)) &&
+          positive[i] != positive[j]) {
+        continue;
+      }
+      return true;
+    }
+  }
+  return false;
+}
 
 Box boundsOf(const Clipper2Lib::PathsD& paths) {
   Box b;
@@ -171,6 +230,7 @@ ShapedText shapeText(const std::string& fontPath, const std::string& text) {
   funcs.cubic_to = OutlineSink::cubicTo;
 
   double penX = 0, penY = 0;
+  std::vector<size_t> glyphOf;  // contour index -> glyph ordinal
   for (unsigned int i = 0; i < glyphCount; ++i) {
     if (FT_Load_Glyph(face, infos[i].codepoint,
                       FT_LOAD_NO_SCALE | FT_LOAD_NO_BITMAP) != 0) {
@@ -179,6 +239,7 @@ ShapedText shapeText(const std::string& fontPath, const std::string& text) {
     sink.penX = penX + positions[i].x_offset;
     sink.penY = penY + positions[i].y_offset;
     FT_Outline_Decompose(&face->glyph->outline, &funcs, &sink);
+    glyphOf.resize(sink.contours.size(), i);
     penX += positions[i].x_advance;
     penY += positions[i].y_advance;
   }
@@ -192,10 +253,22 @@ ShapedText shapeText(const std::string& fontPath, const std::string& text) {
   ShapedText result;
   result.text = text;
   result.upem = upem;
-  // Union produces disjoint contours (holes as separate paths), which both
-  // the even-odd stencil fill and downstream boolean ops rely on.
-  result.paths =
-      Clipper2Lib::Union(sink.contours, Clipper2Lib::FillRule::NonZero);
+  // The union serves two purposes: merging overlapping strokes, and
+  // converting the font's nonzero-winding contours into the disjoint
+  // form the even-odd consumers (stencil fill, SVG, PDF, InkTester)
+  // rely on. Profiling showed it IS the shaping phase (~everything but
+  // ~1% of FreeType+HarfBuzz), and for most words it's an expensive
+  // identity: when every contour pair is either bbox-disjoint or a
+  // hole nested in an oppositely-wound outer, even-odd and nonzero
+  // agree on the ink and the raw contours pass through untouched.
+  // Same-winding containment (nonzero fills through, even-odd holes)
+  // or partial bbox overlap (possible stroke crossing) still unions.
+  if (unionRequired(sink.contours, glyphOf)) {
+    result.paths =
+        Clipper2Lib::Union(sink.contours, Clipper2Lib::FillRule::NonZero);
+  } else {
+    result.paths = std::move(sink.contours);
+  }
   result.bounds = boundsOf(result.paths);
   return result;
 }
