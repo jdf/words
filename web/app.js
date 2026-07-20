@@ -195,6 +195,9 @@ const spec = {
   // keys. IMMUTABLE: undo snapshots share the array, so actions must
   // replace it, never push into it.
   exclude: (params.get('exclude') || '').split(',').filter(Boolean),
+  // Recolor: 0 = the engine's stock color assignment; nonzero redraws
+  // the palette distribution from this seed, layout untouched.
+  colorSeed: parseInt(params.get('recolor'), 10) || 0,
   text: '',
 };
 for (const dim of ['font', 'orientation', 'placement', 'palette']) {
@@ -217,6 +220,8 @@ function specUrl(forEngine) {
   } else {
     url.searchParams.delete('exclude');
   }
+  if (spec.colorSeed) url.searchParams.set('recolor', spec.colorSeed);
+  else url.searchParams.delete('recolor');
   if (spec.corpus) url.searchParams.set('corpus', spec.corpus);
   else url.searchParams.delete('corpus');
   for (const dim of ['font', 'orientation', 'placement', 'palette']) {
@@ -298,6 +303,7 @@ const sendSpec = (s) => {
     variance: s.variance,
     caseFold: s.caseFold,
     exclude: s.exclude.join(','),
+    colorSeed: s.colorSeed,
     corpus: s.corpus,
     useText: s.text !== '',
   };
@@ -1033,6 +1039,16 @@ if (showUi) {
       });
     });
   }
+
+  // Recolor: same palette, fresh distribution — a new color seed and
+  // nothing else. Repeated presses keep rerolling; undo walks back.
+  document.getElementById('recolor').addEventListener('click', () => {
+    apply({
+      label: 'Recolor',
+      before: { ...spec },
+      after: { ...spec, colorSeed: randomSeed() },
+    });
+  });
 
   // Variance sliders (inline on desktop, pop-down on phone): index into
   // VARIANCES; the labels track the drag live, the rebuild fires on

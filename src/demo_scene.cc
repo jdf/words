@@ -11,6 +11,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <numbers>
+#include <optional>
 #include <random>
 #include <string>
 #include <string_view>
@@ -245,6 +246,11 @@ Scene cloudFromCounts(const std::string& fontPath,
 
   std::mt19937 rng(20080623);
   std::uniform_real_distribution<double> unit(0.0, 1.0);
+  // Recolor: a nonzero colorSeed redraws the palette assignment from
+  // its own stream; zero keeps the legacy shared-stream colors.
+  std::optional<std::mt19937> colorRng;
+  std::uniform_real_distribution<double> colorUnit(0.0, 1.0);
+  if (options.colorSeed != 0) colorRng.emplace(options.colorSeed);
 
   double maxCount = counts[0].count;
   std::vector<Word> laid;
@@ -262,13 +268,27 @@ Scene cloudFromCounts(const std::string& fontPath,
     double scale = em / shaped.upem;
     double angle = orientationAngle(options.orientation, wc.display, rng);
     laid.emplace_back(shaped, scale, angle);
+    // Colors and angles interleave draws from the one shared stream, so
+    // the legacy color draws always happen — they keep the angle
+    // sequence (and thus the layout) identical — and a Recolor seed
+    // merely overrides the result from its own stream.
+    Color color;
     if (options.colors) {
-      colors.push_back(varied(options.colors->palette.pick(rng),
-                              options.colors->variance, rng));
+      color = varied(options.colors->palette.pick(rng),
+                     options.colors->variance, rng);
     } else {
-      colors.push_back(
-          kPalette[static_cast<size_t>(unit(rng) * std::size(kPalette))]);
+      color = kPalette[static_cast<size_t>(unit(rng) * std::size(kPalette))];
     }
+    if (colorRng) {
+      if (options.colors) {
+        color = varied(options.colors->palette.pick(*colorRng),
+                       options.colors->variance, *colorRng);
+      } else {
+        color = kPalette[static_cast<size_t>(colorUnit(*colorRng) *
+                                             std::size(kPalette))];
+      }
+    }
+    colors.push_back(color);
   }
   if (laid.empty()) return Scene();
 

@@ -36,6 +36,11 @@ struct CloudOptions {
   // uniform draws cluster near 1.0 pins the biggest words to the right
   // edge, since word k's starting x is the k-th draw.)
   uint32_t seed = 1447;
+  // Recolor: nonzero redraws the per-word palette assignment from this
+  // seed's own stream, leaving the layout untouched; zero keeps the
+  // legacy colors (which interleave with angle draws — see
+  // cloudFromCounts).
+  uint32_t colorSeed = 0;
   // World width:height ratio — the canvas's, so portrait screens get
   // portrait clouds. 1.6 is the original's landscape default.
   double aspect = 1.6;

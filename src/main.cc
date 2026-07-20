@@ -22,6 +22,7 @@
 //   ?variance=<name>     color variance: exact|little|some|lots|wild
 //   ?case=<name>         case fold: guess|as-written|lower|upper
 //   ?exclude=<w1,w2>     removed words (comma-separated, folded keys)
+//   ?recolor=<n>         nonzero: redraw palette assignment from seed n
 //   ?orientation=<name>  horizontal|mostly-horizontal|half-and-half|...
 //                        (see src/orientation.h)
 //   ?placement=<name>    center-line|center
@@ -90,6 +91,7 @@ std::string g_caseFold;  // case-fold slug; "" falls back to ?case=
 // always sends the whole list.)
 std::string g_exclude;
 bool g_excludeSet = false;
+int g_colorSeed = 0;  // 0 = legacy colors; falls back to ?recolor=
 // The view camera: pure render state (layout never sees it). Reset on
 // every rebuild; the page owns the interaction math.
 double g_zoom = 1.0;
@@ -191,6 +193,8 @@ words::Scene buildScene(const std::string& fontPath,
     options.placement = *p;
   }
   options.seed = g_seed;
+  options.colorSeed = static_cast<uint32_t>(
+      g_colorSeed ? g_colorSeed : std::atoi(urlParam("recolor").c_str()));
   options.maxWords = static_cast<size_t>(g_maxWords);
   // The world takes the canvas's shape: portrait screens get portrait
   // clouds. (The e2e viewport is 1200x750 — exactly the 1.6 default.)
@@ -261,7 +265,8 @@ extern "C" EMSCRIPTEN_KEEPALIVE void wordsRebuild(int seed,
                                                   int maxWords,
                                                   const char* variance,
                                                   const char* caseFold,
-                                                  const char* exclude) {
+                                                  const char* exclude,
+                                                  int colorSeed) {
   if (!g_app) return;
   g_seed = static_cast<uint32_t>(seed);
   if (maxWords > 0) g_maxWords = maxWords;
@@ -269,6 +274,7 @@ extern "C" EMSCRIPTEN_KEEPALIVE void wordsRebuild(int seed,
   g_caseFold = caseFold ? caseFold : "";
   g_exclude = exclude ? exclude : "";
   g_excludeSet = true;
+  g_colorSeed = colorSeed;
   // A new cloud gets a fresh view.
   g_zoom = 1.0;
   g_camX = 0.0;

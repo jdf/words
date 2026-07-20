@@ -88,10 +88,11 @@ async function rebuild(msg) {
   }
   engine.ccall('wordsRebuild', null,
                ['number', 'string', 'string', 'string', 'string', 'string',
-                'number', 'string', 'string', 'string'],
+                'number', 'string', 'string', 'string', 'number'],
                [msg.seed, msg.orientation, msg.placement, msg.palette, path,
                 msg.useText ? kUserTextPath : '', msg.maxWords | 0,
-                msg.variance || '', msg.caseFold || '', msg.exclude || '']);
+                msg.variance || '', msg.caseFold || '', msg.exclude || '',
+                msg.colorSeed | 0]);
 }
 
 function init(msg) {

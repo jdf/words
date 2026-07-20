@@ -87,6 +87,31 @@ TEST_CASE("as-written corpus rows honor every case fold") {
         std::vector<std::string>{"Whale", "whale", "ship", "WHALE", "Ship"});
 }
 
+TEST_CASE("recolor keeps the layout and changes only colors") {
+  words::CloudOptions options;
+  options.seed = 7;
+  words::Scene base =
+      words::buildCloudFromCountsTsv(kFont, kStops, kTsv, options);
+  options.colorSeed = 99;
+  words::Scene recolored =
+      words::buildCloudFromCountsTsv(kFont, kStops, kTsv, options);
+  REQUIRE(base.entries().size() == recolored.entries().size());
+  bool anyColorDiffers = false;
+  for (size_t i = 0; i < base.entries().size(); ++i) {
+    const words::Scene::Entry& a = base.entries()[i];
+    const words::Scene::Entry& b = recolored.entries()[i];
+    CHECK(a.word.x() == b.word.x());  // geometry is untouched
+    CHECK(a.word.y() == b.word.y());
+    anyColorDiffers = anyColorDiffers || a.color.r != b.color.r ||
+                      a.color.g != b.color.g || a.color.b != b.color.b;
+  }
+  CHECK(anyColorDiffers);
+  // Deterministic: the same color seed deals the same colors.
+  words::Scene again =
+      words::buildCloudFromCountsTsv(kFont, kStops, kTsv, options);
+  CHECK(words::toSvg(recolored) == words::toSvg(again));
+}
+
 TEST_CASE("excluded words drop out and the cap refills behind them") {
   words::CloudOptions options;
   options.maxWords = 3;
