@@ -245,6 +245,15 @@ Scene cloudFromCounts(const std::string& fontPath,
   // a sizing pass lays out in a near-square world, the ink's actual
   // width:height ratio corrects the world, and the real pass lands
   // square. Both passes are deterministic (same seed).
+  // The central disc must also fit INSIDE its square world: worldFor
+  // sizes by area alone, but an inscribed disc offers only π/4 of a
+  // square, and word boxes pack a disc at well under full density — so
+  // at high word counts the disc's natural diameter exceeds the
+  // square's side and the frontier flattens against the walls (issue
+  // #2's "sharp edges"). Scaling the side by 4/π buys headroom down to
+  // ~44% packing density; the unused margin is invisible (the scene
+  // fits to content) and an unsaturated layout never feels the walls.
+  constexpr double kCenterWorldPad = 4.0 / std::numbers::pi;
   double aspect = options.aspect;
   if (options.placement == Placement::kCenter) {
     aspect = kHeightPad / kWidthPad;
@@ -267,6 +276,12 @@ Scene cloudFromCounts(const std::string& fontPath,
     aspect /= std::clamp(inkAspect(laid) / 1.05, 0.5, 2.0);
   }
   Box world = worldFor(laid, aspect);
+  if (options.placement == Placement::kCenter) {
+    const double growX = world.width() * (kCenterWorldPad - 1.0) / 2.0;
+    const double growY = world.height() * (kCenterWorldPad - 1.0) / 2.0;
+    world = {world.minX - growX, world.minY - growY, world.maxX + growX,
+             world.maxY + growY};
+  }
   if (options.progress) {
     params.progress = [&options](size_t done, size_t total) {
       options.progress("layout", done, total);
