@@ -170,11 +170,11 @@ function bootDimension(dim) {
   return { mode: 'fixed', value: decode(raw) };
 }
 
-// Word-count bounds: benchmarked (BM_CloudFromCounts) — a 2000-word
-// rebuild is ~1s on a fast laptop for typical fonts, ~4x that for the
-// heaviest outlines (Fridge), doubling again on slow hardware. The far
-// end is a deliberate drag with a progress bar; past it the wait stops
-// feeling interactive anywhere.
+// Word-count bounds: measured in-browser (tools/profile-rebuild.mjs,
+// 2026-07-20) — a 2000-word rebuild is ~0.5s warm / ~1.2s cold on a
+// fast laptop, x1.3-1.5 for the heaviest outlines (Fridge), several
+// times that on slow hardware. The far end is a deliberate drag with
+// a progress bar; past it the wait stops feeling interactive anywhere.
 const MIN_WORDS = 50;
 const MAX_WORDS = 2000;
 const DEFAULT_WORDS = 800;
@@ -334,6 +334,11 @@ worker.onmessage = (e) => {
       replyWaiters.delete(m.id);
       waiter(m.payload);
     }
+  } else if (m.type === 'timing') {
+    // Per-stage rebuild timings (see logStageTimings in src/main.cc):
+    // console + a global for scripted profiling.
+    console.log(m.text);
+    window.__wordsTiming = m.text;
   } else if (m.type === 'print') {
     console.log(m.text);
     status.textContent = m.text;

@@ -40,6 +40,7 @@
 #include <absl/strings/str_split.h>
 
 #include <algorithm>
+#include <chrono>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
@@ -251,6 +252,36 @@ void render() {
 
 }  // namespace
 
+// Stage timings, console-only (the status line is pinned by the e2e
+// goldens): scene = the whole pipeline (shape memo + layout), renderer
+// = per-word VAO/VBO churn through the Emscripten GL proxy, draw =
+// CPU-side command submission for the stencil-and-cover passes (GPU
+// execution is asynchronous and not visible here). Contour vertices
+// drive both GL stages — heavy outlines (Fridge) multiply them.
+void logStageTimings(const char* what, const words::Scene& scene,
+                     std::chrono::steady_clock::time_point t0,
+                     std::chrono::steady_clock::time_point t1,
+                     std::chrono::steady_clock::time_point t2,
+                     std::chrono::steady_clock::time_point t3) {
+  size_t contourVerts = 0;
+  for (const words::Scene::Entry& e : scene.entries()) {
+    for (const auto& path : e.word.localPaths()) contourVerts += path.size();
+  }
+  const auto ms = [](auto a, auto b) {
+    return std::chrono::duration_cast<std::chrono::milliseconds>(b - a)
+        .count();
+  };
+  const std::string line = absl::StrCat(
+      what, " timings: scene ", ms(t0, t1), "ms, renderer.init ", ms(t1, t2),
+      "ms, draw-submit ", ms(t2, t3), "ms; ", scene.entries().size(),
+      " words, ", contourVerts, " contour vertices");
+  LOG(INFO) << line;
+  // Also hand the line to the page (the worker's own console is awkward
+  // to scrape); app.js logs it and parks it on window.__wordsTiming.
+  EM_ASM({ postMessage({type : 'timing', text : UTF8ToString($0)}); },
+         line.c_str());
+}
+
 // Rebuild the cloud from a new spec (the toolbar, via the worker shell):
 // seed, orientation slug ("" keeps the URL's), palette slug ("" is the
 // built-in dark scheme), font path ("" keeps the current font — the
@@ -285,9 +316,14 @@ extern "C" EMSCRIPTEN_KEEPALIVE void wordsRebuild(int seed,
   g_textPath = textPath ? textPath : "";
   if (fontPath && *fontPath) g_app->fontPath = fontPath;
   std::string description;
+  const auto t0 = std::chrono::steady_clock::now();
   g_app->scene = buildScene(g_app->fontPath, &description);
+  const auto t1 = std::chrono::steady_clock::now();
   g_app->wordRenderer.init(g_app->scene);
+  const auto t2 = std::chrono::steady_clock::now();
   render();
+  const auto t3 = std::chrono::steady_clock::now();
+  logStageTimings("rebuild", g_app->scene, t0, t1, t2, t3);
   std::printf("%s · seed %u\n", description.c_str(), g_seed);
   postIdle();
 }
@@ -470,8 +506,11 @@ int main() {
   std::ifstream fontOverride(kFontOverridePath);
   app.fontPath = fontOverride ? kFontOverridePath : kFontPath;
   std::string description;
+  const auto bootT0 = std::chrono::steady_clock::now();
   app.scene = buildScene(app.fontPath, &description);
+  const auto bootT1 = std::chrono::steady_clock::now();
   app.wordRenderer.init(app.scene);
+  const auto bootT2 = std::chrono::steady_clock::now();
 
   std::printf("words up: GL_VERSION = %s\n", glGetString(GL_VERSION));
   // Last print line = the page's status overlay: the human-readable
@@ -479,6 +518,8 @@ int main() {
   std::printf("%s\n", description.c_str());
 
   render();
+  const auto bootT3 = std::chrono::steady_clock::now();
+  logStageTimings("boot", app.scene, bootT0, bootT1, bootT2, bootT3);
   postIdle();
   // The runtime stays alive after main returns to service commands.
   return 0;
