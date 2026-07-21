@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+  <rect x="0.5" y="0.5" width="31" height="31" rx="6"
+        fill="#000" stroke="#7ed99a" stroke-width="1"/>
+  <path transform="translate(7.384 25.000) scale(0.04045 -0.04045)"
+        fill="#7ed99a" d="M423 403H415Q397 403 393 378L336 0H283L212 310L143 0H90L32 375Q27 403 13 403H3V445H149V403H132Q107 403 107 390Q107 387 107.5 383.5Q108 380 109 375L135 118L208 445H256L323 118L357 381Q357 403 333 403H316V445H423Z"/>
+</svg>
