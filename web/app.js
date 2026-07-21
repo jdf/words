@@ -249,9 +249,16 @@ const DEFAULT_WORDS = 800;
 const clampWords = (n) =>
     Math.min(MAX_WORDS, Math.max(MIN_WORDS, n | 0)) || DEFAULT_WORDS;
 
+// Looseness: the user's multiplier on the search spiral's per-typeface
+// base step (the engine calibrates dense faces like Fridge coarser on
+// its own; this scales on top). 1 = as calibrated.
+const clampLoose = (v) =>
+    Number.isFinite(v) ? Math.min(20, Math.max(1, v)) : 1;
+
 const spec = {
   seed: parseInt(params.get('seed'), 10) || 1447,
   maxWords: clampWords(parseInt(params.get('max'), 10) || DEFAULT_WORDS),
+  loose: clampLoose(parseFloat(params.get('loose'))),
   // 'little' is the engine default, so a bare URL looks unchanged.
   variance: VARIANCES.some(([slug]) => slug === params.get('variance'))
       ? params.get('variance') : 'little',
@@ -290,6 +297,8 @@ function specUrl(forEngine) {
   }
   if (spec.colorSeed) url.searchParams.set('recolor', spec.colorSeed);
   else url.searchParams.delete('recolor');
+  if (spec.loose !== 1) url.searchParams.set('loose', spec.loose);
+  else url.searchParams.delete('loose');
   if (spec.corpus) url.searchParams.set('corpus', spec.corpus);
   else url.searchParams.delete('corpus');
   for (const dim of ['font', 'orientation', 'placement', 'palette']) {
@@ -372,6 +381,7 @@ const specMsg = (s) => ({
   caseFold: s.caseFold,
   exclude: s.exclude.join(','),
   colorSeed: s.colorSeed,
+  loose: s.loose,
   corpus: s.corpus,
   useText: s.text !== '',
 });
@@ -1302,6 +1312,14 @@ function refreshUi() {
   }
   document.getElementById('words-btn-label').textContent =
       `${spec.maxWords} words`;
+  for (const s of document.querySelectorAll('.loose-input')) {
+    s.value = spec.loose;
+  }
+  for (const v of document.querySelectorAll('.loose-val')) {
+    v.textContent = `×${spec.loose}`;
+  }
+  document.getElementById('loose-btn-label').textContent =
+      `Looseness ×${spec.loose}`;
   const vIndex = VARIANCES.findIndex(([slug]) => slug === spec.variance);
   const [, vShort, vFull] = VARIANCES[vIndex < 0 ? 1 : vIndex];
   for (const s of document.querySelectorAll('.var-input')) {
@@ -1692,6 +1710,27 @@ if (showUi) {
     });
   }
 
+  // Looseness sliders (inline on desktop, pop-down on phone): the
+  // labels track the drag live; the relayout (one undoable action)
+  // fires on release, like the word-count slider — every step is a
+  // full rebuild, too heavy to preview per step.
+  for (const slider of document.querySelectorAll('.loose-input')) {
+    slider.addEventListener('input', () => {
+      for (const v of document.querySelectorAll('.loose-val')) {
+        v.textContent = `×${+slider.value}`;
+      }
+    });
+    slider.addEventListener('change', () => {
+      const loose = clampLoose(+slider.value);
+      if (loose === spec.loose) return;
+      apply({
+        label: 'Looseness',
+        before: { ...spec },
+        after: { ...spec, loose },
+      });
+    });
+  }
+
   // Recolor: same palette, fresh distribution — a new color seed and
   // nothing else. Repeated presses keep rerolling; undo walks back.
   document.getElementById('recolor').addEventListener('click', () => {
@@ -1728,7 +1767,7 @@ if (showUi) {
 
   // The phone-portrait pop-down buttons (word count, variance): a
   // dd-style button whose panel holds the slider.
-  for (const rootId of ['dd-words', 'dd-variance']) {
+  for (const rootId of ['dd-words', 'dd-variance', 'dd-loose']) {
     const root = document.getElementById(rootId);
     const btn = root.querySelector('.dd-btn');
     const panel = root.querySelector('.dd-panel');

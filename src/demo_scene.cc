@@ -339,6 +339,8 @@ Scene cloudFromCounts(const std::string& fontPath,
   LayoutParams params;
   params.placement = options.placement;
   params.seed = options.seed;
+  params.dTheta *= options.spiralStep;
+  params.dRadius *= options.spiralStep;
   if (options.placement == Placement::kSquare) {
     LayoutParams sizing = params;  // no progress: it's a throwaway pass
     layoutWords(laid, worldFor(laid, aspect), sizing);

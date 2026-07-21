@@ -139,6 +139,17 @@ try {
   await step('App Colors crossing takes the full rebuild', () =>
       choose('palette', 'fixed', ''), 'rebuild');
 
+  // Looseness: a spiral-step change is a relayout — full rebuild — and
+  // the slider value rides the spec and the copy link.
+  await step('looseness change relayouts (full rebuild)', () => {
+    const slider = document.querySelector('#loose-inline .loose-input');
+    slider.value = 3;
+    slider.dispatchEvent(new Event('change'));
+  }, 'rebuild');
+  await check('looseness landed in spec and the copy link',
+      () => spec.loose === 3 &&
+            specUrl().searchParams.get('loose') === '3');
+
   // The curated first cloud: a bare boot (no style params) opens with
   // the aspect-fitting placement (1200x750 is wide → center-line),
   // mostly-horizontal, and Blue Meets Orange — each still in random

@@ -44,6 +44,11 @@ struct CloudOptions {
   // World width:height ratio — the canvas's, so portrait screens get
   // portrait clouds. 1.6 is the original's landscape default.
   double aspect = 1.6;
+  // Spiral step multiplier (scales LayoutParams dTheta and dRadius
+  // together): 1.0 is the original's calibration. Coarser steps loosen
+  // packing and cut probe counts — a tuning knob for dense "mostly ink"
+  // typefaces whose glyphs can't nest anyway.
+  double spiralStep = 1.0;
   const ColorScheme* colors = nullptr;  // null = built-in dark scheme
   // The original's Case menu. Corpus TSVs are counted as-written (one
   // row per exact spelling), so every fold applies to them at load; on

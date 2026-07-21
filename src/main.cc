@@ -25,6 +25,8 @@
 //   ?case=<name>         case fold: guess|as-written|lower|upper
 //   ?exclude=<w1,w2>     removed words (comma-separated, folded keys)
 //   ?recolor=<n>         nonzero: redraw palette assignment from seed n
+//   ?loose=<f>           looseness: multiplies the search spiral's
+//                        per-typeface base step (1..20, default 1)
 //   ?orientation=<name>  horizontal|mostly-horizontal|half-and-half|...
 //                        (see src/orientation.h)
 //   ?placement=<name>    center-line|center
@@ -108,6 +110,19 @@ std::string g_placement;
 // UI override for the palette; unset = use the URL parameter. (Unlike
 // orientation, the empty string is meaningful: the built-in dark scheme.)
 std::optional<std::string> g_palette;
+// The Looseness slider: a user multiplier (1..20) on the search
+// spiral's per-typeface base step (see spiralBase).
+double g_loose = 1.0;
+
+// Per-typeface spiral calibration. Fridge-magnet glyphs are solid tiles
+// — mostly ink, nothing nests — so a much coarser search spiral finds
+// equivalent positions in far fewer probes (measured at 2000 words:
+// footprint +<2%, layout −30% at 2×; ×3 chosen by eye). Other dense
+// faces can join this table (or a measured ink-coverage heuristic can
+// replace it) as they prove out.
+double spiralBase(const std::string& fontPath) {
+  return fontPath.ends_with("/fridge.ttf") ? 3.0 : 1.0;
+}
 // MEMFS path of user-pasted text (the worker stages it); empty = none —
 // use the corpus / ?text= / sample-text sources.
 std::string g_textPath;
@@ -241,6 +256,8 @@ words::Scene buildScene(const std::string& fontPath) {
   options.seed = g_seed;
   options.colorSeed = currentColorSeed();
   options.maxWords = static_cast<size_t>(g_maxWords);
+  options.spiralStep =
+      spiralBase(fontPath) * std::clamp(g_loose, 1.0, 20.0);
   // The world takes the canvas's shape: portrait screens get portrait
   // clouds. (The e2e viewport is 1200x750 — exactly the 1.6 default.)
   if (g_app && g_app->width > 0 && g_app->height > 0) {
@@ -358,10 +375,12 @@ extern "C" EMSCRIPTEN_KEEPALIVE void wordsRebuild(int seed,
                                                   const char* variance,
                                                   const char* caseFold,
                                                   const char* exclude,
-                                                  int colorSeed) {
+                                                  int colorSeed,
+                                                  double looseness) {
   if (!g_app) return;
   g_seed = static_cast<uint32_t>(seed);
   if (maxWords > 0) g_maxWords = maxWords;
+  g_loose = looseness > 0 ? looseness : 1.0;
   g_variance = variance ? variance : "";
   g_caseFold = caseFold ? caseFold : "";
   g_exclude = exclude ? exclude : "";
@@ -600,6 +619,8 @@ int main() {
     int m = std::atoi(maxParam.c_str());
     if (m > 0) g_maxWords = m;
   }
+  const double loose = std::atof(urlParam("loose").c_str());
+  if (loose > 0) g_loose = loose;
 
   // Boot-font resolution: ?font= staged at its canonical /fonts/ path
   // (so the shape memo survives into the first rebuild), then the
