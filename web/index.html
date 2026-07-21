@@ -229,11 +229,22 @@
     /* Palette editor: a live-recolored sample cloud, the background +
        word-color swatch rows, and an inline HSV picker (shade square,
        hue strip, hex field) that edits whichever swatch is selected. */
-    #palette-dialog { width: min(480px, 92vw); }
-    #pal-sample {
-      display: block; width: 100%; height: auto; box-sizing: border-box;
-      border: 1px solid #333; border-radius: 6px;
+    #palette-dialog {
+      width: min(480px, 92vw);
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6);
     }
+    /* The palette previews live on the real cloud behind the dialog, so
+       the backdrop must not dim it; the drag bar up top lets the dialog
+       be pulled off whatever it covers. */
+    #palette-dialog::backdrop { background: transparent; }
+    .pal-drag {
+      margin: -16px -16px 12px; padding: 10px 16px 8px;
+      background: #101014; border-bottom: 1px solid #333;
+      border-radius: 7px 7px 0 0; cursor: grab;
+      user-select: none; -webkit-user-select: none; touch-action: none;
+    }
+    .pal-drag:active { cursor: grabbing; }
+    .pal-drag h3 { margin: 0; }
     .pal-section {
       display: flex; align-items: flex-start; gap: 10px; margin-top: 14px;
     }
@@ -512,12 +523,13 @@
       </span>
     </div>
   </dialog>
-  <!-- Custom palette editor: swatches populated by app.js; the sample
-       cloud up top recolors live as the palette is edited. Saved
-       palettes persist in localStorage and join the Palette menu. -->
+  <!-- Custom palette editor: swatches populated by app.js. Edits
+       preview live on the real cloud behind the dialog (the backdrop is
+       transparent; the drag bar moves the dialog out of the way);
+       Cancel restores the committed palette. Saved palettes persist in
+       localStorage and join the Palette menu. -->
   <dialog id="palette-dialog">
-    <h3>Custom Palette</h3>
-    <svg id="pal-sample" viewBox="0 0 320 132" aria-hidden="true"></svg>
+    <div class="pal-drag" id="pal-drag"><h3>Custom Palette</h3></div>
     <div class="pal-section">
       <span class="pal-label">Background</span>
       <div class="pal-swatches" id="pal-bg-row"></div>

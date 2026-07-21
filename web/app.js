@@ -327,10 +327,8 @@ worker.postMessage(
 let busy = true;  // the initial build is in progress
 let pendingSpec = null;
 let stagedText = null;  // what the worker currently has
+let lastSentMsg = null;  // JSON of the last rebuild actually sent
 const sendSpec = (s) => {
-  busy = true;
-  window.__wordsIdle = false;
-  resetCamera();  // the engine resets its copy on rebuild
   const msg = {
     type: 'rebuild',
     seed: s.seed,
@@ -350,6 +348,17 @@ const sendSpec = (s) => {
     msg.text = s.text;
     stagedText = s.text;
   }
+  // The engine is a deterministic function of the spec, so a rebuild
+  // identical to the last one is a no-op: skip it (also keeping the
+  // camera, which a real rebuild resets). This is what makes "Use
+  // Palette" free after the palette editor has already previewed the
+  // same palette on the cloud.
+  const key = JSON.stringify(msg);
+  if (key === lastSentMsg) return;
+  lastSentMsg = key;
+  busy = true;
+  window.__wordsIdle = false;
+  resetCamera();  // the engine resets its copy on rebuild
   worker.postMessage(msg);
 };
 
@@ -721,9 +730,13 @@ window.words = {
 const undoStack = [];
 const redoStack = [];
 
-const submitSpec = () => {
-  busy ? pendingSpec = { ...spec } : sendSpec({ ...spec });
+// previewSpec rebuilds from a spec that isn't (yet) committed — the
+// palette editor's live preview; submitSpec is the committed case. Both
+// ride the same one-in-flight queue, newest wins.
+const previewSpec = (s) => {
+  busy ? pendingSpec = s : sendSpec(s);
 };
+const submitSpec = () => previewSpec({ ...spec });
 const apply = (action) => {
   undoStack.push(action);
   redoStack.length = 0;
@@ -1066,13 +1079,14 @@ function refreshUi() {
 
 // ---------------------------------------------------------------------------
 // Custom palette editor. The in-progress palette lives here as
-// {bg: '#rrggbb', colors: [...]}; every edit recolors the dialog's
-// sample cloud, and "Use Palette" applies one undoable action carrying
-// the serialized custom:… value — the same string that rides in
-// spec.palette, copy links, and ?palette=.
+// {bg: '#rrggbb', colors: [...]}; every edit previews live on the real
+// cloud (a rebuild through the one-in-flight queue — spec itself stays
+// untouched, so Cancel just rebuilds from spec). "Use Palette" applies
+// one undoable action carrying the serialized custom:… value — the same
+// string that rides in spec.palette, copy links, and ?palette=.
 
 const paletteDialog = document.getElementById('palette-dialog');
-const palSample = document.getElementById('pal-sample');
+const palDragBar = document.getElementById('pal-drag');
 const palBgRow = document.getElementById('pal-bg-row');
 const palColorsRow = document.getElementById('pal-colors');
 const palNameInput = document.getElementById('pal-name');
@@ -1117,56 +1131,21 @@ function hsvToHex({ h, s, v }) {
   return '#' + channel(5) + channel(3) + channel(1);
 }
 
-// The sample cloud: a hand-placed miniature (word, x, y, size, angle in
-// a 320×132 box), built once and recolored on every edit. PAL_DEAL is
-// each word's fixed uniform draw from the palette, so the recoloring is
-// deterministic but looks dealt rather than striped.
-const PAL_SAMPLE_WORDS = [
-  ['words', 160, 82, 40, 0],
-  ['cloud', 74, 42, 24, 0],
-  ['color', 247, 40, 20, 0],
-  ['palette', 92, 110, 17, 0],
-  ['bright', 235, 106, 15, 0],
-  ['hue', 22, 72, 18, -90],
-  ['tint', 303, 92, 14, -90],
-  ['shade', 178, 24, 14, 0],
-  ['tone', 40, 122, 12, 0],
-  ['vivid', 262, 124, 11, 0],
-  ['glow', 296, 22, 11, 0],
-  ['wash', 118, 20, 11, 0],
-];
-const PAL_DEAL =
-    [0.17, 0.62, 0.91, 0.05, 0.44, 0.78, 0.30, 0.55, 0.99, 0.23, 0.70, 0.38];
-let palSampleRect = null;
-let palSampleTexts = [];
-function buildPalSample() {
-  if (palSampleRect) return;
-  const ns = 'http://www.w3.org/2000/svg';
-  palSampleRect = document.createElementNS(ns, 'rect');
-  palSampleRect.setAttribute('width', '320');
-  palSampleRect.setAttribute('height', '132');
-  palSample.appendChild(palSampleRect);
-  palSampleTexts = PAL_SAMPLE_WORDS.map(([word, x, y, size, angle]) => {
-    const t = document.createElementNS(ns, 'text');
-    t.setAttribute('x', x);
-    t.setAttribute('y', y);
-    t.setAttribute('font-size', size);
-    t.setAttribute('text-anchor', 'middle');
-    t.setAttribute('font-family', "'Arial Black', 'Arial Bold', sans-serif");
-    t.setAttribute('font-weight', 'bold');
-    if (angle) t.setAttribute('transform', `rotate(${angle} ${x} ${y})`);
-    t.textContent = word;
-    palSample.appendChild(t);
-    return t;
-  });
-}
-function renderPalSample() {
-  palSampleRect.setAttribute('fill', palEdit.bg);
-  const n = palEdit.colors.length;
-  palSampleTexts.forEach((t, i) => {
-    t.setAttribute(
-        'fill', n ? palEdit.colors[Math.floor(PAL_DEAL[i] * n)] : '#777777');
-  });
+// The live preview: rebuild the real cloud with the in-progress palette
+// whenever it actually changes. Drags fire this at pointer-move rate;
+// the one-in-flight queue coalesces them (newest wins), so the cloud
+// tracks the picker as fast as rebuilds complete. An empty palette
+// never previews (the engine would fall back to App Colors).
+let palPreviewValue = null;  // last previewed serialization
+let palPreviewShown = false;
+let palCommitted = false;
+function sendPalPreview() {
+  if (!paletteDialog.open || palEdit.colors.length === 0) return;
+  const value = serializeCustomPalette(palEdit);
+  if (value === palPreviewValue) return;
+  palPreviewValue = value;
+  palPreviewShown = true;
+  previewSpec({ ...spec, palette: value });
 }
 
 function renderPalSwatches() {
@@ -1224,7 +1203,7 @@ function renderPalPicker() {
 
 function renderPalEditor() {
   renderPalSwatches();
-  renderPalSample();
+  sendPalPreview();
   if (palSlot !== null) renderPalPicker();
   const empty = palEdit.colors.length === 0;
   palUseBtn.disabled = empty;
@@ -1336,6 +1315,39 @@ palDeleteBtn.addEventListener('click', () => {
   refreshPalLoadSelect('');
 });
 
+// Dragging the title bar moves the dialog (so it can be pulled off the
+// part of the cloud being inspected); the position is clamped on screen
+// and survives reopening within the session.
+function positionPalDialog(left, top) {
+  const margin = 8;
+  const maxLeft =
+      Math.max(window.innerWidth - paletteDialog.offsetWidth - margin, margin);
+  const maxTop =
+      Math.max(window.innerHeight - paletteDialog.offsetHeight - margin,
+               margin);
+  paletteDialog.style.margin = '0';
+  paletteDialog.style.inset = 'auto';
+  paletteDialog.style.left =
+      `${Math.min(Math.max(left, margin), maxLeft)}px`;
+  paletteDialog.style.top = `${Math.min(Math.max(top, margin), maxTop)}px`;
+}
+let palDragOffset = null;  // pointer position within the dialog
+palDragBar.addEventListener('pointerdown', (e) => {
+  e.preventDefault();
+  const r = paletteDialog.getBoundingClientRect();
+  palDragOffset = { x: e.clientX - r.left, y: e.clientY - r.top };
+  try {
+    palDragBar.setPointerCapture(e.pointerId);
+  } catch (err) { /* synthetic events have no active pointer */ }
+});
+palDragBar.addEventListener('pointermove', (e) => {
+  if (!palDragOffset) return;
+  positionPalDialog(e.clientX - palDragOffset.x, e.clientY - palDragOffset.y);
+});
+const endPalDrag = () => { palDragOffset = null; };
+palDragBar.addEventListener('pointerup', endPalDrag);
+palDragBar.addEventListener('pointercancel', endPalDrag);
+
 // Opens editing the current palette when it's custom, else fresh: black
 // background, no word colors yet — just the + tile.
 function openPaletteEditor() {
@@ -1346,13 +1358,21 @@ function openPaletteEditor() {
   palNameInput.value = saved ? saved.name : '';
   refreshPalLoadSelect(saved ? saved.name : '');
   hidePalPicker();
-  buildPalSample();
+  palCommitted = false;
+  palPreviewShown = false;
+  palPreviewValue = isCustomPalette(spec.palette) ? spec.palette : null;
   renderPalEditor();
   paletteDialog.showModal();
+  // A position dragged in an earlier open may no longer fit the window.
+  if (paletteDialog.style.left) {
+    positionPalDialog(parseFloat(paletteDialog.style.left),
+                      parseFloat(paletteDialog.style.top));
+  }
 }
 
 palUseBtn.addEventListener('click', () => {
   if (palEdit.colors.length === 0) return;
+  palCommitted = true;
   paletteDialog.close();
   const value = serializeCustomPalette(palEdit);
   if (spec.paletteMode === 'fixed' && spec.palette === value) return;
@@ -1364,6 +1384,12 @@ palUseBtn.addEventListener('click', () => {
 });
 document.getElementById('pal-cancel').addEventListener('click', () => {
   paletteDialog.close();
+});
+// Any close that isn't a commit (Cancel, Escape) rebuilds the cloud
+// back from the untouched spec — but only if a preview ever showed.
+paletteDialog.addEventListener('close', () => {
+  if (!palCommitted && palPreviewShown) submitSpec();
+  palPreviewShown = false;
 });
 
 // ----- wiring.
