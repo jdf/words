@@ -601,8 +601,17 @@ int main() {
     if (m > 0) g_maxWords = m;
   }
 
-  std::ifstream fontOverride(kFontOverridePath);
-  app.fontPath = fontOverride ? kFontOverridePath : kFontPath;
+  // Boot-font resolution: ?font= staged at its canonical /fonts/ path
+  // (so the shape memo survives into the first rebuild), then the
+  // legacy override path, then the preloaded default.
+  const std::string bootFont = urlParam("font");
+  const std::string canonicalFont = absl::StrCat("/fonts/", bootFont, ".ttf");
+  if (!bootFont.empty() && std::ifstream(canonicalFont).good()) {
+    app.fontPath = canonicalFont;
+  } else {
+    std::ifstream fontOverride(kFontOverridePath);
+    app.fontPath = fontOverride ? kFontOverridePath : kFontPath;
+  }
   const auto bootT0 = std::chrono::steady_clock::now();
   app.scene = buildScene(app.fontPath);
   const auto bootT1 = std::chrono::steady_clock::now();

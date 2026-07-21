@@ -321,9 +321,13 @@ if (corpus) {
   });
 }
 if (spec.font !== 'sexsmith') {  // sexsmith is preloaded
+  // Staged at the same canonical path rebuilds use, so the engine's
+  // path-keyed shape memo survives from boot into the first Generate
+  // (staging at a boot-only path made that first rebuild re-shape the
+  // whole vocabulary).
   lazyFiles.push({
     url: 'fonts/' + encodeURIComponent(spec.font) + '.ttf',
-    path: '/font-override.ttf',
+    path: '/fonts/' + spec.font + '.ttf',
   });
 }
 

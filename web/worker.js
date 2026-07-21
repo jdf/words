@@ -144,6 +144,12 @@ function init(msg) {
             return r.arrayBuffer();
           })
           .then((buf) => {
+            // Lazy files may land in directories the preload package
+            // also creates; whichever side runs first makes it.
+            const dir = f.path.slice(0, f.path.lastIndexOf('/'));
+            if (dir && !config.FS.analyzePath(dir).exists) {
+              config.FS.mkdir(dir);
+            }
             config.FS.writeFile(f.path, new Uint8Array(buf));
             config.removeRunDependency(f.url);
           })
