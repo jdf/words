@@ -989,22 +989,21 @@ localFontInput.addEventListener('change', async () => {
   useLocalFont(file.name, await file.arrayBuffer());
 });
 
-async function useLocalFont(fileName, bytes) {
-  if (!/\.(ttf|otf)$/i.test(fileName)) {
-    status.textContent = 'font files must be .ttf or .otf';
-    return false;
-  }
+// Adopt font bytes (from a picked file or an installed font's blob) as
+// the fixed font. FontFace validation up front: anything it rejects
+// would only shape to an empty cloud engine-side.
+async function adoptLocalFont(name, bytes) {
   const id = String(++localFontSeq);
   const face = new FontFace(`menu-local-${id}`, bytes);
   try {
     await face.load();
   } catch (err) {
     console.error('local font rejected', err);
-    status.textContent = `couldn't read ${fileName} as a font`;
+    status.textContent = `couldn't read ${name} as a font`;
     return false;
   }
   document.fonts.add(face);  // menu entries render in the face itself
-  localFonts.set(id, { name: fileName.replace(/\.(ttf|otf)$/i, ''), bytes });
+  localFonts.set(id, { name, bytes });
   apply({
     label: 'Use My Font',
     before: { ...spec },
@@ -1012,6 +1011,84 @@ async function useLocalFont(fileName, bytes) {
   });
   return true;
 }
+
+async function useLocalFont(fileName, bytes) {
+  if (!/\.(ttf|otf)$/i.test(fileName)) {
+    status.textContent = 'font files must be .ttf or .otf';
+    return false;
+  }
+  return adoptLocalFont(fileName.replace(/\.(ttf|otf)$/i, ''), bytes);
+}
+
+// ----- Installed fonts (Chromium's Local Font Access API; the menu
+// entry only exists where queryLocalFonts does). The first open asks
+// permission and lists every installed family, searchable, each row
+// shown in its own face — installed fonts are addressable from CSS by
+// family name, so no bytes load until one is picked. Picking fetches
+// that font's blob and adopts it through the same local-font path as a
+// picked file. (For .ttc collections the engine shapes face 0, which
+// may be a different style than the one listed.)
+const sysFontDialog = document.getElementById('sysfont-dialog');
+const sysFontSearch = document.getElementById('sysfont-search');
+const sysFontList = document.getElementById('sysfont-list');
+let sysFontFamilies = null;  // [{family, data}], sorted; null until asked
+
+async function openSystemFonts() {
+  if (sysFontFamilies === null) {
+    try {
+      const fonts = await window.queryLocalFonts();
+      const byFamily = new Map();
+      for (const f of fonts) {
+        // One entry per family; prefer the Regular style's file.
+        if (!byFamily.has(f.family) || /^regular$/i.test(f.style)) {
+          byFamily.set(f.family, f);
+        }
+      }
+      sysFontFamilies = [...byFamily.entries()]
+          .map(([family, data]) => ({ family, data }))
+          .sort((a, b) => a.family.localeCompare(b.family));
+    } catch (err) {
+      console.error('installed fonts unavailable', err);
+      status.textContent = 'access to installed fonts was denied';
+      return;
+    }
+  }
+  renderSysFontList();
+  sysFontDialog.showModal();
+  sysFontSearch.select();
+}
+
+function renderSysFontList() {
+  const q = sysFontSearch.value.trim().toLowerCase();
+  sysFontList.replaceChildren(
+      ...sysFontFamilies
+          .filter(({ family }) => !q || family.toLowerCase().includes(q))
+          .map(({ family, data }) => {
+            const row = document.createElement('button');
+            row.className = 'book-row';
+            const label = document.createElement('span');
+            label.className = 'book-title';
+            label.textContent = family;
+            label.style.fontFamily = `'${family.replace(/'/g, "\\'")}'`;
+            label.style.fontSize = '17px';
+            row.appendChild(label);
+            row.addEventListener('click', async () => {
+              sysFontDialog.close();
+              try {
+                const bytes = await (await data.blob()).arrayBuffer();
+                adoptLocalFont(family, bytes);
+              } catch (err) {
+                console.error('installed font read failed', err);
+                status.textContent = `couldn't read ${family}`;
+              }
+            });
+            return row;
+          }));
+}
+sysFontSearch.addEventListener('input', renderSysFontList);
+document.getElementById('sysfont-cancel').addEventListener('click', () => {
+  sysFontDialog.close();
+});
 
 function refreshLocalFontMenu(panel) {
   const box = panel.querySelector('.dd-saved');
@@ -1127,11 +1204,25 @@ function buildMenu(menuName) {
   }
 
   if (menuName === 'font') {
-    // "Use My Font…" sits up top with 🎲; fonts loaded this session
-    // follow (refreshed each open), then the built-ins.
+    // The user's own fonts sit up top with 🎲: installed fonts (where
+    // the Local Font Access API exists), a font-file picker everywhere;
+    // fonts adopted this session follow (refreshed each open), then the
+    // built-ins.
+    if ('queryLocalFonts' in window) {
+      const sys = document.createElement('button');
+      sys.className = 'dd-opt dd-action';
+      sys.title = 'Cloud with a font installed on this computer';
+      sys.innerHTML = '<span class="opt-label">🖥️ Installed Fonts…</span>';
+      sys.addEventListener('click', () => {
+        closeMenus();
+        openSystemFonts();
+      });
+      panel.appendChild(sys);
+    }
     const pickFont = document.createElement('button');
     pickFont.className = 'dd-opt dd-action';
-    pickFont.innerHTML = '<span class="opt-label">📁 Use My Font…</span>';
+    pickFont.title = 'Cloud with a .ttf or .otf file';
+    pickFont.innerHTML = '<span class="opt-label">📁 Font File…</span>';
     pickFont.addEventListener('click', () => {
       closeMenus();
       localFontInput.click();
@@ -1652,7 +1743,8 @@ if (showUi) {
   window.addEventListener('keydown', (e) => {
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z' &&
         !dialog.open && !bookDialog.open && !exportDialog.open &&
-        !creditsDialog.open && !feedbackDialog.open && !paletteDialog.open) {
+        !creditsDialog.open && !feedbackDialog.open &&
+        !paletteDialog.open && !sysFontDialog.open) {
       e.preventDefault();
       e.shiftKey ? redo() : undo();
     }

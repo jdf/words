@@ -23,6 +23,12 @@ let failed = 0;
 try {
   const page = await browser.newPage();
   await page.setViewport({ width: 1200, height: 750, deviceScaleFactor: 1 });
+  // The installed-fonts case needs the Local Font Access permission,
+  // which headless can only get by CDP grant.
+  const cdp = await page.createCDPSession();
+  await cdp.send('Browser.grantPermissions',
+                 { permissions: ['localFonts'],
+                   origin: new URL(baseUrl).origin });
 
   // Poll from this side, not via waitForFunction (see e2e-shot.mjs).
   const waitIdle = async () => {
@@ -165,6 +171,31 @@ try {
   await check('an invalid font file is rejected without applying',
       async () => !(await useLocalFont('fake.ttf', new ArrayBuffer(8))) &&
                   spec.font.startsWith('local:1'));
+
+  // Installed fonts: the picker lists the machine's families (whatever
+  // they are — assert mechanism, not names) and adopting one rebuilds
+  // through the same local-font path.
+  await step('an installed font adopts and rebuilds', async () => {
+    await openSystemFonts();
+    if (!sysFontDialog.open || !sysFontFamilies.length) {
+      throw new Error('installed-font picker failed to open');
+    }
+    const pick = ['Arial', 'Helvetica', 'Georgia', 'DejaVu Sans']
+        .find((n) => sysFontFamilies.some((f) => f.family === n)) ||
+        sysFontFamilies[0].family;
+    sysFontSearch.value = pick;
+    sysFontSearch.dispatchEvent(new Event('input'));
+    const row = [...sysFontList.children]
+        .find((r) => r.textContent === pick) || sysFontList.children[0];
+    row.click();  // blob → FontFace → apply, all async
+    const t0 = Date.now();
+    while (!(spec.font.startsWith('local:') && spec.font !== 'local:1')) {
+      if (Date.now() - t0 > 15000) throw new Error('adoption timed out');
+      await new Promise((r) => setTimeout(r, 50));
+    }
+  }, 'rebuild');
+  await check('the installed font is the fixed spec font',
+      () => spec.fontMode === 'fixed' && !sysFontDialog.open);
 } finally {
   await browser.close();
 }

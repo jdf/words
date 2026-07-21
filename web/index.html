@@ -204,8 +204,12 @@
     /* Book picker: search box, sortable column headers, scrolling list.
        Top edge pinned so the list growing/shrinking under the filter
        doesn't move the search box. */
-    #book-dialog { width: min(480px, 90vw); margin-top: 12vh; margin-bottom: auto; }
-    #book-search {
+    #book-dialog, #sysfont-dialog { width: min(480px, 90vw); margin-top: 12vh; margin-bottom: auto; }
+    #sysfont-list {
+      display: flex; flex-direction: column; gap: 2px;
+      height: min(55vh, 480px); overflow-y: auto; margin-top: 8px;
+    }
+    #book-search, #sysfont-search {
       width: 100%; box-sizing: border-box;
       background: #101014; color: #d8d8e0; border: 1px solid #444;
       border-radius: 4px; padding: 8px; font: inherit; font-size: 13px;
@@ -536,6 +540,20 @@
     <div class="row">
       <span></span>
       <button id="book-cancel">Cancel</button>
+    </div>
+  </dialog>
+  <!-- Installed-font picker (Chromium's Local Font Access API; the
+       menu entry that opens this only exists where the API does): a
+       searchable list of the system's families, each shown in its own
+       face. Picking one adopts its bytes via the local-font path. -->
+  <dialog id="sysfont-dialog">
+    <h3>Installed Fonts</h3>
+    <input type="search" id="sysfont-search" autocomplete="off"
+           placeholder="Search installed fonts…">
+    <div id="sysfont-list"></div>
+    <div class="row">
+      <span></span>
+      <button id="sysfont-cancel">Cancel</button>
     </div>
   </dialog>
   <!-- Export: everything derives from the engine's vector output — SVG
