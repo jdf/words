@@ -67,15 +67,10 @@ try {
 
   // A fully locked UI-mode boot; a small cloud for speed; sexsmith is
   // the preloaded font, so there is no font fetch to wait on.
-  await page.goto(
-      `${baseUrl}?corpus=moby-dick&seed=7&max=300&font=sexsmith` +
-          '&orientation=mostly-horizontal&placement=center-line' +
-          '&palette=wordly&variance=little',
-      { waitUntil: 'load' });
-  await waitIdle();
   // Record every worker→page message; timing messages keep their text
   // (that's where "recolor timings" vs "rebuild timings" shows up).
-  await page.evaluate(() => {
+  // Re-run after any goto — a fresh page has no instrumentation.
+  const instrument = () => page.evaluate(() => {
     window.__uiEvts = [];
     const orig = worker.onmessage;
     worker.onmessage = (e) => {
@@ -84,6 +79,14 @@ try {
       orig(e);
     };
   });
+
+  await page.goto(
+      `${baseUrl}?corpus=moby-dick&seed=7&max=300&font=sexsmith` +
+          '&orientation=mostly-horizontal&placement=center-line' +
+          '&palette=wordly&variance=little',
+      { waitUntil: 'load' });
+  await waitIdle();
+  await instrument();
 
   // The FIRST post-boot change: the boot spec primes the routing
   // comparison, so even this must recolor. (Regression: a full rebuild
@@ -144,6 +147,24 @@ try {
             spec.orientationMode === 'random' &&
             spec.palette === 'blue-meets-orange' &&
             spec.paletteMode === 'random');
+
+  // Use My Font: adopting a font file (goudy's bytes standing in for a
+  // user's own) must rebuild with the user font — the status line names
+  // the family the ENGINE read from the staged bytes — and hide Copy
+  // Link (a local-font cloud isn't URL-reproducible).
+  await instrument();
+  await step('a local font file rebuilds with the user font', async () => {
+    const bytes = await (await fetch('fonts/goudy.ttf')).arrayBuffer();
+    await useLocalFont('MyOwnFont.ttf', bytes);
+  }, 'rebuild');
+  await check('the engine shaped with the local font; Copy Link hid',
+      () => spec.font.startsWith('local:') &&
+            document.getElementById('status').textContent
+                .includes('Goudy Bookletter 1911') &&
+            document.getElementById('copy-link').hidden);
+  await check('an invalid font file is rejected without applying',
+      async () => !(await useLocalFont('fake.ttf', new ArrayBuffer(8))) &&
+                  spec.font.startsWith('local:1'));
 } finally {
   await browser.close();
 }

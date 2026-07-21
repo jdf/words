@@ -66,15 +66,35 @@ const kUserTextPath = '/user-text.txt';
 const kCorpusTsvPath = '/corpus.tsv';
 let stagedCorpus = null;  // slug of the TSV at kCorpusTsvPath
 async function rebuild(msg) {
-  let path = '/fonts/' + msg.font + '.ttf';
-  if (!engine.FS.analyzePath(path).exists) {
-    try {
-      const r = await fetch('fonts/' + encodeURIComponent(msg.font) + '.ttf');
-      if (!r.ok) throw new Error(r.status);
-      engine.FS.writeFile(path, new Uint8Array(await r.arrayBuffer()));
-    } catch (err) {
-      postMessage({ type: 'printErr', text: 'font ' + msg.font + ': ' + err });
-      path = '';
+  // A local font (the user's own file) arrives as bytes once, staged
+  // under /user-fonts/<id>.ttf; afterwards "local:<id>" alone selects
+  // it. Distinct paths per file keep the engine's per-path shape memo
+  // honest across different files.
+  if (msg.fontData) {
+    if (!engine.FS.analyzePath('/user-fonts').exists) {
+      engine.FS.mkdir('/user-fonts');
+    }
+    engine.FS.writeFile('/user-fonts/' + msg.fontId + '.ttf',
+                        new Uint8Array(msg.fontData));
+  }
+  let path;
+  if (msg.font.startsWith('local:')) {
+    path = '/user-fonts/' +
+        msg.font.slice(6).replace(/[^0-9a-z-]/gi, '') + '.ttf';
+    if (!engine.FS.analyzePath(path).exists) path = '';  // keep current
+  } else {
+    path = '/fonts/' + msg.font + '.ttf';
+    if (!engine.FS.analyzePath(path).exists) {
+      try {
+        const r =
+            await fetch('fonts/' + encodeURIComponent(msg.font) + '.ttf');
+        if (!r.ok) throw new Error(r.status);
+        engine.FS.writeFile(path, new Uint8Array(await r.arrayBuffer()));
+      } catch (err) {
+        postMessage(
+            { type: 'printErr', text: 'font ' + msg.font + ': ' + err });
+        path = '';
+      }
     }
   }
   if (!msg.useText && msg.corpus && msg.corpus !== stagedCorpus) {

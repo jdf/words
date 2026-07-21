@@ -144,6 +144,16 @@ function storeSavedPalettes(list) {
   }
 }
 
+// Local fonts: the user's own .ttf/.otf files, session-scoped. Each
+// gets an id; spec.font carries "local:<id>", the bytes ride to the
+// worker once (see sendSpec) and stage into MEMFS. Not reproducible by
+// URL — Copy Link hides while one is in use, like user text.
+const localFonts = new Map();  // id -> {name, bytes}
+let localFontSeq = 0;
+const isLocalFont = (v) => typeof v === 'string' && v.startsWith('local:');
+const localFontId = (v) => v.slice('local:'.length);
+const stagedLocalFonts = new Set();  // ids the worker already holds
+
 // What 🎲 draws from. Orientation keeps a curated pool (the wilder
 // strategies are opt-in); palettes exclude App Colors so Generate always
 // shows an original palette.
@@ -411,6 +421,17 @@ const sendSpec = (s) => {
       colorSeed: msg.colorSeed,
     });
     return;
+  }
+  // A local font's bytes ride along on first use only (attached after
+  // the dedupe key, which must stay stable across staged and later
+  // sends); the worker keeps them in MEMFS from then on.
+  if (isLocalFont(s.font) && !stagedLocalFonts.has(localFontId(s.font))) {
+    const entry = localFonts.get(localFontId(s.font));
+    if (entry) {
+      msg.fontId = localFontId(s.font);
+      msg.fontData = entry.bytes;
+      stagedLocalFonts.add(msg.fontId);
+    }
   }
   resetCamera();  // the engine resets its copy on rebuild
   worker.postMessage(msg);
@@ -952,6 +973,60 @@ function ensureMenuFonts() {
   }
 }
 
+// The hidden picker behind "Use My Font…". Adoption validates in the
+// browser first: FontFace parses the whole file, so anything it rejects
+// would only shape to an empty cloud engine-side. FreeType can't decode
+// woff2, hence the .ttf/.otf restriction.
+const localFontInput = document.createElement('input');
+localFontInput.type = 'file';
+localFontInput.accept = '.ttf,.otf';
+localFontInput.hidden = true;
+document.body.appendChild(localFontInput);
+localFontInput.addEventListener('change', async () => {
+  const file = localFontInput.files[0];
+  localFontInput.value = '';  // re-picking the same file must re-fire
+  if (!file) return;
+  useLocalFont(file.name, await file.arrayBuffer());
+});
+
+async function useLocalFont(fileName, bytes) {
+  if (!/\.(ttf|otf)$/i.test(fileName)) {
+    status.textContent = 'font files must be .ttf or .otf';
+    return false;
+  }
+  const id = String(++localFontSeq);
+  const face = new FontFace(`menu-local-${id}`, bytes);
+  try {
+    await face.load();
+  } catch (err) {
+    console.error('local font rejected', err);
+    status.textContent = `couldn't read ${fileName} as a font`;
+    return false;
+  }
+  document.fonts.add(face);  // menu entries render in the face itself
+  localFonts.set(id, { name: fileName.replace(/\.(ttf|otf)$/i, ''), bytes });
+  apply({
+    label: 'Use My Font',
+    before: { ...spec },
+    after: { ...spec, font: 'local:' + id, fontMode: 'fixed' },
+  });
+  return true;
+}
+
+function refreshLocalFontMenu(panel) {
+  const box = panel.querySelector('.dd-saved');
+  box.replaceChildren(...[...localFonts].map(([id, { name }]) => {
+    const opt = document.createElement('button');
+    opt.className = 'dd-opt';
+    opt.dataset.slug = 'local:' + id;
+    opt.innerHTML = `<span class="opt-label" style="font-family:` +
+        `'menu-local-${id}',ui-monospace,monospace;font-size:17px"></span>`;
+    opt.querySelector('.opt-label').textContent = name;  // user text
+    opt.addEventListener('click', () => choose('font', 'fixed', 'local:' + id));
+    return opt;
+  }));
+}
+
 function optionContent(menuName, slug, label, extra) {
   if (menuName === 'font') {
     return `<span class="opt-label" style="font-family:'menu-${slug}',` +
@@ -980,6 +1055,10 @@ function menuLabel(menuName) {
   if (menuName === 'palette' && isCustomPalette(spec.palette)) {
     const saved = savedPalettes().find((p) => p.value === spec.palette);
     return saved ? saved.name : 'Custom Palette';
+  }
+  if (menuName === 'font' && isLocalFont(spec.font)) {
+    const local = localFonts.get(localFontId(spec.font));
+    return local ? local.name : 'My Font';
   }
   return spec[dim];
 }
@@ -1047,6 +1126,22 @@ function buildMenu(menuName) {
     panel.appendChild(randomOpt);
   }
 
+  if (menuName === 'font') {
+    // "Use My Font…" sits up top with 🎲; fonts loaded this session
+    // follow (refreshed each open), then the built-ins.
+    const pickFont = document.createElement('button');
+    pickFont.className = 'dd-opt dd-action';
+    pickFont.innerHTML = '<span class="opt-label">📁 Use My Font…</span>';
+    pickFont.addEventListener('click', () => {
+      closeMenus();
+      localFontInput.click();
+    });
+    panel.appendChild(pickFont);
+    const local = document.createElement('div');
+    local.className = 'dd-saved';
+    panel.appendChild(local);
+  }
+
   for (const [slug, label, ...extra] of menu.options) {
     const opt = document.createElement('button');
     opt.className = 'dd-opt';
@@ -1077,7 +1172,10 @@ function buildMenu(menuName) {
     const wasHidden = panel.hidden;
     closeMenus();
     if (wasHidden) {
-      if (menuName === 'font') ensureMenuFonts();
+      if (menuName === 'font') {
+        ensureMenuFonts();
+        refreshLocalFontMenu(panel);
+      }
       if (menuName === 'palette') refreshSavedPaletteMenu(panel);
       for (const opt of panel.querySelectorAll('.dd-opt')) {
         opt.classList.toggle('selected',
@@ -1097,9 +1195,10 @@ function buildMenu(menuName) {
 function refreshUi() {
   undoBtn.disabled = undoStack.length === 0;
   redoBtn.disabled = redoStack.length === 0;
-  // A book cloud is exactly reproducible from its URL; a user-text
-  // cloud isn't, so the share button hides.
-  document.getElementById('copy-link').hidden = spec.text !== '';
+  // A book cloud is exactly reproducible from its URL; a user-text or
+  // local-font cloud isn't, so the share button hides.
+  document.getElementById('copy-link').hidden =
+      spec.text !== '' || isLocalFont(spec.font);
   for (const s of document.querySelectorAll('.max-input')) {
     s.value = spec.maxWords;
   }
@@ -1123,7 +1222,9 @@ function refreshUi() {
     if (menuName === 'font') {
       if (spec.fontMode === 'fixed') {
         ensureMenuFonts();
-        cur.style.fontFamily = `'menu-${spec.font}',ui-monospace,monospace`;
+        const family = isLocalFont(spec.font)
+            ? `menu-local-${localFontId(spec.font)}` : `menu-${spec.font}`;
+        cur.style.fontFamily = `'${family}',ui-monospace,monospace`;
       } else {
         cur.style.fontFamily = '';
       }
