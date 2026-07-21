@@ -14,6 +14,13 @@ const pending = [];  // commands that arrive while the module boots
 function handle(msg) {
   switch (msg.type) {
     case 'rebuild': rebuild(msg); break;
+    case 'recolor':
+      // Color-only spec change: the engine reassigns colors on the
+      // laid-out scene (or falls back to a full rebuild itself when the
+      // change would alter layout) and posts idle like any rebuild.
+      engine.ccall('wordsRecolor', null, ['string', 'string', 'number'],
+                   [msg.palette, msg.variance || '', msg.colorSeed | 0]);
+      break;
     case 'resize': engine._wordsResize(msg.width, msg.height); break;
     case 'camera': engine._wordsSetCamera(msg.zoom, msg.cx, msg.cy); break;
     case 'logScene': engine._wordsLogScene(); break;

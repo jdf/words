@@ -355,9 +355,38 @@ const sendSpec = (s) => {
   // same palette on the cloud.
   const key = JSON.stringify(msg);
   if (key === lastSentMsg) return;
+  // A change confined to the color fields (palette, variance, recolor
+  // seed) takes the engine's recolor fast path: colors are reassigned
+  // on the laid-out scene — no shaping, no layout, camera kept. The
+  // engine itself falls back to a full rebuild when the change would
+  // alter layout (crossing between App Colors and a palette shifts the
+  // shared RNG stream). `text` is excluded from the comparison: it only
+  // rides along when it changed, and then the send is not recolorable
+  // anyway.
+  const nonColor = (m) => {
+    const { text, palette, variance, colorSeed, ...rest } = m;
+    return JSON.stringify(rest);
+  };
+  const prev = lastSentMsg === null ? null : JSON.parse(lastSentMsg);
+  // Crossing between App Colors ('') and a palette is layout-changing
+  // (see above), and the engine's fallback rebuild resets its camera —
+  // so the page must treat it as a full rebuild to keep the camera
+  // states agreeing.
+  const recolorable = prev !== null && !('text' in msg) &&
+      (msg.palette === '') === (prev.palette === '') &&
+      nonColor(msg) === nonColor(prev);
   lastSentMsg = key;
   busy = true;
   window.__wordsIdle = false;
+  if (recolorable) {
+    worker.postMessage({
+      type: 'recolor',
+      palette: msg.palette,
+      variance: msg.variance,
+      colorSeed: msg.colorSeed,
+    });
+    return;
+  }
   resetCamera();  // the engine resets its copy on rebuild
   worker.postMessage(msg);
 };
@@ -1382,15 +1411,20 @@ palUseBtn.addEventListener('click', () => {
     after: { ...spec, palette: value, paletteMode: 'fixed' },
   });
 });
-document.getElementById('pal-cancel').addEventListener('click', () => {
-  paletteDialog.close();
-});
 // Any close that isn't a commit (Cancel, Escape) rebuilds the cloud
 // back from the untouched spec — but only if a preview ever showed.
-paletteDialog.addEventListener('close', () => {
+// The Cancel button restores directly rather than waiting for the
+// dialog's close event (a queued user-interaction task, which e.g.
+// hidden tabs delay); the flags make the event's follow-up a no-op.
+const palRestoreIfPreviewed = () => {
   if (!palCommitted && palPreviewShown) submitSpec();
   palPreviewShown = false;
+};
+document.getElementById('pal-cancel').addEventListener('click', () => {
+  palRestoreIfPreviewed();
+  paletteDialog.close();
 });
+paletteDialog.addEventListener('close', palRestoreIfPreviewed);
 
 // ----- wiring.
 

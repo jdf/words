@@ -227,6 +227,42 @@ const ShapedText& shapedFor(const std::string& fontPath,
   return it->second;
 }
 
+// Deals per-word colors the way this pipeline always has: the shared
+// stream (the same rng the angle draws come from) is drawn
+// unconditionally — palette-colored builds consume two draws per word
+// (pick + varied), App Colors one — and a nonzero Recolor seed merely
+// overrides the result from its own stream, leaving the shared sequence
+// intact. recolorScene replays exactly this to recolor without
+// relayout, so any change to the draw pattern must change both or the
+// fast path drifts from a real rebuild.
+class ColorDealer {
+ public:
+  ColorDealer(const CloudOptions& options, std::mt19937& rng)
+      : options_(options), rng_(rng) {
+    if (options.colorSeed != 0) colorRng_.emplace(options.colorSeed);
+  }
+
+  Color deal() {
+    Color color = draw(rng_);
+    if (colorRng_) color = draw(*colorRng_);
+    return color;
+  }
+
+ private:
+  Color draw(std::mt19937& rng) {
+    if (options_.colors) {
+      return varied(options_.colors->palette.pick(rng),
+                    options_.colors->variance, rng);
+    }
+    std::uniform_real_distribution<double> unit(0.0, 1.0);
+    return kPalette[static_cast<size_t>(unit(rng) * std::size(kPalette))];
+  }
+
+  const CloudOptions& options_;
+  std::mt19937& rng_;
+  std::optional<std::mt19937> colorRng_;
+};
+
 Scene cloudFromCounts(const std::string& fontPath,
                       std::vector<WordCount>&& counts,
                       const CloudOptions& options) {
@@ -245,12 +281,7 @@ Scene cloudFromCounts(const std::string& fontPath,
   if (counts.size() > options.maxWords) counts.resize(options.maxWords);
 
   std::mt19937 rng(20080623);
-  std::uniform_real_distribution<double> unit(0.0, 1.0);
-  // Recolor: a nonzero colorSeed redraws the palette assignment from
-  // its own stream; zero keeps the legacy shared-stream colors.
-  std::optional<std::mt19937> colorRng;
-  std::uniform_real_distribution<double> colorUnit(0.0, 1.0);
-  if (options.colorSeed != 0) colorRng.emplace(options.colorSeed);
+  ColorDealer dealer(options, rng);
 
   double maxCount = counts[0].count;
   std::vector<Word> laid;
@@ -268,27 +299,9 @@ Scene cloudFromCounts(const std::string& fontPath,
     double scale = em / shaped.upem;
     double angle = orientationAngle(options.orientation, wc.display, rng);
     laid.emplace_back(shaped, scale, angle);
-    // Colors and angles interleave draws from the one shared stream, so
-    // the legacy color draws always happen — they keep the angle
-    // sequence (and thus the layout) identical — and a Recolor seed
-    // merely overrides the result from its own stream.
-    Color color;
-    if (options.colors) {
-      color = varied(options.colors->palette.pick(rng),
-                     options.colors->variance, rng);
-    } else {
-      color = kPalette[static_cast<size_t>(unit(rng) * std::size(kPalette))];
-    }
-    if (colorRng) {
-      if (options.colors) {
-        color = varied(options.colors->palette.pick(*colorRng),
-                       options.colors->variance, *colorRng);
-      } else {
-        color = kPalette[static_cast<size_t>(colorUnit(*colorRng) *
-                                             std::size(kPalette))];
-      }
-    }
-    colors.push_back(color);
+    // Colors and angles interleave draws from the one shared stream
+    // (see ColorDealer).
+    colors.push_back(dealer.deal());
   }
   if (laid.empty()) return Scene();
 
@@ -450,6 +463,21 @@ Scene buildCloudFromCountsTsv(const std::string& fontPath,
     }
   }
   return cloudFromCounts(fontPath, std::move(counts), options);
+}
+
+void recolorScene(Scene& scene, const CloudOptions& options) {
+  // Replay cloudFromCounts' shared stream over the placed words: the
+  // angle draw per entry (discarded — the layout already embodies it)
+  // realigns the stream so the interleaved color draws land exactly
+  // where a full rebuild's would.
+  std::mt19937 rng(20080623);
+  ColorDealer dealer(options, rng);
+  for (Scene::Entry& entry : scene.entries()) {
+    orientationAngle(options.orientation, entry.word.label(), rng);
+    entry.color = dealer.deal();
+  }
+  scene.setBackground(options.colors ? options.colors->palette.background
+                                     : Scene().background());
 }
 
 }  // namespace words

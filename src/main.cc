@@ -159,30 +159,73 @@ std::string cloudText() {
   return slurp(kSampleTextPath);
 }
 
-// Builds the scene per URL parameters; `description` receives the
-// human-readable configuration (orientation · placement · palette · font)
-// that the page shows in its status line.
-words::Scene buildScene(const std::string& fontPath,
-                        std::string* description) {
+// The palette parameter resolved to colors plus its status-line label;
+// a nullopt palette means the built-in App Colors scheme.
+struct PaletteChoice {
+  std::optional<words::Palette> palette;
+  std::string label = "App Colors";
+};
+PaletteChoice resolvePalette(const std::string& param) {
+  if (const words::NamedPalette* named = words::findPalette(param)) {
+    return {named->palette, named->displayName};
+  }
+  if (std::optional<words::Palette> custom = words::parseCustomPalette(param)) {
+    return {std::move(custom), "Custom Palette"};
+  }
+  return {};
+}
+
+// Each rebuild-spec dimension resolved from its UI override, falling
+// back to the URL parameter, falling back to the stock default. Shared
+// by the full pipeline (buildScene) and the recolor fast path.
+std::string currentPaletteParam() {
+  return g_palette ? *g_palette : urlParam("palette");
+}
+double currentVariance() {
+  if (auto v = words::findVariance(
+          g_variance.empty() ? urlParam("variance") : g_variance)) {
+    return *v;
+  }
+  return words::kDefaultVariance;
+}
+words::Orientation currentOrientation() {
+  std::string name =
+      g_orientation.empty() ? urlParam("orientation") : g_orientation;
+  if (auto o = words::findOrientation(name)) return *o;
+  return words::CloudOptions().orientation;
+}
+words::Placement currentPlacement() {
+  std::string name = g_placement.empty() ? urlParam("placement") : g_placement;
+  if (auto p = words::findPlacement(name)) return *p;
+  return words::CloudOptions().placement;
+}
+uint32_t currentColorSeed() {
+  return static_cast<uint32_t>(
+      g_colorSeed ? g_colorSeed : std::atoi(urlParam("recolor").c_str()));
+}
+
+// The status line's description, kept in parts so the recolor fast path
+// can swap the palette label without re-running the pipeline.
+struct SceneDescription {
+  std::string title;  // "Book Title · " when a corpus TSV names one
+  std::string orientation, placement, palette, font;
+  std::string str() const {
+    return absl::StrCat(title, orientation, " · ", placement, " · ", palette,
+                        " · ", font);
+  }
+};
+SceneDescription g_desc;
+
+// Builds the scene per the resolved spec, leaving the human-readable
+// configuration in g_desc for the page's status line.
+words::Scene buildScene(const std::string& fontPath) {
   words::CloudOptions options;
   words::ColorScheme scheme;
-  const char* paletteLabel = "App Colors";
-  const std::string paletteParam = g_palette ? *g_palette : urlParam("palette");
-  if (const words::NamedPalette* palette = words::findPalette(paletteParam)) {
-    scheme.palette = palette->palette;
+  PaletteChoice choice = resolvePalette(currentPaletteParam());
+  if (choice.palette) {
+    scheme.palette = *std::move(choice.palette);
+    scheme.variance = currentVariance();
     options.colors = &scheme;
-    paletteLabel = palette->displayName;
-  } else if (std::optional<words::Palette> custom =
-                 words::parseCustomPalette(paletteParam)) {
-    scheme.palette = *std::move(custom);
-    options.colors = &scheme;
-    paletteLabel = "Custom Palette";
-  }
-  if (options.colors) {
-    if (auto v = words::findVariance(
-            g_variance.empty() ? urlParam("variance") : g_variance)) {
-      scheme.variance = *v;
-    }
   }
   if (auto f = words::findCaseFold(
           g_caseFold.empty() ? urlParam("case") : g_caseFold)) {
@@ -193,19 +236,10 @@ words::Scene buildScene(const std::string& fontPath,
            absl::SkipEmpty())) {
     options.exclude.emplace_back(word);
   }
-  std::string orientation =
-      g_orientation.empty() ? urlParam("orientation") : g_orientation;
-  if (auto o = words::findOrientation(orientation)) {
-    options.orientation = *o;
-  }
-  std::string placement =
-      g_placement.empty() ? urlParam("placement") : g_placement;
-  if (auto p = words::findPlacement(placement)) {
-    options.placement = *p;
-  }
+  options.orientation = currentOrientation();
+  options.placement = currentPlacement();
   options.seed = g_seed;
-  options.colorSeed = static_cast<uint32_t>(
-      g_colorSeed ? g_colorSeed : std::atoi(urlParam("recolor").c_str()));
+  options.colorSeed = currentColorSeed();
   options.maxWords = static_cast<size_t>(g_maxWords);
   // The world takes the canvas's shape: portrait screens get portrait
   // clouds. (The e2e viewport is 1200x750 — exactly the 1.6 default.)
@@ -216,12 +250,11 @@ words::Scene buildScene(const std::string& fontPath,
   options.progress = postProgress;
   std::string fontLabel = words::fontFamilyName(fontPath);
   if (fontLabel.empty()) fontLabel = fontPath;
-  *description = absl::StrCat(
-      words::orientationName(options.orientation), " · ",
-      words::placementName(options.placement), " · ", paletteLabel, " · ",
-      fontLabel);
+  g_desc = {"", std::string(words::orientationName(options.orientation)),
+            std::string(words::placementName(options.placement)),
+            std::move(choice.label), std::move(fontLabel)};
   LOG(INFO) << "build: font=" << fontPath
-            << " corpus=" << urlParam("corpus") << " config=" << *description
+            << " corpus=" << urlParam("corpus") << " config=" << g_desc.str()
             << " variance=" << urlParam("variance");
 
   // Source priority: the user's own words, then a corpus TSV, then the
@@ -236,10 +269,10 @@ words::Scene buildScene(const std::string& fontPath,
     // The Whale") — lead the status line with it.
     if (tsv.starts_with("# ")) {
       const size_t eol = tsv.find('\n');
-      *description = absl::StrCat(
+      g_desc.title = absl::StrCat(
           tsv.substr(2, eol == std::string::npos ? std::string::npos
                                                  : eol - 2),
-          " · ", *description);
+          " · ");
     }
     return words::buildCloudFromCountsTsv(fontPath, kStopWordsDir, tsv,
                                           options);
@@ -292,6 +325,24 @@ void logStageTimings(const char* what, const words::Scene& scene,
          line.c_str());
 }
 
+// The tail every full rebuild shares (wordsRebuild and the recolor
+// fallback): fresh view, full pipeline, renderer re-init, draw, status.
+static void rebuildScene() {
+  g_zoom = 1.0;
+  g_camX = 0.0;
+  g_camY = 0.0;
+  const auto t0 = std::chrono::steady_clock::now();
+  g_app->scene = buildScene(g_app->fontPath);
+  const auto t1 = std::chrono::steady_clock::now();
+  g_app->wordRenderer.init(g_app->scene);
+  const auto t2 = std::chrono::steady_clock::now();
+  render();
+  const auto t3 = std::chrono::steady_clock::now();
+  logStageTimings("rebuild", g_app->scene, t0, t1, t2, t3);
+  std::printf("%s · seed %u\n", g_desc.str().c_str(), g_seed);
+  postIdle();
+}
+
 // Rebuild the cloud from a new spec (the toolbar, via the worker shell):
 // seed, orientation slug ("" keeps the URL's), palette slug ("" is the
 // built-in dark scheme), font path ("" keeps the current font — the
@@ -316,25 +367,62 @@ extern "C" EMSCRIPTEN_KEEPALIVE void wordsRebuild(int seed,
   g_exclude = exclude ? exclude : "";
   g_excludeSet = true;
   g_colorSeed = colorSeed;
-  // A new cloud gets a fresh view.
-  g_zoom = 1.0;
-  g_camX = 0.0;
-  g_camY = 0.0;
   g_orientation = orientation ? orientation : "";
   g_placement = placement ? placement : "";
   g_palette = std::string(palette ? palette : "");
   g_textPath = textPath ? textPath : "";
   if (fontPath && *fontPath) g_app->fontPath = fontPath;
-  std::string description;
+  rebuildScene();
+}
+
+// Color-only spec changes (palette, variance, recolor seed): reassign
+// colors on the already-laid-out scene and redraw — no shaping, no
+// layout, no renderer re-init (colors are per-word draw uniforms), and
+// the camera survives. Exactness: recolorScene replays the pipeline's
+// shared RNG stream, so the result is identical to a full rebuild —
+// except when the change crosses between App Colors and a palette,
+// which alters the stream's per-word draw count (and thus a real
+// rebuild's layout); that case falls back to the full pipeline.
+extern "C" EMSCRIPTEN_KEEPALIVE void wordsRecolor(const char* palette,
+                                                  const char* variance,
+                                                  int colorSeed) {
+  if (!g_app) return;
+  const bool hadColors =
+      resolvePalette(currentPaletteParam()).palette.has_value();
+  g_palette = std::string(palette ? palette : "");
+  g_variance = variance ? variance : "";
+  g_colorSeed = colorSeed;
+  PaletteChoice choice = resolvePalette(currentPaletteParam());
+  if (choice.palette.has_value() != hadColors) {
+    rebuildScene();
+    return;
+  }
+  words::CloudOptions options;
+  words::ColorScheme scheme;
+  if (choice.palette) {
+    scheme.palette = *std::move(choice.palette);
+    scheme.variance = currentVariance();
+    options.colors = &scheme;
+  }
+  options.orientation = currentOrientation();
+  options.colorSeed = currentColorSeed();
   const auto t0 = std::chrono::steady_clock::now();
-  g_app->scene = buildScene(g_app->fontPath, &description);
+  words::recolorScene(g_app->scene, options);
   const auto t1 = std::chrono::steady_clock::now();
-  g_app->wordRenderer.init(g_app->scene);
-  const auto t2 = std::chrono::steady_clock::now();
   render();
-  const auto t3 = std::chrono::steady_clock::now();
-  logStageTimings("rebuild", g_app->scene, t0, t1, t2, t3);
-  std::printf("%s · seed %u\n", description.c_str(), g_seed);
+  const auto t2 = std::chrono::steady_clock::now();
+  const auto ms = [](auto a, auto b) {
+    return std::chrono::duration_cast<std::chrono::milliseconds>(b - a)
+        .count();
+  };
+  const std::string line = absl::StrCat(
+      "recolor timings: recolor ", ms(t0, t1), "ms, draw-submit ",
+      ms(t1, t2), "ms; ", g_app->scene.entries().size(), " words");
+  LOG(INFO) << line;
+  EM_ASM({ postMessage({type : 'timing', text : UTF8ToString($0)}); },
+         line.c_str());
+  g_desc.palette = std::move(choice.label);
+  std::printf("%s · seed %u\n", g_desc.str().c_str(), g_seed);
   postIdle();
 }
 
@@ -515,9 +603,8 @@ int main() {
 
   std::ifstream fontOverride(kFontOverridePath);
   app.fontPath = fontOverride ? kFontOverridePath : kFontPath;
-  std::string description;
   const auto bootT0 = std::chrono::steady_clock::now();
-  app.scene = buildScene(app.fontPath, &description);
+  app.scene = buildScene(app.fontPath);
   const auto bootT1 = std::chrono::steady_clock::now();
   app.wordRenderer.init(app.scene);
   const auto bootT2 = std::chrono::steady_clock::now();
@@ -525,7 +612,7 @@ int main() {
   std::printf("words up: GL_VERSION = %s\n", glGetString(GL_VERSION));
   // Last print line = the page's status overlay: the human-readable
   // configuration, so every golden names what it shows.
-  std::printf("%s\n", description.c_str());
+  std::printf("%s\n", g_desc.str().c_str());
 
   render();
   const auto bootT3 = std::chrono::steady_clock::now();

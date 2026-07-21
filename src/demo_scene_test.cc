@@ -10,6 +10,7 @@
 #include <string>
 #include <vector>
 
+#include "palette.h"
 #include "scene.h"
 #include "svg.h"
 #include "text.h"
@@ -35,6 +36,42 @@ TEST_CASE("a counts cloud holds at most maxWords words") {
   CHECK(scene.entries().size() == 3);
   // The most frequent word is the biggest.
   CHECK(scene.entries()[0].word.scale() >= scene.entries()[1].word.scale());
+}
+
+TEST_CASE("recolorScene matches a full rebuild exactly") {
+  // Palette-to-palette: colors, variance, and background all move; the
+  // layout must not. SVG equality pins geometry and colors at once.
+  words::ColorScheme wordly{words::findPalette("wordly")->palette, 0.12};
+  words::ColorScheme custom{
+      *words::parseCustomPalette("custom:101014:ff0000,00cc88"), 0.25};
+  words::CloudOptions a;
+  a.colors = &wordly;
+  words::Scene scene =
+      words::buildCloudFromCountsTsv(kFont, kStops, kTsv, a);
+  std::string before = words::toSvg(scene);
+
+  words::CloudOptions b = a;
+  b.colors = &custom;
+  words::Scene want = words::buildCloudFromCountsTsv(kFont, kStops, kTsv, b);
+
+  words::recolorScene(scene, b);
+  CHECK(words::toSvg(scene) == words::toSvg(want));
+  CHECK(words::toSvg(scene) != before);
+}
+
+TEST_CASE("recolorScene matches a colorSeed redeal exactly") {
+  // The Recolor action: App Colors, fresh distribution from its own
+  // stream, layout untouched.
+  words::CloudOptions a;
+  words::Scene scene =
+      words::buildCloudFromCountsTsv(kFont, kStops, kTsv, a);
+
+  words::CloudOptions b = a;
+  b.colorSeed = 7;
+  words::Scene want = words::buildCloudFromCountsTsv(kFont, kStops, kTsv, b);
+
+  words::recolorScene(scene, b);
+  CHECK(words::toSvg(scene) == words::toSvg(want));
 }
 
 TEST_CASE("the pipeline is deterministic for a fixed seed") {

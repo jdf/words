@@ -85,4 +85,15 @@ Scene buildCloudFromCountsTsv(const std::string& fontPath,
                               std::string_view tsv,
                               const CloudOptions& options = {});
 
+// Reassigns the scene's word colors and background exactly as a full
+// rebuild under `options` (orientation, colors, colorSeed) would,
+// leaving the layout untouched — the recolor fast path for color-only
+// spec changes. Exact only while the shared RNG stream keeps its shape:
+// the scene must have been built with options.colors set iff it is set
+// now (palette-colored builds draw twice per word where App Colors
+// draws once, so crossing that line shifts the angle draws and a real
+// rebuild would lay out differently). Callers enforce that; the engine
+// falls back to a full rebuild when it doesn't hold.
+void recolorScene(Scene& scene, const CloudOptions& options);
+
 }  // namespace words
