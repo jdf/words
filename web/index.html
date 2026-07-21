@@ -298,15 +298,23 @@
       font: inherit;
     }
     .pal-group { display: flex; align-items: center; gap: 8px; min-width: 0; }
+    #palette-dialog .row { flex-wrap: wrap; }
     #pal-name {
-      width: 11em; min-width: 0; background: #101014; color: #d8d8e0;
+      width: 9em; min-width: 0; background: #101014; color: #d8d8e0;
       border: 1px solid #444; border-radius: 4px; padding: 6px 8px;
       font: inherit;
     }
+    /* The native select arrow crowds the truncated label; draw our own
+       chevron with reserved padding instead. */
     #pal-load {
-      max-width: 10em; background: #101014; color: #d8d8e0;
-      border: 1px solid #444; border-radius: 4px; padding: 6px;
-      font: inherit;
+      appearance: none; -webkit-appearance: none;
+      max-width: 12em; min-width: 0; text-overflow: ellipsis;
+      background-color: #101014; color: #d8d8e0;
+      background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%238a8a96' stroke-width='1.5'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 9px center;
+      border: 1px solid #444; border-radius: 4px;
+      padding: 6px 26px 6px 10px; font: inherit;
     }
     dialog button:disabled { opacity: 0.35; cursor: default; }
     /* Saved palettes live in their own refreshed-on-open box inside the
