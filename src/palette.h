@@ -39,6 +39,12 @@ Color colorFromHex(unsigned rgb);
 // variance 0 returns 8-bit colors unchanged.
 Color varied(const Color& c, double variance, std::mt19937& rng);
 
+// A user-made palette serialized by the page (and carried in ?palette=):
+// "custom:RRGGBB:RRGGBB,RRGGBB,..." — the background, then one or more
+// equally weighted word colors. Returns nullopt unless the whole string
+// parses (strict 6-digit hex components, no stray separators).
+std::optional<Palette> parseCustomPalette(std::string_view spec);
+
 // The built-in palettes, in the original menu's order.
 struct NamedPalette {
   const char* name;         // lowercase slug: "wordly", "blue-meets-orange"

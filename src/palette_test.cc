@@ -38,6 +38,39 @@ TEST_CASE("builtin palettes match the original menu") {
   CHECK(words::findPalette("") == nullptr);
 }
 
+TEST_CASE("custom palettes parse from the page's serialization") {
+  auto p = words::parseCustomPalette("custom:101014:FF0000,00ff00,0000FF");
+  REQUIRE(p.has_value());
+  CHECK(sameColor(p->background, words::colorFromHex(0x101014)));
+  REQUIRE(p->colors.size() == 3);
+  CHECK(sameColor(p->colors[0].color, words::colorFromHex(0xff0000)));
+  CHECK(sameColor(p->colors[1].color, words::colorFromHex(0x00ff00)));
+  CHECK(sameColor(p->colors[2].color, words::colorFromHex(0x0000ff)));
+  for (const auto& wc : p->colors) CHECK(wc.weight == 1.0 / 3);
+
+  auto single = words::parseCustomPalette("custom:000000:ffffff");
+  REQUIRE(single.has_value());
+  REQUIRE(single->colors.size() == 1);
+  CHECK(single->colors[0].weight == 1.0);
+}
+
+TEST_CASE("malformed custom palettes are rejected whole") {
+  CHECK_FALSE(words::parseCustomPalette("").has_value());
+  CHECK_FALSE(words::parseCustomPalette("wordly").has_value());
+  // No word-color section, or an empty one.
+  CHECK_FALSE(words::parseCustomPalette("custom:000000").has_value());
+  CHECK_FALSE(words::parseCustomPalette("custom:000000:").has_value());
+  // Components must be exactly six hex digits.
+  CHECK_FALSE(words::parseCustomPalette("custom:000000:ff00").has_value());
+  CHECK_FALSE(words::parseCustomPalette("custom:000000:ff000000").has_value());
+  CHECK_FALSE(words::parseCustomPalette("custom:#00000:ffffff").has_value());
+  CHECK_FALSE(words::parseCustomPalette("custom:000000:gg0000").has_value());
+  // Stray separators.
+  CHECK_FALSE(words::parseCustomPalette("custom:000000:ff0000,").has_value());
+  CHECK_FALSE(
+      words::parseCustomPalette("custom:000000:ff0000,,00ff00").has_value());
+}
+
 TEST_CASE("variance levels match the original menu") {
   CHECK(words::findVariance("exact") == 0.0);
   CHECK(words::findVariance("little") == 0.08);

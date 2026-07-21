@@ -105,6 +105,45 @@ const PALETTES = [
   ['yramirp', 'yramirP', '#000000', ['#ff0000', '#00ff00', '#0000ff']],
 ];
 
+// Custom palettes ride in spec.palette (and ?palette=, copy links, the
+// engine call) as "custom:RRGGBB:RRGGBB,..." — background, then equally
+// weighted word colors; src/palette.cc parses the same format. Saved
+// palettes are {name, value} pairs in localStorage, listed in the
+// Palette menu alongside the built-ins.
+const isCustomPalette = (v) =>
+    typeof v === 'string' && v.startsWith('custom:');
+const CUSTOM_PALETTE_RE =
+    /^custom:([0-9a-fA-F]{6}):([0-9a-fA-F]{6}(?:,[0-9a-fA-F]{6})*)$/;
+function parseCustomPalette(value) {
+  const m = CUSTOM_PALETTE_RE.exec(value || '');
+  if (!m) return null;
+  return {
+    bg: '#' + m[1].toLowerCase(),
+    colors: m[2].toLowerCase().split(',').map((c) => '#' + c),
+  };
+}
+const serializeCustomPalette = (p) =>
+    'custom:' + p.bg.slice(1) + ':' +
+    p.colors.map((c) => c.slice(1)).join(',');
+
+const SAVED_PALETTES_KEY = 'words-custom-palettes';
+function savedPalettes() {
+  try {
+    const list = JSON.parse(localStorage.getItem(SAVED_PALETTES_KEY)) || [];
+    return list.filter((p) => p && typeof p.name === 'string' &&
+                              parseCustomPalette(p.value));
+  } catch {
+    return [];
+  }
+}
+function storeSavedPalettes(list) {
+  try {
+    localStorage.setItem(SAVED_PALETTES_KEY, JSON.stringify(list));
+  } catch (err) {
+    console.error('saving palettes failed', err);
+  }
+}
+
 // What 🎲 draws from. Orientation keeps a curated pool (the wilder
 // strategies are opt-in); palettes exclude App Colors so Generate always
 // shows an original palette.
@@ -870,7 +909,12 @@ function menuLabel(menuName) {
   const dim = menu.dim || menuName;
   if (spec[dim + 'Mode'] === 'random') return `🎲 Random ${menu.title}`;
   const entry = menu.options.find(([slug]) => slug === spec[dim]);
-  return entry ? entry[1] : spec[dim];
+  if (entry) return entry[1];
+  if (menuName === 'palette' && isCustomPalette(spec.palette)) {
+    const saved = savedPalettes().find((p) => p.value === spec.palette);
+    return saved ? saved.name : 'Custom Palette';
+  }
+  return spec[dim];
 }
 
 function choose(menuName, mode, value) {
@@ -945,12 +989,29 @@ function buildMenu(menuName) {
     panel.appendChild(opt);
   }
 
+  if (menuName === 'palette') {
+    // Saved custom palettes (refreshed each open — the editor may have
+    // added or deleted some), then the editor itself.
+    const saved = document.createElement('div');
+    saved.className = 'dd-saved';
+    panel.appendChild(saved);
+    const edit = document.createElement('button');
+    edit.className = 'dd-opt dd-edit';
+    edit.innerHTML = '<span class="opt-label">✏️ Custom Palette…</span>';
+    edit.addEventListener('click', () => {
+      closeMenus();
+      openPaletteEditor();
+    });
+    panel.appendChild(edit);
+  }
+
   btn.addEventListener('click', (e) => {
     e.stopPropagation();
     const wasHidden = panel.hidden;
     closeMenus();
     if (wasHidden) {
       if (menuName === 'font') ensureMenuFonts();
+      if (menuName === 'palette') refreshSavedPaletteMenu(panel);
       for (const opt of panel.querySelectorAll('.dd-opt')) {
         opt.classList.toggle('selected',
             spec[dim + 'Mode'] === 'fixed' && opt.dataset.slug === spec[dim]);
@@ -1002,6 +1063,308 @@ function refreshUi() {
     }
   }
 }
+
+// ---------------------------------------------------------------------------
+// Custom palette editor. The in-progress palette lives here as
+// {bg: '#rrggbb', colors: [...]}; every edit recolors the dialog's
+// sample cloud, and "Use Palette" applies one undoable action carrying
+// the serialized custom:… value — the same string that rides in
+// spec.palette, copy links, and ?palette=.
+
+const paletteDialog = document.getElementById('palette-dialog');
+const palSample = document.getElementById('pal-sample');
+const palBgRow = document.getElementById('pal-bg-row');
+const palColorsRow = document.getElementById('pal-colors');
+const palNameInput = document.getElementById('pal-name');
+const palSaveBtn = document.getElementById('pal-save-btn');
+const palLoadSelect = document.getElementById('pal-load');
+const palDeleteBtn = document.getElementById('pal-delete');
+const palUseBtn = document.getElementById('pal-use');
+const cpBox = document.getElementById('cp');
+const cpSv = document.getElementById('cp-sv');
+const cpSvDot = document.getElementById('cp-sv-dot');
+const cpHue = document.getElementById('cp-hue');
+const cpHueDot = document.getElementById('cp-hue-dot');
+const cpHex = document.getElementById('cp-hex');
+
+let palEdit = { bg: '#000000', colors: [] };
+let palSlot = null;  // 'bg' | word-color index | null (picker hidden)
+// The selected slot's color as HSV (h in [0,360), s and v in [0,1]):
+// the picker's working state, so hue survives a trip through gray.
+let palHsv = { h: 0, s: 0, v: 0 };
+
+function hexToHsv(hex) {
+  const r = parseInt(hex.slice(1, 3), 16) / 255;
+  const g = parseInt(hex.slice(3, 5), 16) / 255;
+  const b = parseInt(hex.slice(5, 7), 16) / 255;
+  const max = Math.max(r, g, b);
+  const d = max - Math.min(r, g, b);
+  let h = 0;
+  if (d > 0) {
+    if (max === r) h = 60 * (((g - b) / d) % 6);
+    else if (max === g) h = 60 * ((b - r) / d + 2);
+    else h = 60 * ((r - g) / d + 4);
+    if (h < 0) h += 360;
+  }
+  return { h, s: max === 0 ? 0 : d / max, v: max };
+}
+function hsvToHex({ h, s, v }) {
+  const channel = (n) => {
+    const k = (n + h / 60) % 6;
+    const c = v - v * s * Math.max(0, Math.min(k, 4 - k, 1));
+    return Math.round(c * 255).toString(16).padStart(2, '0');
+  };
+  return '#' + channel(5) + channel(3) + channel(1);
+}
+
+// The sample cloud: a hand-placed miniature (word, x, y, size, angle in
+// a 320×132 box), built once and recolored on every edit. PAL_DEAL is
+// each word's fixed uniform draw from the palette, so the recoloring is
+// deterministic but looks dealt rather than striped.
+const PAL_SAMPLE_WORDS = [
+  ['words', 160, 82, 40, 0],
+  ['cloud', 74, 42, 24, 0],
+  ['color', 247, 40, 20, 0],
+  ['palette', 92, 110, 17, 0],
+  ['bright', 235, 106, 15, 0],
+  ['hue', 22, 72, 18, -90],
+  ['tint', 303, 92, 14, -90],
+  ['shade', 178, 24, 14, 0],
+  ['tone', 40, 122, 12, 0],
+  ['vivid', 262, 124, 11, 0],
+  ['glow', 296, 22, 11, 0],
+  ['wash', 118, 20, 11, 0],
+];
+const PAL_DEAL =
+    [0.17, 0.62, 0.91, 0.05, 0.44, 0.78, 0.30, 0.55, 0.99, 0.23, 0.70, 0.38];
+let palSampleRect = null;
+let palSampleTexts = [];
+function buildPalSample() {
+  if (palSampleRect) return;
+  const ns = 'http://www.w3.org/2000/svg';
+  palSampleRect = document.createElementNS(ns, 'rect');
+  palSampleRect.setAttribute('width', '320');
+  palSampleRect.setAttribute('height', '132');
+  palSample.appendChild(palSampleRect);
+  palSampleTexts = PAL_SAMPLE_WORDS.map(([word, x, y, size, angle]) => {
+    const t = document.createElementNS(ns, 'text');
+    t.setAttribute('x', x);
+    t.setAttribute('y', y);
+    t.setAttribute('font-size', size);
+    t.setAttribute('text-anchor', 'middle');
+    t.setAttribute('font-family', "'Arial Black', 'Arial Bold', sans-serif");
+    t.setAttribute('font-weight', 'bold');
+    if (angle) t.setAttribute('transform', `rotate(${angle} ${x} ${y})`);
+    t.textContent = word;
+    palSample.appendChild(t);
+    return t;
+  });
+}
+function renderPalSample() {
+  palSampleRect.setAttribute('fill', palEdit.bg);
+  const n = palEdit.colors.length;
+  palSampleTexts.forEach((t, i) => {
+    t.setAttribute(
+        'fill', n ? palEdit.colors[Math.floor(PAL_DEAL[i] * n)] : '#777777');
+  });
+}
+
+function renderPalSwatches() {
+  const bgSwatch = document.createElement('button');
+  bgSwatch.className = 'pal-swatch';
+  bgSwatch.classList.toggle('selected', palSlot === 'bg');
+  bgSwatch.style.background = palEdit.bg;
+  bgSwatch.title = 'Background color';
+  bgSwatch.addEventListener('click', () => selectPalSlot('bg'));
+  palBgRow.replaceChildren(bgSwatch);
+
+  const slots = palEdit.colors.map((color, i) => {
+    const slot = document.createElement('div');
+    slot.className = 'pal-slot';
+    const sw = document.createElement('button');
+    sw.className = 'pal-swatch';
+    sw.classList.toggle('selected', palSlot === i);
+    sw.style.background = color;
+    sw.addEventListener('click', () => selectPalSlot(i));
+    const del = document.createElement('button');
+    del.className = 'pal-del';
+    del.textContent = '−';
+    del.title = 'Remove this color';
+    del.addEventListener('click', () => {
+      palEdit.colors.splice(i, 1);
+      if (palSlot === i) hidePalPicker();
+      else if (typeof palSlot === 'number' && palSlot > i) palSlot -= 1;
+      renderPalEditor();
+    });
+    slot.append(sw, del);
+    return slot;
+  });
+  const add = document.createElement('button');
+  add.className = 'pal-swatch pal-add';
+  add.textContent = '+';
+  add.title = 'Add a color';
+  add.addEventListener('click', () => {
+    palEdit.colors.push('#ffffff');
+    selectPalSlot(palEdit.colors.length - 1);
+  });
+  palColorsRow.replaceChildren(...slots, add);
+}
+
+function renderPalPicker() {
+  cpSv.style.background =
+      'linear-gradient(to top, #000, rgba(0,0,0,0)), ' +
+      `linear-gradient(to right, #fff, hsl(${palHsv.h}, 100%, 50%))`;
+  cpSvDot.style.left = `${palHsv.s * 100}%`;
+  cpSvDot.style.top = `${(1 - palHsv.v) * 100}%`;
+  cpSvDot.style.background = hsvToHex(palHsv);
+  cpHueDot.style.top = `${(palHsv.h / 360) * 100}%`;
+  // Don't rewrite the hex field under the user's cursor mid-typing.
+  if (document.activeElement !== cpHex) cpHex.value = hsvToHex(palHsv);
+}
+
+function renderPalEditor() {
+  renderPalSwatches();
+  renderPalSample();
+  if (palSlot !== null) renderPalPicker();
+  const empty = palEdit.colors.length === 0;
+  palUseBtn.disabled = empty;
+  palSaveBtn.disabled = empty;
+}
+
+function selectPalSlot(slot) {
+  palSlot = slot;
+  palHsv = hexToHsv(slot === 'bg' ? palEdit.bg : palEdit.colors[slot]);
+  cpBox.hidden = false;
+  renderPalEditor();
+}
+function hidePalPicker() {
+  palSlot = null;
+  cpBox.hidden = true;
+}
+
+// Editing the picker writes the selected swatch (and everything that
+// shows it) live.
+function applyPalPickerColor() {
+  const hex = hsvToHex(palHsv);
+  if (palSlot === 'bg') palEdit.bg = hex;
+  else if (typeof palSlot === 'number') palEdit.colors[palSlot] = hex;
+  renderPalEditor();
+}
+
+function palPickerDrag(el, onPoint) {
+  const point = (e) => {
+    const r = el.getBoundingClientRect();
+    onPoint(Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)),
+            Math.min(1, Math.max(0, (e.clientY - r.top) / r.height)));
+  };
+  el.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    try {
+      el.setPointerCapture(e.pointerId);
+    } catch (err) { /* synthetic events have no active pointer */ }
+    point(e);
+  });
+  el.addEventListener('pointermove', (e) => {
+    if (e.buttons & 1) point(e);
+  });
+}
+palPickerDrag(cpSv, (x, y) => {
+  palHsv.s = x;
+  palHsv.v = 1 - y;
+  applyPalPickerColor();
+});
+palPickerDrag(cpHue, (x, y) => {
+  palHsv.h = Math.min(359.9, y * 360);
+  applyPalPickerColor();
+});
+cpHex.addEventListener('input', () => {
+  const m = /^#?([0-9a-fA-F]{6})$/.exec(cpHex.value.trim());
+  if (!m || palSlot === null) return;
+  palHsv = hexToHsv('#' + m[1].toLowerCase());
+  applyPalPickerColor();
+});
+
+function refreshSavedPaletteMenu(panel) {
+  const box = panel.querySelector('.dd-saved');
+  box.replaceChildren(...savedPalettes().map(({ name, value }) => {
+    const { bg, colors } = parseCustomPalette(value);
+    const opt = document.createElement('button');
+    opt.className = 'dd-opt';
+    opt.dataset.slug = value;
+    opt.innerHTML = paletteThumb(bg, colors) + '<span class="opt-label"></span>';
+    opt.querySelector('.opt-label').textContent = name;  // user text, not HTML
+    opt.addEventListener('click', () => choose('palette', 'fixed', value));
+    return opt;
+  }));
+}
+
+function refreshPalLoadSelect(selectedName) {
+  const list = savedPalettes();
+  palLoadSelect.replaceChildren(
+      new Option('Saved palettes…', ''),
+      ...list.map((p) => new Option(p.name, p.name)));
+  palLoadSelect.value =
+      list.some((p) => p.name === selectedName) ? selectedName : '';
+  palDeleteBtn.disabled = palLoadSelect.value === '';
+}
+
+palSaveBtn.addEventListener('click', () => {
+  const name = palNameInput.value.trim() || 'My Palette';
+  palNameInput.value = name;
+  const list = savedPalettes();
+  const value = serializeCustomPalette(palEdit);
+  const existing = list.findIndex((p) => p.name === name);
+  if (existing >= 0) list[existing] = { name, value };
+  else list.push({ name, value });
+  storeSavedPalettes(list);
+  refreshPalLoadSelect(name);
+  refreshUi();  // the sidebar's palette label may now be this name
+});
+palLoadSelect.addEventListener('change', () => {
+  const entry = savedPalettes().find((p) => p.name === palLoadSelect.value);
+  palDeleteBtn.disabled = !entry;
+  if (!entry) return;
+  palEdit = parseCustomPalette(entry.value);
+  palNameInput.value = entry.name;
+  hidePalPicker();
+  renderPalEditor();
+});
+palDeleteBtn.addEventListener('click', () => {
+  const name = palLoadSelect.value;
+  if (!name) return;
+  storeSavedPalettes(savedPalettes().filter((p) => p.name !== name));
+  refreshPalLoadSelect('');
+});
+
+// Opens editing the current palette when it's custom, else fresh: black
+// background, no word colors yet — just the + tile.
+function openPaletteEditor() {
+  const current = parseCustomPalette(spec.palette);
+  palEdit = current || { bg: '#000000', colors: [] };
+  const saved =
+      current && savedPalettes().find((p) => p.value === spec.palette);
+  palNameInput.value = saved ? saved.name : '';
+  refreshPalLoadSelect(saved ? saved.name : '');
+  hidePalPicker();
+  buildPalSample();
+  renderPalEditor();
+  paletteDialog.showModal();
+}
+
+palUseBtn.addEventListener('click', () => {
+  if (palEdit.colors.length === 0) return;
+  paletteDialog.close();
+  const value = serializeCustomPalette(palEdit);
+  if (spec.paletteMode === 'fixed' && spec.palette === value) return;
+  apply({
+    label: 'Custom Palette',
+    before: { ...spec },
+    after: { ...spec, palette: value, paletteMode: 'fixed' },
+  });
+});
+document.getElementById('pal-cancel').addEventListener('click', () => {
+  paletteDialog.close();
+});
 
 // ----- wiring.
 
@@ -1097,7 +1460,7 @@ if (showUi) {
   window.addEventListener('keydown', (e) => {
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z' &&
         !dialog.open && !bookDialog.open && !exportDialog.open &&
-        !creditsDialog.open && !feedbackDialog.open) {
+        !creditsDialog.open && !feedbackDialog.open && !paletteDialog.open) {
       e.preventDefault();
       e.shiftKey ? redo() : undo();
     }

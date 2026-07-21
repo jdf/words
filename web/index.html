@@ -226,6 +226,82 @@
       color: #b8b8c4; cursor: pointer;
       font: 14px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
     }
+    /* Palette editor: a live-recolored sample cloud, the background +
+       word-color swatch rows, and an inline HSV picker (shade square,
+       hue strip, hex field) that edits whichever swatch is selected. */
+    #palette-dialog { width: min(480px, 92vw); }
+    #pal-sample {
+      display: block; width: 100%; height: auto; box-sizing: border-box;
+      border: 1px solid #333; border-radius: 6px;
+    }
+    .pal-section {
+      display: flex; align-items: flex-start; gap: 10px; margin-top: 14px;
+    }
+    .pal-label { flex: none; width: 88px; padding-top: 7px; color: #8a8a96; }
+    .pal-swatches { display: flex; flex-wrap: wrap; gap: 8px; }
+    .pal-slot { display: flex; flex-direction: column; align-items: center; }
+    .pal-swatch {
+      width: 36px; height: 30px; padding: 0; border-radius: 6px;
+      border: 1px solid #555; cursor: pointer;
+    }
+    .pal-swatch.selected { outline: 2px solid #4aa3ff; outline-offset: 1px; }
+    .pal-add {
+      background: #1c1c22; color: #8a8a96; font-size: 18px; line-height: 1;
+    }
+    .pal-del {
+      background: none; border: none; padding: 1px 8px; color: #8a8a96;
+      font-size: 14px; line-height: 1.2; cursor: pointer;
+    }
+    .pal-del:hover { color: #e0e0e8; background: none; border: none; }
+    .cp-main { display: flex; gap: 10px; margin-top: 14px; }
+    .cp-sv {
+      position: relative; flex: 1; height: 160px;
+      border: 1px solid #333; border-radius: 6px;
+      cursor: crosshair; touch-action: none;
+    }
+    .cp-dot {
+      position: absolute; width: 14px; height: 14px; border-radius: 50%;
+      border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.6);
+      transform: translate(-50%, -50%); pointer-events: none;
+    }
+    .cp-hue {
+      position: relative; flex: none; width: 20px;
+      border: 1px solid #333; border-radius: 6px;
+      cursor: ns-resize; touch-action: none;
+      background: linear-gradient(to bottom, #f00, #ff0 16.7%, #0f0 33.3%,
+                                  #0ff 50%, #00f 66.7%, #f0f 83.3%, #f00);
+    }
+    .cp-hue-dot {
+      position: absolute; left: -3px; right: -3px; height: 7px;
+      border-radius: 4px; border: 2px solid #fff;
+      box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.6);
+      transform: translateY(-50%); pointer-events: none;
+    }
+    .cp-hex-row {
+      display: flex; align-items: center; gap: 8px; margin-top: 10px;
+      color: #8a8a96;
+    }
+    #cp-hex {
+      width: 7em; background: #101014; color: #d8d8e0;
+      border: 1px solid #444; border-radius: 4px; padding: 4px 6px;
+      font: inherit;
+    }
+    .pal-group { display: flex; align-items: center; gap: 8px; min-width: 0; }
+    #pal-name {
+      width: 11em; min-width: 0; background: #101014; color: #d8d8e0;
+      border: 1px solid #444; border-radius: 4px; padding: 6px 8px;
+      font: inherit;
+    }
+    #pal-load {
+      max-width: 10em; background: #101014; color: #d8d8e0;
+      border: 1px solid #444; border-radius: 4px; padding: 6px;
+      font: inherit;
+    }
+    dialog button:disabled { opacity: 0.35; cursor: default; }
+    /* Saved palettes live in their own refreshed-on-open box inside the
+       palette menu, above the editor entry. */
+    .dd-saved { display: flex; flex-direction: column; gap: 2px; }
+    .dd-edit { border-top: 1px solid #333 !important; border-radius: 0 0 8px 8px; margin-top: 4px; }
     /* Phone in portrait: controls become a top bar — 🔄/↩/↪ icon-only
        and pinned left, the rest a horizontally scrolling strip; menus
        pop down below the bar (see positionMenuPanel in app.js). Last in
@@ -433,6 +509,48 @@
       <span>
         <button id="export-cancel">Cancel</button>
         <button id="export-go" class="go">Export</button>
+      </span>
+    </div>
+  </dialog>
+  <!-- Custom palette editor: swatches populated by app.js; the sample
+       cloud up top recolors live as the palette is edited. Saved
+       palettes persist in localStorage and join the Palette menu. -->
+  <dialog id="palette-dialog">
+    <h3>Custom Palette</h3>
+    <svg id="pal-sample" viewBox="0 0 320 132" aria-hidden="true"></svg>
+    <div class="pal-section">
+      <span class="pal-label">Background</span>
+      <div class="pal-swatches" id="pal-bg-row"></div>
+    </div>
+    <div class="pal-section">
+      <span class="pal-label">Word colors</span>
+      <div class="pal-swatches" id="pal-colors"></div>
+    </div>
+    <div id="cp" hidden>
+      <div class="cp-main">
+        <div class="cp-sv" id="cp-sv"><div class="cp-dot" id="cp-sv-dot"></div></div>
+        <div class="cp-hue" id="cp-hue"><div class="cp-hue-dot" id="cp-hue-dot"></div></div>
+      </div>
+      <div class="cp-hex-row">
+        <label for="cp-hex">Hex</label>
+        <input id="cp-hex" autocomplete="off" spellcheck="false" maxlength="7">
+      </div>
+    </div>
+    <div class="row">
+      <span class="pal-group">
+        <input id="pal-name" placeholder="Palette name" autocomplete="off">
+        <button id="pal-save-btn" title="Save this palette in your browser">Save</button>
+      </span>
+      <span class="pal-group">
+        <select id="pal-load" title="Load a saved palette"></select>
+        <button id="pal-delete" title="Delete the selected saved palette">🗑</button>
+      </span>
+    </div>
+    <div class="row">
+      <span></span>
+      <span>
+        <button id="pal-cancel">Cancel</button>
+        <button id="pal-use" class="go">Use Palette</button>
       </span>
     </div>
   </dialog>

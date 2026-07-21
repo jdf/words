@@ -18,7 +18,9 @@
 //                        toolbar for the golden harness)
 //   ?font=<basename>     use assets/fonts/<basename>.ttf
 //   ?palette=<name>      color with an original Wordle palette ("wordly",
-//                        "heat", ...; see src/palette.cc)
+//                        "heat", ...; see src/palette.cc) or a custom one
+//                        ("custom:RRGGBB:RRGGBB,..." — background, then
+//                        word colors; the page's palette editor emits it)
 //   ?variance=<name>     color variance: exact|little|some|lots|wild
 //   ?case=<name>         case fold: guess|as-written|lower|upper
 //   ?exclude=<w1,w2>     removed words (comma-separated, folded keys)
@@ -49,6 +51,7 @@
 #include <sstream>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 #include "box.h"
@@ -164,15 +167,22 @@ words::Scene buildScene(const std::string& fontPath,
   words::CloudOptions options;
   words::ColorScheme scheme;
   const char* paletteLabel = "App Colors";
-  if (const words::NamedPalette* palette = words::findPalette(
-          g_palette ? *g_palette : urlParam("palette"))) {
+  const std::string paletteParam = g_palette ? *g_palette : urlParam("palette");
+  if (const words::NamedPalette* palette = words::findPalette(paletteParam)) {
     scheme.palette = palette->palette;
+    options.colors = &scheme;
+    paletteLabel = palette->displayName;
+  } else if (std::optional<words::Palette> custom =
+                 words::parseCustomPalette(paletteParam)) {
+    scheme.palette = *std::move(custom);
+    options.colors = &scheme;
+    paletteLabel = "Custom Palette";
+  }
+  if (options.colors) {
     if (auto v = words::findVariance(
             g_variance.empty() ? urlParam("variance") : g_variance)) {
       scheme.variance = *v;
     }
-    options.colors = &scheme;
-    paletteLabel = palette->displayName;
   }
   if (auto f = words::findCaseFold(
           g_caseFold.empty() ? urlParam("case") : g_caseFold)) {

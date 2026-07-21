@@ -102,6 +102,53 @@ Color colorFromHex(unsigned rgb) {
           (rgb & 0xff) / 255.0f};
 }
 
+namespace {
+
+// Exactly six hex digits (either case), or nullopt.
+std::optional<unsigned> parseHex6(std::string_view s) {
+  if (s.size() != 6) return std::nullopt;
+  unsigned v = 0;
+  for (char ch : s) {
+    unsigned digit;
+    if (ch >= '0' && ch <= '9') {
+      digit = static_cast<unsigned>(ch - '0');
+    } else if (ch >= 'a' && ch <= 'f') {
+      digit = static_cast<unsigned>(ch - 'a') + 10;
+    } else if (ch >= 'A' && ch <= 'F') {
+      digit = static_cast<unsigned>(ch - 'A') + 10;
+    } else {
+      return std::nullopt;
+    }
+    v = v * 16 + digit;
+  }
+  return v;
+}
+
+}  // namespace
+
+std::optional<Palette> parseCustomPalette(std::string_view spec) {
+  constexpr std::string_view kPrefix = "custom:";
+  if (!spec.starts_with(kPrefix)) return std::nullopt;
+  spec.remove_prefix(kPrefix.size());
+  const size_t colon = spec.find(':');
+  if (colon == std::string_view::npos) return std::nullopt;
+  const std::optional<unsigned> bg = parseHex6(spec.substr(0, colon));
+  if (!bg) return std::nullopt;
+  Palette p;
+  p.background = colorFromHex(*bg);
+  std::string_view rest = spec.substr(colon + 1);
+  while (true) {
+    const size_t comma = rest.find(',');
+    const std::optional<unsigned> c = parseHex6(rest.substr(0, comma));
+    if (!c) return std::nullopt;
+    p.colors.push_back({colorFromHex(*c), 0.0});
+    if (comma == std::string_view::npos) break;
+    rest = rest.substr(comma + 1);
+  }
+  for (WeightedColor& wc : p.colors) wc.weight = 1.0 / p.colors.size();
+  return p;
+}
+
 Color varied(const Color& c, double variance, std::mt19937& rng) {
   Hsb hsb = rgbToHsb(channel(c.r), channel(c.g), channel(c.b));
   // Achromatic colors (and pure reds — both have HSB hue 0) have no hue
