@@ -251,6 +251,7 @@
     #palette-dialog::backdrop { background: transparent; }
     /* Shared dialog title/drag bar (palette editor, Use My Words). */
     .dlg-drag {
+      position: relative;
       margin: -16px -16px 12px; padding: 10px 16px 8px;
       background: #101014; border-bottom: 1px solid #333;
       border-radius: 7px 7px 0 0; cursor: grab;
@@ -258,6 +259,14 @@
     }
     .dlg-drag:active { cursor: grabbing; }
     .dlg-drag h3 { margin: 0; }
+    /* The draggability hint: three raised lines (a light line over its
+       dark shadow) at the bar's right edge. */
+    .dlg-drag::after {
+      content: ''; position: absolute; right: 16px; top: 50%;
+      width: 28px; height: 10px; transform: translateY(-50%);
+      background: repeating-linear-gradient(
+          to bottom, #4a4a56 0 1px, #08080a 1px 2px, transparent 2px 4px);
+    }
     /* Use My Words: draggable by its bar and freely resizable — the
        textarea stretches with the dialog (its own resize grip is
        disabled in favor of the dialog's). display:flex only while
