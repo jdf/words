@@ -46,7 +46,7 @@
       font: 12px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
       color: #8a8a96; pointer-events: none; white-space: pre;
     }
-    body.with-ui #status { left: 248px; }
+    body.with-ui #status { left: 268px; }
     #progress {
       position: fixed; left: 0; top: 0; height: 3px; width: 0;
       background: #4aa3ff; opacity: 0; transition: opacity 0.2s;
@@ -59,7 +59,7 @@
        gutter's allowance. */
     #panel {
       display: none; flex-direction: column; align-items: stretch;
-      gap: 10px; width: 212px; flex: none; padding: 12px;
+      gap: 10px; width: 232px; flex: none; padding: 12px;
       background: #101014; border-right: 1px solid #333;
       font: 14px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
       color: #b8b8c4; overflow-y: auto;
@@ -74,15 +74,23 @@
     #panel button:disabled { opacity: 0.35; cursor: default; }
     #panel button:hover:not(:disabled) { border-color: #777; background: #26262e; }
     #panel .spacer { flex: 1; }
-    #panel .divider {
-      border: none; border-top: 1px solid #2c2c34; margin: 2px 0;
-      align-self: stretch;
+    /* Dividers are phone-portrait separators only; desktop's grouping
+       comes from the labeled boxes. */
+    #panel .divider { display: none; }
+    /* Labeled group boxes: the label sits on the top border line,
+       punched out of it by the panel's own background. */
+    #panel .group {
+      display: flex; flex-direction: column; align-items: stretch;
+      gap: 10px; position: relative; margin-top: 6px;
+      border: 1px solid #333; border-radius: 8px; padding: 14px 8px 10px;
+    }
+    #panel .group-label {
+      position: absolute; top: -8px; left: 10px; padding: 0 6px;
+      background: #101014; color: #8a8a96; font-size: 11px;
+      letter-spacing: 0.08em;
     }
     /* Green, to invite discovery. */
     #panel #use-words, #panel #use-book { color: #7ed99a; }
-    /* The color group (palette + variance): gentle extra air above, so
-       the pair reads as one unit apart from the shape controls. */
-    #dd-palette { margin-top: 10px; }
     #generate { text-align: left; }
     /* On desktop the pin/strip grouping is invisible to layout. */
     #panel .pin, #panel .strip { display: contents; }
@@ -337,6 +345,9 @@
       }
       #panel .pin { display: flex; gap: 6px; flex: none; align-items: center; }
       #panel .pair { display: contents; }
+      /* The desktop group boxes flatten into the strip. */
+      #panel .group { display: contents; }
+      #panel .group-label { display: none; }
       .btn-label { display: none; }
       #panel .strip {
         display: flex; align-items: center; gap: 8px;
@@ -344,7 +355,8 @@
         scrollbar-width: none;
       }
       #panel .strip::-webkit-scrollbar { display: none; }
-      #panel .strip > * { flex: none; }
+      /* Group children are strip items too (display: contents above). */
+      #panel .strip > *, #panel .group > * { flex: none; }
       #panel button { white-space: nowrap; }
       #panel #words-inline, #panel #variance-inline { display: none; }
       #dd-words, #dd-variance { display: block; }
@@ -352,11 +364,10 @@
       #dd-variance .dd-panel .slider-row { width: 240px; padding: 8px; }
       .dd-btn { width: auto; }
       #panel .divider {
-        border-top: none; border-left: 1px solid #2c2c34;
+        display: block; border: none; border-left: 1px solid #2c2c34;
         height: 24px; margin: 0; align-self: center;
       }
       #panel .spacer { display: none; }
-      #dd-palette { margin-top: 0; }  /* the row layout has no group air */
     }
   </style>
 </head>
@@ -374,77 +385,91 @@
         <button id="redo" title="Redo (⇧⌘Z)" disabled>↪<span class="btn-label"> Redo</span></button>
       </div>
     </div>
+    <!-- Desktop: labeled group boxes down the sidebar (text / layout /
+         color / share). Phone-portrait flattens the groups back into
+         the scrolling strip (display: contents) with the dividers as
+         vertical separators. -->
     <div class="strip">
-    <label class="slider-row" id="words-inline"
-           title="Maximum words placed in the cloud">
-      <span>Words <span class="max-val">800</span></span>
-      <input type="range" class="max-input" min="50" max="2000" step="50"
-             value="800">
-    </label>
-    <!-- Phone-portrait replacement for the inline slider: a button
-         showing the count, slider in a pop-down. -->
-    <div class="dd" id="dd-words" title="Maximum words placed in the cloud">
-      <button class="dd-btn"><span class="dd-cur" id="words-btn-label">800 words</span><span class="tri">▸</span></button>
-      <div class="dd-panel" hidden>
-        <label class="slider-row">
-          <span>Words <span class="max-val">800</span></span>
-          <input type="range" class="max-input" min="50" max="2000" step="50"
-                 value="800">
-        </label>
+    <div class="group">
+      <span class="group-label">text</span>
+      <button id="use-words" title="Cloud your own text">Use My Words</button>
+      <button id="use-book" title="Cloud a book from the library">Use a Book</button>
+      <label class="slider-row" id="words-inline"
+             title="Maximum words placed in the cloud">
+        <span>Words <span class="max-val">800</span></span>
+        <input type="range" class="max-input" min="50" max="2000" step="50"
+               value="800">
+      </label>
+      <!-- Phone-portrait replacement for the inline slider: a button
+           showing the count, slider in a pop-down. -->
+      <div class="dd" id="dd-words" title="Maximum words placed in the cloud">
+        <button class="dd-btn"><span class="dd-cur" id="words-btn-label">800 words</span><span class="tri">▸</span></button>
+        <div class="dd-panel" hidden>
+          <label class="slider-row">
+            <span>Words <span class="max-val">800</span></span>
+            <input type="range" class="max-input" min="50" max="2000" step="50"
+                   value="800">
+          </label>
+        </div>
+      </div>
+      <div class="dd" id="dd-case" title="How case variants of a word combine">
+        <button class="dd-btn"><span class="dd-cur"></span><span class="tri">▸</span></button>
+        <div class="dd-panel" hidden></div>
       </div>
     </div>
-    <div class="dd" id="dd-font">
-      <button class="dd-btn"><span class="dd-cur"></span><span class="tri">▸</span></button>
-      <div class="dd-panel" hidden></div>
+    <hr class="divider">
+    <div class="group">
+      <span class="group-label">layout</span>
+      <div class="dd" id="dd-font">
+        <button class="dd-btn"><span class="dd-cur"></span><span class="tri">▸</span></button>
+        <div class="dd-panel" hidden></div>
+      </div>
+      <div class="dd" id="dd-layout">
+        <button class="dd-btn"><span class="dd-cur"></span><span class="tri">▸</span></button>
+        <div class="dd-panel" hidden></div>
+      </div>
+      <div class="dd" id="dd-orientation">
+        <button class="dd-btn"><span class="dd-cur"></span><span class="tri">▸</span></button>
+        <div class="dd-panel" hidden></div>
+      </div>
     </div>
-    <div class="dd" id="dd-layout">
-      <button class="dd-btn"><span class="dd-cur"></span><span class="tri">▸</span></button>
-      <div class="dd-panel" hidden></div>
-    </div>
-    <div class="dd" id="dd-orientation">
-      <button class="dd-btn"><span class="dd-cur"></span><span class="tri">▸</span></button>
-      <div class="dd-panel" hidden></div>
-    </div>
-    <div class="dd" id="dd-case" title="How case variants of a word combine">
-      <button class="dd-btn"><span class="dd-cur"></span><span class="tri">▸</span></button>
-      <div class="dd-panel" hidden></div>
-    </div>
-    <!-- The color group: the palette and how far word colors wander
-         from it. Extra air above (see #dd-palette's margin) sets the
-         pair off from the shape controls; the divider below closes it. -->
-    <div class="dd" id="dd-palette">
-      <button class="dd-btn"><span class="dd-cur"></span><span class="tri">▸</span></button>
-      <div class="dd-panel" hidden></div>
-    </div>
-    <label class="slider-row" id="variance-inline"
+    <hr class="divider">
+    <div class="group">
+      <span class="group-label">color</span>
+      <div class="dd" id="dd-palette">
+        <button class="dd-btn"><span class="dd-cur"></span><span class="tri">▸</span></button>
+        <div class="dd-panel" hidden></div>
+      </div>
+      <label class="slider-row" id="variance-inline"
+             title="How far word colors may wander from the palette">
+        <span>Variance <span class="var-val">A Little</span></span>
+        <input type="range" class="var-input" min="0" max="4" step="1"
+               value="1">
+      </label>
+      <!-- Phone-portrait replacement: a button naming the level, slider
+           in a pop-down. -->
+      <div class="dd" id="dd-variance"
            title="How far word colors may wander from the palette">
-      <span>Variance <span class="var-val">A Little</span></span>
-      <input type="range" class="var-input" min="0" max="4" step="1"
-             value="1">
-    </label>
-    <!-- Phone-portrait replacement: a button naming the level, slider in
-         a pop-down. -->
-    <div class="dd" id="dd-variance"
-         title="How far word colors may wander from the palette">
-      <button class="dd-btn"><span class="dd-cur" id="variance-btn-label">A Little Variance</span><span class="tri">▸</span></button>
-      <div class="dd-panel" hidden>
-        <label class="slider-row">
-          <span>Variance <span class="var-val">A Little</span></span>
-          <input type="range" class="var-input" min="0" max="4" step="1"
-                 value="1">
-        </label>
+        <button class="dd-btn"><span class="dd-cur" id="variance-btn-label">A Little Variance</span><span class="tri">▸</span></button>
+        <div class="dd-panel" hidden>
+          <label class="slider-row">
+            <span>Variance <span class="var-val">A Little</span></span>
+            <input type="range" class="var-input" min="0" max="4" step="1"
+                   value="1">
+          </label>
+        </div>
       </div>
+      <button id="recolor" title="Same palette, a fresh distribution of its colors">🎨<span class="btn-label"> Recolor</span></button>
     </div>
-    <!-- Part of the color group: same palette, freshly dealt. -->
-    <button id="recolor" title="Same palette, a fresh distribution of its colors">🎨<span class="btn-label"> Recolor</span></button>
     <hr class="divider">
-    <button id="use-words" title="Cloud your own text">Use My Words</button>
-    <button id="use-book" title="Cloud a book from the library">Use a Book</button>
-    <!-- Book clouds are a pure function of the spec, so a URL reproduces
-         them exactly; user-text clouds aren't sharable, so it hides. -->
-    <button id="copy-link" title="Copy a link to this exact cloud"><span id="copy-link-icon">🔗</span><span class="btn-label"> Copy Link</span></button>
-    <hr class="divider">
-    <button id="export-btn" title="Save as PNG, SVG, or PDF">Export…</button>
+    <div class="group">
+      <span class="group-label">share</span>
+      <button id="export-btn" title="Save as PNG, SVG, or PDF">Export…</button>
+      <!-- Book clouds are a pure function of the spec, so a URL
+           reproduces them exactly; user-text clouds aren't sharable,
+           so it hides. -->
+      <button id="copy-link" title="Copy a link to this exact cloud"><span id="copy-link-icon">🔗</span><span class="btn-label"> Copy Link</span></button>
+    </div>
     <span class="spacer"></span>
     <button id="credits-btn" title="Acknowledgements and licenses">Credits</button>
     <button id="feedback-btn" title="Report a bug, request a feature, or just say hi">Feedback</button>
