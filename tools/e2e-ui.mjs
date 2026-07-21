@@ -1,0 +1,135 @@
+// e2e UI behavior tests: pin the page↔engine message routing that the
+// pixel goldens can't see (they all run ?no-ui and never touch the
+// toolbar) — above all that color-only spec changes (palette, variance,
+// recolor seed) ride the recolor fast path instead of paying a full
+// relayout, that a commit of an already-previewed change dedupes to no
+// message at all, and that the one legitimately layout-changing color
+// switch (App Colors ↔ palette) still takes the full rebuild. Every
+// assertion is on the path taken — the engine's "recolor timings" /
+// "rebuild timings" lines and progress events — never on wall-clock,
+// so slow machines can't flake it. Driven by tools/e2e-ui.sh.
+//
+//   node tools/e2e-ui.mjs <chrome> <base-url>
+import puppeteer from 'puppeteer-core';
+
+const [chrome, baseUrl] = process.argv.slice(2);
+const browser = await puppeteer.launch({
+  executablePath: chrome,
+  headless: true,
+  args: ['--use-angle=swiftshader', '--hide-scrollbars'],
+});
+
+let failed = 0;
+try {
+  const page = await browser.newPage();
+  await page.setViewport({ width: 1200, height: 750, deviceScaleFactor: 1 });
+
+  // Poll from this side, not via waitForFunction (see e2e-shot.mjs).
+  const waitIdle = async () => {
+    const deadline = Date.now() + 60000;
+    while (!(await page.evaluate('window.__wordsIdle === true'))) {
+      if (Date.now() > deadline) throw new Error('idle timeout');
+      await new Promise((r) => setTimeout(r, 100));
+    }
+  };
+
+  // Run `action` in the page, wait for the engine to settle, and check
+  // the worker messages it produced: `path` names the build path that
+  // must appear ('recolor' | 'rebuild' | 'none'); progress events are
+  // forbidden unless the path is a real rebuild.
+  const step = async (name, action, path) => {
+    const mark = await page.evaluate('window.__uiEvts.length');
+    await page.evaluate(action);
+    if (path === 'none') {
+      await new Promise((r) => setTimeout(r, 400));  // nothing to wait on
+    } else {
+      await new Promise((r) => setTimeout(r, 50));
+      await waitIdle();
+    }
+    const evts = await page.evaluate((m) => window.__uiEvts.slice(m), mark);
+    const got = evts.some((e) => /rebuild timings/.test(e)) ? 'rebuild'
+              : evts.some((e) => /recolor timings/.test(e)) ? 'recolor'
+              : 'none';
+    const progress = evts.filter((e) => e === 'progress').length;
+    const ok = got === path &&
+        (path === 'rebuild' ? progress > 0 : progress === 0);
+    console.log(`${ok ? 'e2e ui OK' : 'e2e ui FAIL'}: ${name}` +
+                (ok ? '' : ` (path ${got}, ${progress} progress events;` +
+                           ` events ${JSON.stringify(evts)})`));
+    if (!ok) failed = 1;
+  };
+
+  const check = async (name, expr) => {
+    const ok = await page.evaluate(expr);
+    console.log(`${ok ? 'e2e ui OK' : 'e2e ui FAIL'}: ${name}`);
+    if (!ok) failed = 1;
+  };
+
+  // A fully locked UI-mode boot; a small cloud for speed; sexsmith is
+  // the preloaded font, so there is no font fetch to wait on.
+  await page.goto(
+      `${baseUrl}?corpus=moby-dick&seed=7&max=300&font=sexsmith` +
+          '&orientation=mostly-horizontal&placement=center-line' +
+          '&palette=wordly&variance=little',
+      { waitUntil: 'load' });
+  await waitIdle();
+  // Record every worker→page message; timing messages keep their text
+  // (that's where "recolor timings" vs "rebuild timings" shows up).
+  await page.evaluate(() => {
+    window.__uiEvts = [];
+    const orig = worker.onmessage;
+    worker.onmessage = (e) => {
+      window.__uiEvts.push(
+          e.data.type === 'timing' ? e.data.text : e.data.type);
+      orig(e);
+    };
+  });
+
+  // The FIRST post-boot change: the boot spec primes the routing
+  // comparison, so even this must recolor. (Regression: a full rebuild
+  // with a progress bar on the first variance nudge.)
+  await step('first variance drag step previews via recolor', () => {
+    const slider = document.querySelector('#variance-inline .var-input');
+    slider.value = 4;
+    slider.dispatchEvent(new Event('input'));
+  }, 'recolor');
+
+  await step('variance release commits with no rebuild at all (deduped)',
+      () => {
+        document.querySelector('#variance-inline .var-input')
+            .dispatchEvent(new Event('change'));
+      }, 'none');
+  await check('variance commit landed in the spec and undo stack',
+      () => spec.variance === 'wild' && undoStack.length === 1);
+
+  await step('palette menu switch recolors',
+      () => choose('palette', 'fixed', 'bw'), 'recolor');
+  await check('status line names the new palette',
+      () => document.getElementById('status').textContent
+                .includes(' BW '));
+
+  await step('Recolor button recolors', () => {
+    document.getElementById('recolor').click();
+  }, 'recolor');
+
+  await step('undo of a color-only change recolors', () => undo(),
+      'recolor');
+
+  await step('palette editor preview recolors', () => {
+    openPaletteEditor();
+    document.querySelector('#pal-colors .pal-add').click();
+  }, 'recolor');
+
+  await step('palette editor cancel restores via recolor', () => {
+    document.getElementById('pal-cancel').click();
+  }, 'recolor');
+  await check('cancel left the committed palette in the status line',
+      () => document.getElementById('status').textContent
+                .includes(' BW '));
+
+  await step('App Colors crossing takes the full rebuild', () =>
+      choose('palette', 'fixed', ''), 'rebuild');
+} finally {
+  await browser.close();
+}
+process.exit(failed);

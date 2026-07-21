@@ -52,6 +52,13 @@ if [ "${CHANGED_TESTABLE:-0}" -gt 0 ]; then
   # Tier 2: e2e raster golden via pinned Chrome for Testing + SwiftShader.
   echo "== e2e image golden"
   tools/e2e-golden.sh
+
+  # Tier 3: UI behavior — the page↔engine message routing the ?no-ui
+  # goldens never exercise: color-only changes must ride the recolor
+  # fast path (no relayout, no progress bar), previewed commits dedupe,
+  # the App-Colors crossing still rebuilds.
+  echo "== e2e ui behavior"
+  tools/e2e-ui.sh
 else
   echo "== golden tests: no src/tests/web/assets changes, skipping"
 fi
