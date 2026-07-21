@@ -129,6 +129,21 @@ try {
 
   await step('App Colors crossing takes the full rebuild', () =>
       choose('palette', 'fixed', ''), 'rebuild');
+
+  // The curated first cloud: a bare boot (no style params) opens with
+  // the aspect-fitting placement (1200x750 is wide → center-line),
+  // mostly-horizontal, and Blue Meets Orange — each still in random
+  // mode, so Generate rolls freely afterwards.
+  await page.goto(`${baseUrl}?corpus=moby-dick&max=300&seed=7`,
+                  { waitUntil: 'load' });
+  await waitIdle();
+  await check('bare boot curates the first cloud (random mode kept)',
+      () => spec.placement === 'center-line' &&
+            spec.placementMode === 'random' &&
+            spec.orientation === 'mostly-horizontal' &&
+            spec.orientationMode === 'random' &&
+            spec.palette === 'blue-meets-orange' &&
+            spec.paletteMode === 'random');
 } finally {
   await browser.close();
 }

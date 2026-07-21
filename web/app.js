@@ -196,12 +196,31 @@ const LEGACY_DEFAULTS = {
 const paletteToToken = (v) => (v === '' ? 'none' : v);
 const tokenToPalette = (t) => (t === 'none' ? '' : t);
 
+// The first cloud is curated, not rolled: the placement that best fills
+// the canvas (wide window → center-line, tall → its transpose,
+// near-square → square), the most readable angle mix, and Blue Meets
+// Orange. The dims still boot in random mode — Generate rolls truly
+// random from then on — and font stays a genuine roll. (The canvas is
+// already laid out here: the sidebar was shown above, so this aspect is
+// the one the cloud will actually get.)
+const bootAspect = canvas.clientHeight > 0
+    ? canvas.clientWidth / canvas.clientHeight
+    : 1.6;
+const FIRST_CLOUD = {
+  placement: bootAspect > 1.2 ? 'center-line'
+           : bootAspect < 0.8 ? 'vertical-center-line'
+           : 'square',
+  orientation: 'mostly-horizontal',
+  palette: 'blue-meets-orange',
+};
+
 function bootDimension(dim) {
   const raw = params.get(dim);
   const decode = dim === 'palette' ? tokenToPalette : (x) => x;
   if (raw === null) {
-    return showUi ? { mode: 'random', value: pick(POOLS[dim]) }
-                  : { mode: 'fixed', value: LEGACY_DEFAULTS[dim] };
+    return showUi
+        ? { mode: 'random', value: FIRST_CLOUD[dim] || pick(POOLS[dim]) }
+        : { mode: 'fixed', value: LEGACY_DEFAULTS[dim] };
   }
   if (raw.startsWith('~')) {
     return { mode: 'random', value: decode(raw.slice(1)) };
