@@ -327,23 +327,29 @@ worker.postMessage(
 let busy = true;  // the initial build is in progress
 let pendingSpec = null;
 let stagedText = null;  // what the worker currently has
-let lastSentMsg = null;  // JSON of the last rebuild actually sent
+const specMsg = (s) => ({
+  type: 'rebuild',
+  seed: s.seed,
+  orientation: s.orientation,
+  placement: s.placement,
+  palette: s.palette,
+  font: s.font,
+  maxWords: s.maxWords,
+  variance: s.variance,
+  caseFold: s.caseFold,
+  exclude: s.exclude.join(','),
+  colorSeed: s.colorSeed,
+  corpus: s.corpus,
+  useText: s.text !== '',
+});
+// JSON of the rebuild the engine last performed. Primed with the boot
+// spec: in UI mode the worker's init message carries exactly these
+// resolved values, so the engine's first cloud IS this spec — without
+// the priming, the first color-only change (a variance nudge, a palette
+// pick) couldn't prove itself recolorable and paid a full rebuild.
+let lastSentMsg = showUi ? JSON.stringify(specMsg(spec)) : null;
 const sendSpec = (s) => {
-  const msg = {
-    type: 'rebuild',
-    seed: s.seed,
-    orientation: s.orientation,
-    placement: s.placement,
-    palette: s.palette,
-    font: s.font,
-    maxWords: s.maxWords,
-    variance: s.variance,
-    caseFold: s.caseFold,
-    exclude: s.exclude.join(','),
-    colorSeed: s.colorSeed,
-    corpus: s.corpus,
-    useText: s.text !== '',
-  };
+  const msg = specMsg(s);
   if (s.text !== '' && s.text !== stagedText) {
     msg.text = s.text;
     stagedText = s.text;
@@ -1479,14 +1485,17 @@ if (showUi) {
   });
 
   // Variance sliders (inline on desktop, pop-down on phone): index into
-  // VARIANCES; the labels track the drag live, the rebuild fires on
-  // release as one undoable action.
+  // VARIANCES. The drag applies live — each step previews through the
+  // recolor fast path (spec untouched, like the palette editor) — and
+  // release commits the one undoable action (deduped: the preview
+  // already showed it).
   for (const slider of document.querySelectorAll('.var-input')) {
     slider.addEventListener('input', () => {
-      const [, short] = VARIANCES[+slider.value];
+      const [variance, short] = VARIANCES[+slider.value];
       for (const v of document.querySelectorAll('.var-val')) {
         v.textContent = short;
       }
+      previewSpec({ ...spec, variance });
     });
     slider.addEventListener('change', () => {
       const [variance] = VARIANCES[+slider.value];
