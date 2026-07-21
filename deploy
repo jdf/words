@@ -11,8 +11,9 @@
 # history and rollback. The remote sync uses the mrfeinberg-claude ssh
 # alias (a dedicated key; see ~/.ssh/config) and --delete scoped to
 # words/ only — that subtree is fully generated from this repo, so
-# deletions in it are always safe. (The site-wide deploy never uses
-# --delete; see commands/deploy-mrfeinberg-dot-com.md.)
+# deletions in it are always safe. (The site-wide deploy also uses
+# --delete, but only from the full local mirror; see
+# commands/deploy-mrfeinberg-dot-com.md.)
 set -euo pipefail
 cd "$(dirname "$0")"
 
