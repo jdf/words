@@ -46,7 +46,9 @@ class Hbb {
 
   // True if any ink leaf of this tree (translated by ax,ay) overlaps any
   // ink leaf of `other` (translated by bx,by). Alternating descent:
-  // whichever side still has structure refines.
+  // whichever side still has structure refines. Hit results are
+  // warm-started by a per-query witness (the last colliding leaf pair),
+  // which spiral probing re-hits almost every time.
   bool intersects(const Hbb& other, double ax, double ay, double bx,
                   double by) const;
 
@@ -71,12 +73,18 @@ class Hbb {
 
   int build(const class InkTester& ink, const Box& box, double minSize);
   bool nodeIntersects(int32_t i, const Hbb& other, int32_t j, double ax,
-                      double ay, double bx, double by) const;
+                      double ay, double bx, double by, bool swapped) const;
   void visitNode(int32_t i, int depth,
                  const std::function<void(const Box&, int, bool)>& fn) const;
 
   std::vector<Node> nodes_;  // nodes_[0] is the root when non-empty
   double swellH_ = 0, swellV_ = 0;
+  // Witness cache: the leaf pair that proved the last hit against
+  // witnessOther_ (see intersects). Pure acceleration state — never
+  // affects results — valid only among the concurrently live words of
+  // one layout run, which is the only place intersects() is called.
+  mutable const Hbb* witnessOther_ = nullptr;
+  mutable int32_t witnessI_ = 0, witnessJ_ = 0;
 };
 
 }  // namespace words

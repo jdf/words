@@ -26,9 +26,18 @@ Box boundsOfPath(const Clipper2Lib::PathD& path) {
   return b;
 }
 
-// Liang–Barsky: does the segment p→q pass through rect r?
+// Liang–Barsky: does the segment p→q pass through rect r? The bbox
+// reject up front is exact, not approximate: a segment lying strictly
+// on one side of the rect can't clip into it, and Liang–Barsky would
+// return false for it too — it just costs divisions to say so, and on
+// dense outlines most edges of an overlapping contour are far from any
+// given query rect.
 bool segmentIntersectsRect(double px, double py, double qx, double qy,
                            const Box& r) {
+  if ((px < r.minX && qx < r.minX) || (px > r.maxX && qx > r.maxX) ||
+      (py < r.minY && qy < r.minY) || (py > r.maxY && qy > r.maxY)) {
+    return false;
+  }
   double t0 = 0.0, t1 = 1.0;
   double dx = qx - px, dy = qy - py;
   const double p[4] = {-dx, dx, -dy, dy};
@@ -73,7 +82,7 @@ class InkTester {
       size_t n = path.size();
       for (size_t i = 0; i < n; ++i) {
         const auto& p = path[i];
-        const auto& q = path[(i + 1) % n];
+        const auto& q = path[i + 1 == n ? 0 : i + 1];
         if (segmentIntersectsRect(p.x, p.y, q.x, q.y, rect)) {
           return true;
         }
@@ -92,7 +101,7 @@ class InkTester {
       size_t n = path.size();
       for (size_t i = 0; i < n; ++i) {
         const auto& p = path[i];
-        const auto& q = path[(i + 1) % n];
+        const auto& q = path[i + 1 == n ? 0 : i + 1];
         if ((p.y > y) != (q.y > y)) {
           double xAtY = p.x + (q.x - p.x) * (y - p.y) / (q.y - p.y);
           if (xAtY > x) ++crossings;
@@ -168,11 +177,28 @@ int Hbb::build(const InkTester& ink, const Box& box, double minSize) {
 bool Hbb::intersects(const Hbb& other, double ax, double ay, double bx,
                      double by) const {
   if (nodes_.empty() || other.nodes_.empty()) return false;
-  return nodeIntersects(0, other, 0, ax, ay, bx, by);
+  // Witness warm start. The spiral probes candidate positions in small
+  // steps, so a word that collided at the last probe almost always
+  // still collides — usually at the very same pair of ink leaves. One
+  // box test against that remembered pair answers most probes without
+  // descending either tree. Correctness is unconditional: a witness
+  // hit re-verifies the overlap (both nodes are ink leaves, so any
+  // overlap means ink overlap — exactly what the descent would
+  // conclude), and a stale witness just falls through to the full
+  // search, which refreshes it.
+  if (witnessOther_ == &other) {
+    const Node& mine = nodes_[witnessI_];
+    const Node& theirs = other.nodes_[witnessJ_];
+    if (mine.box.translated(ax, ay).overlaps(theirs.box.translated(bx, by))) {
+      return true;
+    }
+  }
+  return nodeIntersects(0, other, 0, ax, ay, bx, by, false);
 }
 
 bool Hbb::nodeIntersects(int32_t i, const Hbb& other, int32_t j, double ax,
-                         double ay, double bx, double by) const {
+                         double ay, double bx, double by,
+                         bool swapped) const {
   const Node& mine = nodes_[i];
   const Node& theirs = other.nodes_[j];
   if (!mine.box.translated(ax, ay).overlaps(theirs.box.translated(bx, by))) {
@@ -180,13 +206,35 @@ bool Hbb::nodeIntersects(int32_t i, const Hbb& other, int32_t j, double ax,
   }
 
   if (mine.a == -1 && mine.b == -1) {
-    // I'm an ink leaf; let the other side refine if it can.
-    if (theirs.a == -1 && theirs.b == -1) return true;
-    return other.nodeIntersects(j, *this, i, bx, by, ax, ay);
+    if (theirs.a == -1 && theirs.b == -1) {
+      // Both ink leaves: record the pair on the top-level query side
+      // (the recursion may have swapped roles) as the next probe's
+      // witness. Pointers stay valid for the layout run: every word in
+      // it outlives the run, and rebuilds construct fresh trees.
+      const Hbb* a = swapped ? &other : this;
+      const Hbb* b = swapped ? this : &other;
+      a->witnessOther_ = b;
+      a->witnessI_ = swapped ? j : i;
+      a->witnessJ_ = swapped ? i : j;
+      return true;
+    }
+    // I'm an ink leaf; the other side refines. Enter their children
+    // directly: each call tests its own pair at entry, so re-entering
+    // at `j` would re-test the pair that just passed. (Descent-order
+    // experiments — refine-the-larger-box, iterative with an explicit
+    // stack — both measured SLOWER than this one-sided recursion, with
+    // and without the witness cache: hits want the straight plunge to
+    // a leaf pair, and the extra bookkeeping outweighs the pruning.)
+    return (theirs.a != -1 && other.nodeIntersects(theirs.a, *this, i, bx, by,
+                                                   ax, ay, !swapped)) ||
+           (theirs.b != -1 && other.nodeIntersects(theirs.b, *this, i, bx, by,
+                                                   ax, ay, !swapped));
   }
 
-  return (mine.a != -1 && nodeIntersects(mine.a, other, j, ax, ay, bx, by)) ||
-         (mine.b != -1 && nodeIntersects(mine.b, other, j, ax, ay, bx, by));
+  return (mine.a != -1 &&
+          nodeIntersects(mine.a, other, j, ax, ay, bx, by, swapped)) ||
+         (mine.b != -1 &&
+          nodeIntersects(mine.b, other, j, ax, ay, bx, by, swapped));
 }
 
 void Hbb::visit(
