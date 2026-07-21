@@ -1369,38 +1369,45 @@ palDeleteBtn.addEventListener('click', () => {
   refreshPalLoadSelect('');
 });
 
-// Dragging the title bar moves the dialog (so it can be pulled off the
-// part of the cloud being inspected); the position is clamped on screen
-// and survives reopening within the session.
-function positionPalDialog(left, top) {
-  const margin = 8;
-  const maxLeft =
-      Math.max(window.innerWidth - paletteDialog.offsetWidth - margin, margin);
-  const maxTop =
-      Math.max(window.innerHeight - paletteDialog.offsetHeight - margin,
-               margin);
-  paletteDialog.style.margin = '0';
-  paletteDialog.style.inset = 'auto';
-  paletteDialog.style.left =
-      `${Math.min(Math.max(left, margin), maxLeft)}px`;
-  paletteDialog.style.top = `${Math.min(Math.max(top, margin), maxTop)}px`;
+// Dragging a dialog's title bar moves it (clamped on screen); position
+// (and any resize) survives reopening within the session. Returns a
+// pin function for callers to invoke right after showModal(): it fixes
+// the dialog at its current spot with explicit coordinates — re-clamped
+// if the window shrank — so a later CSS resize anchors at the top-left
+// instead of fighting the centering margins.
+function makeDialogDraggable(dialog, bar) {
+  const position = (left, top) => {
+    const margin = 8;
+    const maxLeft =
+        Math.max(window.innerWidth - dialog.offsetWidth - margin, margin);
+    const maxTop =
+        Math.max(window.innerHeight - dialog.offsetHeight - margin, margin);
+    dialog.style.margin = '0';
+    dialog.style.inset = 'auto';
+    dialog.style.left = `${Math.min(Math.max(left, margin), maxLeft)}px`;
+    dialog.style.top = `${Math.min(Math.max(top, margin), maxTop)}px`;
+  };
+  let offset = null;  // pointer position within the dialog
+  bar.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    const r = dialog.getBoundingClientRect();
+    offset = { x: e.clientX - r.left, y: e.clientY - r.top };
+    try {
+      bar.setPointerCapture(e.pointerId);
+    } catch (err) { /* synthetic events have no active pointer */ }
+  });
+  bar.addEventListener('pointermove', (e) => {
+    if (offset) position(e.clientX - offset.x, e.clientY - offset.y);
+  });
+  const end = () => { offset = null; };
+  bar.addEventListener('pointerup', end);
+  bar.addEventListener('pointercancel', end);
+  return () => {
+    const r = dialog.getBoundingClientRect();
+    position(r.left, r.top);
+  };
 }
-let palDragOffset = null;  // pointer position within the dialog
-palDragBar.addEventListener('pointerdown', (e) => {
-  e.preventDefault();
-  const r = paletteDialog.getBoundingClientRect();
-  palDragOffset = { x: e.clientX - r.left, y: e.clientY - r.top };
-  try {
-    palDragBar.setPointerCapture(e.pointerId);
-  } catch (err) { /* synthetic events have no active pointer */ }
-});
-palDragBar.addEventListener('pointermove', (e) => {
-  if (!palDragOffset) return;
-  positionPalDialog(e.clientX - palDragOffset.x, e.clientY - palDragOffset.y);
-});
-const endPalDrag = () => { palDragOffset = null; };
-palDragBar.addEventListener('pointerup', endPalDrag);
-palDragBar.addEventListener('pointercancel', endPalDrag);
+const pinPaletteDialog = makeDialogDraggable(paletteDialog, palDragBar);
 
 // Opens editing the current palette when it's custom, else fresh: black
 // background, no word colors yet — just the + tile.
@@ -1417,11 +1424,7 @@ function openPaletteEditor() {
   palPreviewValue = isCustomPalette(spec.palette) ? spec.palette : null;
   renderPalEditor();
   paletteDialog.showModal();
-  // A position dragged in an earlier open may no longer fit the window.
-  if (paletteDialog.style.left) {
-    positionPalDialog(parseFloat(paletteDialog.style.left),
-                      parseFloat(paletteDialog.style.top));
-  }
+  pinPaletteDialog();
 }
 
 palUseBtn.addEventListener('click', () => {
@@ -1560,9 +1563,12 @@ if (showUi) {
   const useBtn = document.getElementById('use-words');
   const userText = document.getElementById('user-text');
   const userFile = document.getElementById('user-file');
+  const pinWordsDialog =
+      makeDialogDraggable(dialog, document.getElementById('words-drag'));
   useBtn.addEventListener('click', () => {
     userText.value = spec.text;
     dialog.showModal();
+    pinWordsDialog();
   });
   userFile.addEventListener('change', () => {
     const file = userFile.files[0];
