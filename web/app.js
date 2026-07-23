@@ -2152,9 +2152,12 @@ if (showUi) {
     }
   });
 
-  // ----- Feedback dialog: each choice opens a GitHub issue form in a
-  // new tab, prefilled (via the form field's id as a query parameter)
-  // with the environment a bug report needs.
+  // ----- Feedback dialog: choose a category, compose right here, and
+  // Send POSTs to the report relay (report-relay/), which files a GitHub
+  // issue as the bot — no GitHub account needed. If the relay is
+  // unreachable the old path survives as a fallback link: the prefilled
+  // GitHub issue form (via the form field's id as a query parameter).
+  const RELAY_URL = 'https://words-report.vercel.app/api/v1/report';
   const feedbackDialog = document.getElementById('feedback-dialog');
   document.getElementById('fb-build').textContent =
       `build ${BUILD.id} · ${BUILD.date}`;
@@ -2181,14 +2184,14 @@ if (showUi) {
           `${canvas.width}x${canvas.height} buffer`,
     ].join('\n');
   };
-  // The report is prepared when the dialog opens, never in the option
-  // click: an await between click and window.open expires the user
-  // activation, and the popup gets blocked (iOS Chrome exposes
-  // userAgentData where Safari doesn't — which is why only one of them
-  // ever hit it).
+  // The report is refreshed when the dialog opens; userAgentData's
+  // high-entropy values arrive async, so start early and patch envText
+  // (and the compose preview) when they land.
   let envText = envReport(navigator.platform);
-  document.getElementById('feedback-btn').addEventListener('click', () => {
+  const fbEnvPre = document.getElementById('fb-env-text');
+  const refreshEnv = () => {
     envText = envReport(navigator.platform);
+    fbEnvPre.textContent = envText;
     if (navigator.userAgentData) {
       navigator.userAgentData
           .getHighEntropyValues(['platformVersion', 'architecture', 'bitness'])
@@ -2196,9 +2199,28 @@ if (showUi) {
             envText = envReport(
                 `${navigator.userAgentData.platform} ${hints.platformVersion} ` +
                 `${hints.architecture}${hints.bitness}`);
+            fbEnvPre.textContent = envText;
           })
           .catch(() => { /* keep the legacy value */ });
     }
+  };
+  const fbViews = ['fb-choose', 'fb-compose', 'fb-done']
+      .map((id) => document.getElementById(id));
+  const fbShow = (id) => {
+    for (const v of fbViews) v.hidden = v.id !== id;
+  };
+  const fbText = document.getElementById('fb-text');
+  const fbSend = document.getElementById('fb-send');
+  const fbHints = {
+    bug: 'What went wrong, and what did you expect instead?',
+    feature: 'What would you like the app to do?',
+    feedback: 'What’s on your mind?',
+  };
+  let fbCategory = 'feedback';
+  let fbTemplate = 'feedback.yml';
+  document.getElementById('feedback-btn').addEventListener('click', () => {
+    refreshEnv();
+    fbShow('fb-choose');
     feedbackDialog.showModal();
   });
   document.getElementById('feedback-cancel').addEventListener('click', () => {
@@ -2209,15 +2231,79 @@ if (showUi) {
       e.preventDefault();
       feedbackDialog.close();
     }
+    // Enter in the textarea must insert a newline, not submit-and-close.
+    if (e.key === 'Enter' && e.target === fbText) e.stopPropagation();
   });
   for (const b of document.querySelectorAll('.fb-opt')) {
     b.addEventListener('click', () => {
-      feedbackDialog.close();
-      // Synchronous from click to window.open — see envText above.
-      const url = 'https://github.com/jdf/words/issues/new?template=' +
-          b.dataset.template +
-          '&environment=' + encodeURIComponent(envText);
-      window.open(url, '_blank', 'noopener');
+      fbCategory = b.dataset.category;
+      fbTemplate = b.dataset.template;
+      document.getElementById('fb-compose-hint').textContent =
+          fbHints[fbCategory];
+      fbShow('fb-compose');
+      fbText.focus();
     });
   }
+  document.getElementById('fb-back').addEventListener('click', () => {
+    fbShow('fb-choose');
+  });
+  const fbFinish = (msg, failed) => {
+    document.getElementById('fb-done-msg').innerHTML = msg;
+    document.getElementById('fb-fail-actions').hidden = !failed;
+    fbShow('fb-done');
+  };
+  fbSend.addEventListener('click', async () => {
+    const text = fbText.value.trim();
+    if (!text) {
+      fbText.focus();
+      return;
+    }
+    fbSend.disabled = true;
+    fbSend.textContent = 'Sending…';
+    // The fallback link is a real <a>, so its click is its own user
+    // activation — the await here can't get its popup blocked.
+    document.getElementById('fb-github-link').href =
+        'https://github.com/jdf/words/issues/new?template=' + fbTemplate +
+        '&environment=' + encodeURIComponent(envText);
+    let ok = false;
+    let issue = null;
+    try {
+      const res = await fetch(RELAY_URL, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(
+            {category: fbCategory, text, environment: envText, log: ''}),
+      });
+      if (res.status === 201) {
+        issue = await res.json();
+        ok = true;
+      }
+    } catch (_) { /* network error: fall through to the fallback */ }
+    fbSend.disabled = false;
+    fbSend.textContent = 'Send';
+    if (ok) {
+      fbText.value = '';
+      fbFinish(
+          `Reported as <a href="${issue.url}" target="_blank" ` +
+              `rel="noopener">#${issue.number}</a> — thank you!`,
+          false);
+    } else {
+      fbFinish(
+          'Couldn’t reach the report service. Your text is kept if you ' +
+              'want to retry later; meanwhile you can open the GitHub ' +
+              'form (needs an account) or copy the report.',
+          true);
+    }
+  });
+  document.getElementById('fb-copy').addEventListener('click', (e) => {
+    e.preventDefault();
+    navigator.clipboard
+        .writeText(`${fbText.value.trim()}\n\n### Environment\n${envText}`)
+        .then(() => { e.target.textContent = 'Copied!'; })
+        .catch(() => { e.target.textContent = 'Copy failed'; });
+    setTimeout(() => { e.target.textContent = 'Copy report'; }, 1500);
+  });
+  document.getElementById('fb-close').addEventListener('click', () => {
+    feedbackDialog.close();
+  });
 }

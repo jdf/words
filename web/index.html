@@ -173,6 +173,17 @@
     .fb-build {
       color: #8a8a96; font-size: 12px; user-select: text;
     }
+    /* Compose step: the attached-environment preview and result links. */
+    .fb-env { margin-top: 10px; color: #8a8a96; font-size: 12px; }
+    .fb-env summary { cursor: pointer; }
+    .fb-env pre {
+      margin: 6px 0 0; padding: 8px; background: #101014;
+      border: 1px solid #333; border-radius: 4px;
+      overflow-x: auto; user-select: text;
+    }
+    #feedback-dialog a { color: #4aa3ff; text-decoration: none; }
+    #feedback-dialog a:hover { text-decoration: underline; }
+    #fb-done-msg { user-select: text; }
     /* Credits: rendered markdown, scrolling inside the dialog. */
     #credits-dialog { width: min(560px, 90vw); }
     .credits-body { max-height: 65vh; overflow-y: auto; font-size: 13px; }
@@ -674,14 +685,42 @@
        reproducible). -->
   <dialog id="feedback-dialog">
     <h3>Feedback</h3>
-    <p class="fb-hint">Each option opens a GitHub issue in a new tab,
-      prefilled with your platform, browser, and build details.</p>
-    <button class="fb-opt" data-template="bug-report.yml">🐞 Report a Bug</button>
-    <button class="fb-opt" data-template="feature-request.yml">✨ Request a Feature</button>
-    <button class="fb-opt" data-template="feedback.yml">💬 General Feedback</button>
-    <div class="row">
-      <span class="fb-build" id="fb-build"></span>
-      <button id="feedback-cancel">Cancel</button>
+    <div id="fb-choose">
+      <p class="fb-hint">Reports go straight to the project's issue
+        tracker — no account needed.</p>
+      <button class="fb-opt" data-category="bug"
+              data-template="bug-report.yml">🐞 Report a Bug</button>
+      <button class="fb-opt" data-category="feature"
+              data-template="feature-request.yml">✨ Request a Feature</button>
+      <button class="fb-opt" data-category="feedback"
+              data-template="feedback.yml">💬 General Feedback</button>
+      <div class="row">
+        <span class="fb-build" id="fb-build"></span>
+        <button id="feedback-cancel">Cancel</button>
+      </div>
+    </div>
+    <div id="fb-compose" hidden>
+      <p class="fb-hint" id="fb-compose-hint"></p>
+      <textarea id="fb-text" rows="5"></textarea>
+      <details class="fb-env">
+        <summary>What gets attached</summary>
+        <pre id="fb-env-text"></pre>
+      </details>
+      <div class="row">
+        <button id="fb-back">Back</button>
+        <button id="fb-send" class="go">Send</button>
+      </div>
+    </div>
+    <div id="fb-done" hidden>
+      <p class="fb-hint" id="fb-done-msg"></p>
+      <div class="row">
+        <span id="fb-fail-actions" hidden>
+          <a id="fb-github-link" href="#" target="_blank" rel="noopener">Open
+            GitHub form</a> ·
+          <a id="fb-copy" href="#">Copy report</a>
+        </span>
+        <button id="fb-close" class="go">Close</button>
+      </div>
     </div>
   </dialog>
   <dialog id="credits-dialog">
